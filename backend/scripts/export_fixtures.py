@@ -24,7 +24,7 @@ from app.schemas.parse import ParseOptions  # noqa: E402
 from app.services.babylon_scene import build_scene  # noqa: E402
 from app.services.dwg_convert import convert_dwg_to_dxf, converter_available  # noqa: E402
 from app.services.dxf_parser import parse_dxf  # noqa: E402
-from app.services.sample_plan import build_demo_dxf  # noqa: E402
+from app.services.sample_plan import build_demo_dxf, build_orientation_dxf  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_TARGET = REPO / "contracts" / "fixtures"
@@ -47,7 +47,8 @@ def main() -> None:
     target.mkdir(parents=True, exist_ok=True)
     settings = Settings(_env_file=None)
 
-    sources: list[tuple[str, bytes]] = [("demo-apartment", build_demo_dxf())]
+    # orientation: L-shaped room checking plan y -> z, the glTF +z front, and chair-faces-table (plan A1)
+    sources: list[tuple[str, bytes]] = [("demo-apartment", build_demo_dxf()), ("orientation", build_orientation_dxf())]
     examples = next((d for d in EXAMPLE_DIRS if d.is_dir()), None)
     if examples and converter_available(settings):
         for dwg in sorted(examples.glob("*.dwg")):

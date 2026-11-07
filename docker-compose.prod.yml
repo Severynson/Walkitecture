@@ -15,6 +15,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-walkitecture}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-walkitecture}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      APP_ENV: production  # refuses to start with a weak JWT_SECRET or the default seed password
       CORS_ORIGINS: ""  # same origin: the SPA is served by the backend
       SEED_USERNAME: ${SEED_USERNAME:-}
       SEED_PASSWORD: ${SEED_PASSWORD:-}

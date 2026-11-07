@@ -51,6 +51,8 @@ class LayerPatterns:
     opening: tuple[str, ...]  # mixed doors + windows; the block decides which
     room: tuple[str, ...]
     furniture: tuple[str, ...]
+    # (BLOCK NAME upper-cased, role) pairs from ParseOptions.block_overrides; checked before any rule.
+    block_overrides: tuple[tuple[str, str], ...] = ()
 
     def match(self, layer: str) -> str | None:
         name = layer.upper()
@@ -65,6 +67,8 @@ class Classification:
     category: str  # one of CATEGORIES
     reason: str
     furniture_category: str | None = None  # bed, chair, sofa, desk, table, closet, toilet (None = unknown)
+    matched_by: str = "block_name"  # block_name | layer | manual (block override)
+    explode: bool = True  # False: an ignored block's contents must not be reclassified either
 
 
 class DrawingClassifier:
@@ -72,6 +76,7 @@ class DrawingClassifier:
         self.doc = doc
         self.patterns = patterns
         self._block_has_arc = lru_cache(maxsize=None)(self._compute_block_has_arc)
+        self._overrides = dict(patterns.block_overrides)
 
     def classify(self, entity: DXFGraphic, layer: str | None = None) -> Classification:
         layer = layer if layer is not None else entity.dxf.get("layer", "0")
@@ -99,6 +104,13 @@ class DrawingClassifier:
 
     def _classify_insert(self, entity: DXFGraphic, layer: str, layer_kind: str | None) -> Classification:
         name = entity.dxf.get("name", "")
+        override = self._overrides.get(name.upper())
+        if override == "ignore":
+            return Classification("other", f"block {name!r} ignored by override", explode=False)
+        if override in ("door", "window"):
+            return Classification(override, f"block {name!r} overridden as {override}", matched_by="manual")
+        if override:
+            return Classification("furniture", f"block {name!r} overridden as {override}", override, "manual")
         if layer_kind in ("window", "door"):
             return Classification(layer_kind, f"block {name!r} on {layer_kind} layer {layer!r}")
         if WINDOW_BLOCK.search(name) and not category_for(name):
@@ -116,7 +128,7 @@ class DrawingClassifier:
             return Classification("furniture", f"block name {name!r} matches {furniture!r}", furniture)
         if layer_kind == "furniture":
             return Classification(
-                "furniture", f"block {name!r} on furniture layer {layer!r}", category_for(layer) or None
+                "furniture", f"block {name!r} on furniture layer {layer!r}", category_for(layer) or None, "layer"
             )
         if layer_kind == "wall":
             return Classification("wall", f"block {name!r} on wall layer {layer!r}")

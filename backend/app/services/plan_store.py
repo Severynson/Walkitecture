@@ -15,11 +15,11 @@ from app.models import Plan, PlanEdit
 from app.schemas.api import EditResponse, PlanDetail, PlanSummary, SceneResponse
 from app.schemas.babylon import BabylonScene
 from app.schemas.building import Building
-from app.schemas.edits import EditCommand
+from app.schemas.edits import AnyCommand
 from app.schemas.parse import ParseOptions
 from app.services.babylon_scene import build_scene
-from app.services.drawing_reader import describe_drawing
-from app.services.dwg_convert import convert_dwg_to_dxf
+from app.services.drawing_reader import DrawingReadError, describe_drawing
+from app.services.dwg_convert import ConversionError, convert_dwg_to_dxf
 from app.services.dxf_parser import ParseError, ParseResult, parse_dxf
 from app.services.edits import EditResult, apply_edit
 from app.services.furniture_llm import classify_unknown_furniture
@@ -121,14 +121,18 @@ async def parse_plan(session: AsyncSession, plan: Plan, options: ParseOptions, s
     `plan` must have been loaded with files=True and for_update=True.
     """
     warnings: list[str] = []
-    if plan.dxf_file is None and plan.source_format == "dwg":
-        plan.dxf_file, warnings = await convert_dwg_to_dxf(plan.original_file, settings)
-    dxf = plan.dxf_file if plan.dxf_file is not None else plan.original_file
     try:
+        if plan.dxf_file is None and plan.source_format == "dwg":
+            plan.dxf_file, warnings = await convert_dwg_to_dxf(plan.original_file, settings)
+        dxf = plan.dxf_file if plan.dxf_file is not None else plan.original_file
+        # Describe first: a plan that fails to build still gets its inventory (input for /classify).
+        try:
+            plan.drawing = describe_drawing(dxf, layer_patterns(settings, options))
+        except DrawingReadError as exc:
+            raise ParseError(str(exc)) from exc
         result = parse_dxf(dxf, options, settings)
-        plan.drawing = describe_drawing(dxf, layer_patterns(settings, options))
-    except ParseError as exc:
-        plan.status, plan.error = "failed", str(exc)
+    except (ConversionError, ParseError) as exc:
+        plan.status, plan.error = "failed", str(exc)  # ARCHITECTURE.md §11: keep the plan, record why
         await session.commit()
         raise
     result.warnings[:0] = warnings
@@ -167,7 +171,7 @@ async def _llm_furniture_fallback(result: ParseResult, settings: Settings) -> No
     result.stats["unresolvedFurnitureBlocks"] = sorted({c.block for c in unresolved if c.matched_by != "llm"})
 
 
-def preview_edit(plan: Plan, command: EditCommand) -> EditResult:
+def preview_edit(plan: Plan, command: AnyCommand) -> EditResult:
     return apply_edit(building_of(plan), command)
 
 
@@ -175,7 +179,7 @@ async def apply_and_record(
     session: AsyncSession,
     plan_id: uuid.UUID,
     owner_id: uuid.UUID,
-    command: EditCommand,
+    command: AnyCommand,
     *,
     base_version: int | None,
     source: str,

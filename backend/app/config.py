@@ -1,13 +1,14 @@
 """Application settings, loaded from environment variables (and an optional .env file)."""
 
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 CsvList = Annotated[list[str], NoDecode]
 FOOT = 0.3048  # meters
+DEFAULT_SEED_PASSWORD = "walkitecture-demo"  # docker-compose dev default; refused in production
 
 
 class Settings(BaseSettings):
@@ -21,10 +22,16 @@ class Settings(BaseSettings):
     # Built frontend (Vite dist/) to serve at "/"; set in the Docker image. Unset -> "/" redirects to /docs.
     static_dir: str | None = None
 
+    # production: refuse to start without a strong JWT_SECRET or with the default seed credentials
+    app_env: Literal["development", "production"] = "development"
+
     # --- Auth (JWT) ---------------------------------------------------------------------
     jwt_secret: str | None = None  # unset -> random per process (tokens die on restart)
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
+    # Attempts per minute per client IP (0 disables); behind Traefik set FORWARDED_ALLOW_IPS so the IP is real
+    login_rate_limit: int = 10
+    register_rate_limit: int = 5
 
     # --- Seed (scripts/seed.py, run on container start) ---------------------------------
     # Seeding is off unless both are set (docker-compose sets dev defaults).
@@ -80,6 +87,17 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    def production_problems(self) -> list[str]:
+        """Reasons this configuration must not run with APP_ENV=production (empty = fine)."""
+        if self.app_env != "production":
+            return []
+        problems = []
+        if not self.jwt_secret or len(self.jwt_secret) < 32:
+            problems.append("JWT_SECRET must be set to at least 32 characters (openssl rand -hex 32).")
+        if self.seed_username and self.seed_password == DEFAULT_SEED_PASSWORD:
+            problems.append("The default seed password is not allowed; set SEED_USERNAME= (empty) to disable seeding.")
+        return problems
 
 
 @lru_cache

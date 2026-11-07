@@ -14,7 +14,7 @@ from app.models import Plan
 from app.schemas.api import ParseResponse, PlanDetail, PlanSummary, ReplaceSceneRequest, SceneResponse
 from app.schemas.parse import ParseOptions
 from app.services import plan_store
-from app.services.dwg_convert import convert_dwg_to_dxf, detect_format
+from app.services.dwg_convert import ConversionError, detect_format
 from app.services.dxf_parser import ParseError
 from app.services.geometry import validate_building
 from app.services.sample_plan import DEMO_FILENAME, build_demo_dxf
@@ -42,26 +42,20 @@ async def upload_plan(
     if fmt is None:
         raise ApiError(415, "unsupported_file_type", "Only DWG and DXF files are supported.")
 
-    dxf_bytes, warnings = (await convert_dwg_to_dxf(data, settings)) if fmt == "dwg" else (None, [])
     plan = Plan(
-        owner_id=user.id,
-        filename=filename,
-        source_format=fmt,
-        file_size=len(data),
-        original_file=data,
-        dxf_file=dxf_bytes,
-        parse_warnings=warnings,
-    )
+        owner_id=user.id, filename=filename, source_format=fmt, file_size=len(data), original_file=data,
+        parse_warnings=[],
+    )  # fmt: skip
     session.add(plan)
     await session.commit()
     await session.refresh(plan)
 
-    if parse:
+    if parse:  # DWG conversion happens here; failures are stored as status=failed + error (ARCHITECTURE.md §11)
         plan = await plan_store.get_plan(session, plan.id, user.id, for_update=True, files=True)
         try:
             await plan_store.parse_plan(session, plan, ParseOptions(), settings)
-        except ParseError:
-            await session.refresh(plan)  # stored as status=failed with the error message
+        except (ConversionError, ParseError):
+            await session.refresh(plan)
     return plan_store.to_detail(plan)
 
 

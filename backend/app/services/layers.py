@@ -17,4 +17,9 @@ def layer_patterns(settings: Settings, options: ParseOptions | None = None) -> L
         opening=pick("opening"),
         room=pick("room"),
         furniture=pick("furniture"),
+        block_overrides=tuple(
+            sorted(
+                (name.upper(), role) for name, role in ((options.block_overrides if options else None) or {}).items()
+            )
+        ),
     )

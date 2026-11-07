@@ -4,10 +4,7 @@ import io
 import uuid
 
 import ezdxf
-import pytest
 
-from app.config import Settings
-from app.services.dwg_convert import converter_available
 from app.services.sample_plan import build_demo_dxf
 
 RESIZE = {"operation": "resize_selected_window", "targetId": "window_1", "parameters": {"factor": 1.5}}
@@ -133,12 +130,19 @@ async def test_upload_rejects_unsupported_files(auth_client):
     assert response.json()["error"]["code"] == "unsupported_file_type"
 
 
-@pytest.mark.skipif(converter_available(Settings(_env_file=None)), reason="dwg2dxf is installed")
-async def test_dwg_without_converter_gives_clear_error(auth_client):
-    files = {"file": ("plan.dwg", b"AC1032" + b"\x00" * 64, "image/vnd.dwg")}
+async def test_failed_dwg_conversion_is_recorded_on_the_plan(auth_client):
+    """ARCHITECTURE.md §11: the plan is kept with status=failed and the reason (with or without dwg2dxf)."""
+    files = {"file": ("broken.dwg", b"AC1032" + b"\x00" * 64, "image/vnd.dwg")}
     response = await auth_client.post("/api/plans", files=files)
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "dwg_conversion_failed"
+    assert response.status_code == 201
+    plan = response.json()
+    assert plan["status"] == "failed" and plan["error"] and not plan["hasModel"]
+
+    reparse = await auth_client.post(f"/api/plans/{plan['id']}/parse")
+    assert reparse.status_code == 422
+    assert reparse.json()["error"]["code"] == "dwg_conversion_failed"
+    listed = {p["id"]: p["status"] for p in (await auth_client.get("/api/plans")).json()}
+    assert listed[plan["id"]] == "failed"
 
 
 async def test_replace_scene_validates_and_is_undoable(auth_client):

@@ -25,3 +25,16 @@ def test_scene_fixtures_match_the_response_schema(path):
     data.pop("fixture", None)
     scene = SceneResponse.model_validate(data)
     assert scene.model.walls and scene.babylon.meshes
+
+
+@pytest.mark.skipif(not (CONTRACTS / "fixtures" / "orientation.scene.json").is_file(), reason="no orientation fixture")
+def test_orientation_fixture_semantics():
+    """IMPLEMENTATION_PLAN A1: what the viewer must render (plan y -> Babylon z, glTF +z front, chair faces table)."""
+    scene = json.loads((CONTRACTS / "fixtures" / "orientation.scene.json").read_text(encoding="utf-8"))["babylon"]
+    chairs = {tuple(f["footprintCenter"]): f for f in scene["furniture"] if f["category"] == "chair"}
+    wall_chair, table_chair = chairs[(1.5, 0.0, 4.6)], chairs[(3.4, 0.0, 1.5)]
+    assert wall_chair["facing"] == [0.0, -1.0] and wall_chair["rotationY"] == pytest.approx(3.141593)
+    assert table_chair["facing"] == [1.0, 0.0] and table_chair["rotationY"] == pytest.approx(1.570796)
+    # The L's notch is at the top-right (+x, +z): no wall mesh is centred inside it.
+    walls = [m for m in scene["meshes"] if m["kind"] == "wall"]
+    assert all(not (3.2 < m["position"][0] < 5.8 and 3.2 < m["position"][2] < 4.8) for m in walls)

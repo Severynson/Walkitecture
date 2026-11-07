@@ -58,3 +58,43 @@ def build_demo_dxf() -> bytes:
     stream = io.StringIO()
     doc.write(stream)
     return stream.getvalue().encode("utf-8")
+
+
+ORIENTATION_FILENAME = "orientation.dxf"
+
+
+def build_orientation_dxf() -> bytes:
+    """Orientation check (IMPLEMENTATION_PLAN A1), drawn in meters.
+
+    An asymmetric L-shaped room (6 m along x, 5 m along y; the notch is top-right) with a door on the
+    south wall, a window on the west wall, one chair with its back to the north wall, and a table with
+    a chair on its west side. Seen from above, un-mirrored: the notch is top-right, the lone chair faces
+    south (-y), and the table chair faces east (+x) toward the table.
+    """
+    doc = ezdxf.new("R2010", setup=True)
+    doc.units = InsertUnits.Meters
+    for name in ("WALLS", "WINDOWS", "DOORS", "ROOMS", "MUEBLES"):
+        doc.layers.add(name)
+
+    door = doc.blocks.new("DOOR_900")
+    door.add_line((0, 0), (0, 0.9))
+    door.add_arc((0, 0), 0.9, 0, 90)
+    chair = doc.blocks.new("CHAIR")
+    chair.add_lwpolyline([(-0.25, -0.25), (0.25, -0.25), (0.25, 0.25), (-0.25, 0.25)], close=True)
+    table = doc.blocks.new("TABLE")
+    table.add_lwpolyline([(-0.6, -0.4), (0.6, -0.4), (0.6, 0.4), (-0.6, 0.4)], close=True)
+
+    msp = doc.modelspace()
+    outline = [(0, 0), (6, 0), (6, 3), (3, 3), (3, 5), (0, 5)]
+    msp.add_lwpolyline(outline, close=True, dxfattribs={"layer": "WALLS"})
+    msp.add_line((0, 1.5), (0, 2.7), dxfattribs={"layer": "WINDOWS"})
+    msp.add_blockref("DOOR_900", (1, 0), dxfattribs={"layer": "DOORS"})
+    msp.add_lwpolyline(outline, close=True, dxfattribs={"layer": "ROOMS"})
+    msp.add_text("Studio", height=0.2, dxfattribs={"layer": "ROOMS", "insert": (1.2, 2.2)})
+    msp.add_blockref("CHAIR", (1.5, 4.6), dxfattribs={"layer": "MUEBLES"})  # back to the north wall
+    msp.add_blockref("TABLE", (4.5, 1.5), dxfattribs={"layer": "MUEBLES"})
+    msp.add_blockref("CHAIR", (3.4, 1.5), dxfattribs={"layer": "MUEBLES"})  # west of the table
+
+    stream = io.StringIO()
+    doc.write(stream)
+    return stream.getvalue().encode("utf-8")

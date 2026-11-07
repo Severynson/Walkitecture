@@ -70,3 +70,87 @@ EditCommand = Annotated[
 EditCommandAdapter: TypeAdapter[EditCommand] = TypeAdapter(EditCommand)
 
 ALLOWED_OPERATIONS = ("resize_selected_window", "resize_windows", "set_ceiling_height", "move_selected_wall")
+
+
+# --- Review-only operations (ARCHITECTURE.md §4.3) ------------------------------------------------
+# Proposed by the LLM reviewer and executed by the same edit engine (validation, undo, history), but not
+# accepted by POST /edits: the UI allowlist above stays small.
+
+
+class NoParams(CamelModel):
+    pass
+
+
+class MergeWallsParams(CamelModel):
+    wall_ids: list[str] = Field(min_length=2, max_length=20)
+
+
+class OpeningTypeParams(CamelModel):
+    type: Literal["door", "window"]
+
+
+class FurnitureCategoryParams(CamelModel):
+    category: Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet"]
+
+
+class RoomNameParams(CamelModel):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class DeleteWall(CamelModel):
+    operation: Literal["delete_wall"]
+    target_id: str
+    parameters: NoParams = Field(default_factory=NoParams)
+
+
+class MergeWalls(CamelModel):
+    operation: Literal["merge_walls"]
+    target_id: None = None
+    parameters: MergeWallsParams
+
+
+class SetOpeningType(CamelModel):
+    operation: Literal["set_opening_type"]
+    target_id: str
+    parameters: OpeningTypeParams
+
+
+class DeleteOpening(CamelModel):
+    operation: Literal["delete_opening"]
+    target_id: str
+    parameters: NoParams = Field(default_factory=NoParams)
+
+
+class SetFurnitureCategory(CamelModel):
+    operation: Literal["set_furniture_category"]
+    target_id: str
+    parameters: FurnitureCategoryParams
+
+
+class DeleteFurniture(CamelModel):
+    operation: Literal["delete_furniture"]
+    target_id: str
+    parameters: NoParams = Field(default_factory=NoParams)
+
+
+class RenameRoom(CamelModel):
+    operation: Literal["rename_room"]
+    target_id: str
+    parameters: RoomNameParams
+
+
+ReviewCommand = Annotated[
+    DeleteWall | MergeWalls | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom,
+    Field(discriminator="operation"),
+]
+ReviewCommandAdapter: TypeAdapter[ReviewCommand] = TypeAdapter(ReviewCommand)
+REVIEW_OPERATIONS = (
+    "delete_wall", "merge_walls", "set_opening_type", "delete_opening", "set_furniture_category",
+    "delete_furniture", "rename_room",
+)  # fmt: skip
+
+AnyCommand = Annotated[
+    ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | MergeWalls
+    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom,
+    Field(discriminator="operation"),
+]  # fmt: skip

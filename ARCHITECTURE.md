@@ -1,8 +1,9 @@
 # Walkitecture — Architecture
 
-> **Status (2026-11-07):** the backend pipeline, accounts, and editing are implemented (PR #2, see
-> [`backend/README.md`](backend/README.md)). The single-image deployment behind Traefik is live at https://walkitecture.severyn.xyz with a placeholder
-> frontend; the real frontend and the remaining LLM steps are not built yet. Items marked **PLANNED** below are still to do. The phased, parallel build order lives
+> **Status (2026-11-07):** the backend is complete: pipeline, accounts, editing, LLM classification (§4.2) and
+> review (§4.3), frontend contracts, and auth hardening (see [`backend/README.md`](backend/README.md)). The
+> single-image deployment behind Traefik is live at https://walkitecture.severyn.xyz with a placeholder frontend; the
+> real frontend is not built yet. Items marked **PLANNED** below are still to do. The phased, parallel build order lives
 > in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## 1. Goals and non-goals
@@ -22,7 +23,7 @@ uploads. (DXF uploads work too, but DWG is the product's input format.)
 | D1 | How DWG is read | **LibreDWG 0.14 `dwg2dxf` → DXF → `ezdxf`**, compiled into the Docker image | ezdxf cannot parse DWG natively; `ezdxf.addons.odafc` (see `helper/read_dwg.py`) *also* converts to DXF under the hood. LibreDWG is open source, headless, and **reads both `/examples` DWGs correctly** (2018+ format) | ODA File Converter (proprietary, Qt + xvfb in Docker). Kept only as a fallback idea if a future DWG fails |
 | D2 | What is stored per plan | Original upload, the converted DXF (cache, so re-parsing skips conversion), the **descriptive drawing JSON**, the **canonical building model**, and the **Babylon scene spec** | Every stage can be inspected and re-run; the DXF is an internal cache, never something the user has to provide | Re-converting the DWG on every re-parse |
 | D3 | What the browser receives | **JSON only:** `{model, babylon}`. `model` = canonical building (source of truth for edits); `babylon` = render-ready boxes, glass panes, furniture placements, camera spawn, computed by the backend from `model`. One generic frontend loader turns the spec into meshes | No generated or stored code is ever executed in the browser; all geometry rules live in one tested Python module; the frontend stays thin | Generating Babylon.js *code* per DWG; computing wall sections in the frontend |
-| D4 | LLM in ingestion | Rules first, LLM only for what rules cannot decide, and LLM output is always data validated by code. **Implemented:** category of unidentified furniture blocks. **PLANNED:** (1) classify unknown layers/blocks from the drawing JSON inventory into parse options; (2) review pass proposing allowlisted patches on the model | Raw drawings have thousands of entities — too big and noisy for an LLM to fix geometry directly. Names, counts, and sizes are small and are where an LLM adds most | LLM rewriting raw entity JSON; LLM placing geometry |
+| D4 | LLM in ingestion | Rules first, LLM only for what rules cannot decide, and LLM output is always data validated by code. **Implemented:** category of unidentified furniture blocks; (1) classify layers/blocks from the drawing JSON inventory into parse options (§4.2); (2) review pass proposing allowlisted patches on the model (§4.3) | Raw drawings have thousands of entities — too big and noisy for an LLM to fix geometry directly. Names, counts, and sizes are small and are where an LLM adds most | LLM rewriting raw entity JSON; LLM placing geometry |
 | D5 | Units & heights | **Meters.** All walls 10 ft = **3.048 m**; doors 0 → 7 ft (**2.134 m**); windows 2.5 → 6.5 ft (**0.762 → 1.981 m**) | Existing schema is metric; the UI can display feet | Storing feet |
 | D6 | Furniture placement | **Rule-based:** match block → GLB by name (then footprint), size it from the drawing, align it to the INSERT's own axes, and turn its **back to the wall it stands against**; free-standing items face away from the nearest wall; **chairs near a table/desk face it**. LLM only names unknown blocks | DWG blocks have no shared "front" convention, so the wall rule is more reliable than trusting block rotation alone; rotation still gives the axes | Trusting the INSERT rotation as the facing; LLM placing furniture |
 | D7 | Auth | **Username + password** (argon2id), **JWT bearer** tokens (HS256, 7 days, `JWT_SECRET`), `plans.owner_id` FK; every plan route scoped to the caller | Simple for a SPA; implemented | Session cookies (needs CSRF) |
@@ -102,16 +103,19 @@ permanent. The JSON stages give us (a) a human-readable dump to debug a new draw
 surface where an LLM can correct classification mistakes, (c) a stable model with IDs for live edits and undo, and
 (d) a contract that lets frontend and backend work in parallel against fixtures.
 
-### 4.2 LLM layer/block classification — **PLANNED** (`services/llm_classify.py`)
+### 4.2 LLM layer/block classification — implemented (`services/llm_classify.py`, `api/ai.py`)
 
 Input: the drawing JSON **without entities** (`GET /api/plans/{id}/drawing?entities=false`: layers, blocks, counts,
 categories assigned by rules, a few sample texts). Output (structured): **parse options**, i.e. layer lists
 (`wallLayers`, `windowLayers`, `doorLayers`, `roomLayers`, `furnitureLayers`, …) plus per-block category overrides,
 with a confidence per item. `POST /api/plans/{id}/classify[?apply=true]` returns the proposal and, when applied,
 re-runs the pipeline with those options. Because `ParseOptions` already accepts layer lists, the builder does not
-change; block overrides are the only new parse option.
+change; block overrides are the only new parse option (`blockOverrides: {blockName: door|window|bed|…|ignore}`,
+case-insensitive, checked before every other rule). Names not in the drawing and items below `minConfidence`
+(default 0.5) are dropped and listed in `dropped`. The drawing JSON is stored even when building fails, so a plan with
+`status=failed` ("no walls found") can still be classified.
 
-### 4.3 LLM review pass — **PLANNED** (`services/reviewer.py`)
+### 4.3 LLM review pass — implemented (`services/reviewer.py`, `api/ai.py`)
 
 1. Compute a **suspects list** deterministically: walls shorter than 0.3 m, walls with no connected endpoint, openings
    that failed to snap, overlapping furniture, furniture outside every room, rooms without a label, entries in
@@ -122,6 +126,8 @@ change; block overrides are the only new parse option.
    `delete_furniture {furnitureId}`, `rename_room {roomId, name}`.
 4. Each patch runs through the **same edit engine** as UI edits (validation, undo snapshot, `plan_edits.source =
    "review"`). `POST /api/plans/{id}/review[?apply=true]` returns applied and rejected patches with reasons.
+   Without `apply`, patches are validated in sequence on a copy (`status: valid | rejected`). Review operations are
+   not accepted by `POST /edits`, so the UI allowlist stays small. No suspects means no LLM call.
 
 ## 5. Canonical building model
 
@@ -182,7 +188,7 @@ meters, **y up; plan x → x, plan y → z**.
 | Doors | Open from 0 to 7 ft; a `header` box of the wall's thickness from 7 ft to the wall top |
 | Windows | Open from 2.5 to 6.5 ft; a `sill` box below, a `header` above, a thin `glass` pane in between |
 | `openings[]` | Opening centers, sizes, and rotation (for picking and highlighting) |
-| `furniture[]` | `{id, category, model, url, position, rotationY, scaling, footprintCenter, footprint, facing}`; `url` is relative to the frontend's served `/furniture/` folder |
+| `furniture[]` | `{id, category, model, url, position, rotationY, scaling, footprintCenter, footprint, facing}`; `url` is `/furniture/<file>`, served from `frontend/public/furniture/` |
 | `rooms[]` | Label positions |
 | `camera` | First-person spawn point at 1.6 m eye height, plus a target |
 | `materials` | Color + alpha per mesh `kind` |
@@ -236,14 +242,14 @@ Rules:
 
 ```
 backend/app/
-  main.py, spa.py         app factory, CORS, routers; serve the built SPA from STATIC_DIR
+  main.py, spa.py         app factory, CORS (dev only), routers, production checks; spa.py serves STATIC_DIR
   config.py               settings: DB, JWT, seed, LibreDWG, OpenAI, layer patterns, height defaults
   db.py, models.py        async engine; users, plans, plan_edits
   api/
     auth.py               register, login, token (Swagger form), me
     deps.py               SessionDep, SettingsDep, CurrentUser
     plans.py              upload, demo, list/get/delete, parse, drawing, scene, file
-    edits.py, interpret.py, health.py, errors.py
+    edits.py, interpret.py, ai.py (classify, review), health.py, errors.py
   schemas/                building, babylon, edits, parse, api
   services/
     dwg_convert.py        format detection + LibreDWG
@@ -257,9 +263,12 @@ backend/app/
     plan_store.py         pipeline persistence, ownership, history, undo, optimistic versions
     auth.py               argon2id + JWT
     seed.py               idempotent dev account + sample plans
-    llm_classify.py       PLANNED (§4.2)
-    reviewer.py           PLANNED (§4.3)
-  scripts/                dwg_to_json.py, seed.py, make_sample_dxf.py
+    llm.py                shared OpenAI client + structured calls (LLMUnavailable -> 503)
+    llm_classify.py       §4.2 layer/block classification
+    reviewer.py           §4.3 suspects + review patches
+    rate_limit.py         per-IP sliding window for login/register
+    contracts.py          OpenAPI + scene fixtures for the frontend
+  scripts/                dwg_to_json.py, seed.py, make_sample_dxf.py, export_openapi.py, export_fixtures.py
 ```
 
 ### 8.2 API
@@ -282,8 +291,8 @@ another user is treated as not found.
 | `POST /api/plans/{id}/edits[?dryRun=true]` · `GET …` | Apply/preview one allowlisted edit · history | done |
 | `POST /api/plans/{id}/undo` | Revert the latest edit | done |
 | `POST /api/interpret-edit` | Text + `selectedId` + `planId` → typed command, validation, optional apply | done |
-| `POST /api/plans/{id}/classify[?apply=true]` | LLM layer/block classification → parse options (§4.2) | PLANNED |
-| `POST /api/plans/{id}/review[?apply=true]` | LLM review patches (§4.3) | PLANNED |
+| `POST /api/plans/{id}/classify[?apply=true]` | LLM layer/block classification → parse options (§4.2) | done |
+| `POST /api/plans/{id}/review[?apply=true]` | LLM review patches (§4.3) | done |
 
 Edit allowlist: `resize_selected_window`, `resize_windows`, `set_ceiling_height` (2.1–6.0 m), `move_selected_wall`
 (free-standing walls). Edit responses include `affectedIds`, the new `version`, `model`, and `babylon`. Sending
@@ -299,6 +308,9 @@ Edit allowlist: `resize_selected_window`, `resize_windows`, `set_ceiling_height`
 - `CurrentUser` dependency in `api/deps.py`; `plan_store.get_plan(session, plan_id, owner_id)` enforces ownership.
 - Register returns a token right away. The frontend keeps the token in `localStorage`, which is acceptable for the
   MVP because the app never renders user-supplied HTML.
+- Rate limits: `LOGIN_RATE_LIMIT` (10) and `REGISTER_RATE_LIMIT` (5) attempts per minute per client IP → `429`
+  with `Retry-After` (`/login` and `/token` share a bucket). In-process, which is fine for the single app container.
+- `APP_ENV=production` refuses to start without a `JWT_SECRET` of ≥ 32 characters or with the default seed password.
 - Dev seed (`scripts/seed.py`, run on container start): account `demo` / `walkitecture-demo` owning the sample
   apartment and both `/examples` drawings. **Disable in production** with `SEED_USERNAME=` (empty) or set strong
   credentials.
@@ -350,7 +362,7 @@ erDiagram
 Migrations (Alembic, run on container start): `0001_initial`, `0002_users_drawing_scene` (users, `plans.owner_id`,
 `drawing`, `scene`). Plans created before 0002 have no owner and are invisible. New migrations continue from
 `0002_users_drawing_scene`; if two PRs add one in parallel, the second adds an `alembic merge heads` revision.
-`plan_edits.source` values: `api | ui | openai | rules`, plus `review` once §4.3 exists.
+`plan_edits.source` values: `api | ui | openai | rules | review`.
 
 ## 9. Deployment
 
@@ -386,6 +398,10 @@ cd /opt/stacks/walkitecture && git pull --ff-only
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
+`APP_ENV=production` (set by the prod override) makes the app refuse to start without a `JWT_SECRET` of ≥ 32
+characters or with the default seed password; login/register are rate-limited per client IP (real IPs thanks to
+`--forwarded-allow-ips`, safe because only Traefik can reach the container).
+
 ### 9.3 Environment variables
 
 | Variable | Used by | Notes |
@@ -395,6 +411,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 | `SEED_USERNAME`, `SEED_PASSWORD`, `SEED_SAMPLE_PLANS` | backend | dev defaults `demo` / `walkitecture-demo`; empty username disables |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | backend | optional; rules-only without a key |
 | `MAX_UPLOAD_MB` | backend | default 25 |
+| `APP_ENV` | backend | `production` (set by the prod override) enables the startup checks |
+| `LOGIN_RATE_LIMIT`, `REGISTER_RATE_LIMIT` | backend | per-IP attempts per minute (0 disables) |
 | `*_LAYERS` | backend | layer-name globs (see `backend/.env.example`) |
 | `APP_DOMAIN`, `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | prod compose | `walkitecture.severyn.xyz`, `web`, `websecure`, `letsencrypt` on our VPS |
 
@@ -416,7 +434,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 | Converter fails or times out | plan saved with `status=failed` and an `error` message; re-parse or delete |
 | No walls found | fallback: layer `0` linework when wall layers are sparse; warning; `failed` if still empty |
 | Furniture block not identified | LLM category if a key is set, otherwise listed in `parseStats.unresolvedFurnitureBlocks` |
-| LLM unavailable | rules only; edits use the rule-based interpreter; PLANNED classify/review return `503 llm_unavailable` |
+| LLM unavailable | rules only; edits use the rule-based interpreter; classify/review return `503 llm_unavailable` |
 | Invalid edit | `422` with `problems[]`; model unchanged |
 | Version conflict | `409`; frontend refetches the scene |
 
@@ -424,8 +442,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 - **Backend (exists):** parser, edits, interpreter, furniture, scene, auth, seed, and API tests (`uv run pytest`).
   API tests need the compose database; the `/examples` end-to-end tests need `dwg2dxf` and run inside the image.
-- **Contract:** `tests/test_contracts.py` fails when `contracts/openapi.json` is stale and validates every
-  `contracts/fixtures/*.scene.json` against `SceneResponse`; the frontend type-checks against the generated types.
+- **Contract:** `tests/test_contracts.py` fails when `contracts/openapi.json` is stale, validates every
+  `contracts/fixtures/*.scene.json` against `SceneResponse`, and checks the orientation fixture's semantics (plan
+  y → z, glTF +z front, chair faces table); the frontend type-checks against the generated types.
 - **Frontend (PLANNED):** unit tests for spec loading and `applyUpdate`; manual walkthrough checklist per milestone.
 - **End-to-end smoke (manual, per milestone):** register → login → upload `examples/call-center-offices.dwg` → walk →
   widen a window → undo.

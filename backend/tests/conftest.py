@@ -28,7 +28,14 @@ TEST_DATABASE_URL = os.environ.get(
 
 @pytest.fixture(scope="session")
 def settings() -> Settings:
-    return Settings(_env_file=None, openai_api_key=None, database_url=TEST_DATABASE_URL)
+    # Rate limits off: the suite registers many users from one IP (tests/test_prod.py covers the limiter).
+    return Settings(
+        _env_file=None,
+        openai_api_key=None,
+        database_url=TEST_DATABASE_URL,
+        login_rate_limit=0,
+        register_rate_limit=0,
+    )
 
 
 @pytest.fixture

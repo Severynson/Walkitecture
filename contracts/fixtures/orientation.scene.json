@@ -1,0 +1,661 @@
+{
+ "planId": "2d08e008-5382-54ca-a212-daaf7fde6078",
+ "version": 1,
+ "model": {
+  "schemaVersion": 1,
+  "units": "meters",
+  "ceilingHeight": 3.048,
+  "walls": [
+   {
+    "id": "wall_1",
+    "start": [
+     0.0,
+     0.0
+    ],
+    "end": [
+     6.0,
+     0.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": [
+     {
+      "id": "door_1",
+      "type": "door",
+      "offset": 1.0,
+      "width": 0.9,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
+   },
+   {
+    "id": "wall_2",
+    "start": [
+     6.0,
+     0.0
+    ],
+    "end": [
+     6.0,
+     3.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_3",
+    "start": [
+     6.0,
+     3.0
+    ],
+    "end": [
+     3.0,
+     3.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_4",
+    "start": [
+     3.0,
+     3.0
+    ],
+    "end": [
+     3.0,
+     5.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_5",
+    "start": [
+     3.0,
+     5.0
+    ],
+    "end": [
+     0.0,
+     5.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_6",
+    "start": [
+     0.0,
+     5.0
+    ],
+    "end": [
+     0.0,
+     0.0
+    ],
+    "thickness": 0.15,
+    "height": 3.048,
+    "openings": [
+     {
+      "id": "window_1",
+      "type": "window",
+      "offset": 2.3,
+      "width": 1.2,
+      "height": 1.2192,
+      "sillHeight": 0.762
+     }
+    ]
+   }
+  ],
+  "rooms": [
+   {
+    "id": "room_1",
+    "name": "Studio",
+    "polygon": [
+     [
+      0.0,
+      0.0
+     ],
+     [
+      6.0,
+      0.0
+     ],
+     [
+      6.0,
+      3.0
+     ],
+     [
+      3.0,
+      3.0
+     ],
+     [
+      3.0,
+      5.0
+     ],
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "labelPosition": [
+     1.2,
+     2.2
+    ]
+   }
+  ],
+  "furniture": [
+   {
+    "id": "furniture_1",
+    "category": "table",
+    "model": "table_by_darwin_yamamoto.glb",
+    "sourceBlock": "TABLE",
+    "matchedBy": "block_name",
+    "position": [
+     4.5,
+     1.5
+    ],
+    "facing": [
+     0.0,
+     1.0
+    ],
+    "width": 1.2,
+    "depth": 0.8,
+    "height": 0.75
+   },
+   {
+    "id": "furniture_2",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "sourceBlock": "CHAIR",
+    "matchedBy": "block_name",
+    "position": [
+     1.5,
+     4.6
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.5,
+    "depth": 0.5,
+    "height": 0.9
+   },
+   {
+    "id": "furniture_3",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "sourceBlock": "CHAIR",
+    "matchedBy": "block_name",
+    "position": [
+     3.4,
+     1.5
+    ],
+    "facing": [
+     1.0,
+     0.0
+    ],
+    "width": 0.5,
+    "depth": 0.5,
+    "height": 0.9
+   }
+  ]
+ },
+ "babylon": {
+  "schemaVersion": 1,
+  "units": "meters",
+  "coordinateSystem": "Babylon world space, y up; plan x -> x, plan y -> z",
+  "wallHeight": 3.048,
+  "bounds": {
+   "min": [
+    -0.075,
+    0.0,
+    -0.075
+   ],
+   "max": [
+    6.075,
+    3.048,
+    5.075
+   ]
+  },
+  "meshes": [
+   {
+    "id": "wall_1:wall:0",
+    "kind": "wall",
+    "wallId": "wall_1",
+    "openingId": null,
+    "position": [
+     0.4625,
+     1.524,
+     0.0
+    ],
+    "size": [
+     1.075,
+     3.048,
+     0.15
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_1:header:door_1",
+    "kind": "header",
+    "wallId": "wall_1",
+    "openingId": "door_1",
+    "position": [
+     1.45,
+     2.5908,
+     0.0
+    ],
+    "size": [
+     0.9,
+     0.9144,
+     0.15
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_1:wall:1",
+    "kind": "wall",
+    "wallId": "wall_1",
+    "openingId": null,
+    "position": [
+     3.9875,
+     1.524,
+     0.0
+    ],
+    "size": [
+     4.175,
+     3.048,
+     0.15
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_2:wall:0",
+    "kind": "wall",
+    "wallId": "wall_2",
+    "openingId": null,
+    "position": [
+     6.0,
+     1.524,
+     1.5
+    ],
+    "size": [
+     3.15,
+     3.048,
+     0.15
+    ],
+    "rotationY": -1.570796
+   },
+   {
+    "id": "wall_3:wall:0",
+    "kind": "wall",
+    "wallId": "wall_3",
+    "openingId": null,
+    "position": [
+     4.5,
+     1.524,
+     3.0
+    ],
+    "size": [
+     3.15,
+     3.048,
+     0.15
+    ],
+    "rotationY": -3.141593
+   },
+   {
+    "id": "wall_4:wall:0",
+    "kind": "wall",
+    "wallId": "wall_4",
+    "openingId": null,
+    "position": [
+     3.0,
+     1.524,
+     4.0
+    ],
+    "size": [
+     2.15,
+     3.048,
+     0.15
+    ],
+    "rotationY": -1.570796
+   },
+   {
+    "id": "wall_5:wall:0",
+    "kind": "wall",
+    "wallId": "wall_5",
+    "openingId": null,
+    "position": [
+     1.5,
+     1.524,
+     5.0
+    ],
+    "size": [
+     3.15,
+     3.048,
+     0.15
+    ],
+    "rotationY": -3.141593
+   },
+   {
+    "id": "wall_6:wall:0",
+    "kind": "wall",
+    "wallId": "wall_6",
+    "openingId": null,
+    "position": [
+     0.0,
+     1.524,
+     3.8875
+    ],
+    "size": [
+     2.375,
+     3.048,
+     0.15
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_6:header:window_1",
+    "kind": "header",
+    "wallId": "wall_6",
+    "openingId": "window_1",
+    "position": [
+     0.0,
+     2.5146,
+     2.1
+    ],
+    "size": [
+     1.2,
+     1.0668,
+     0.15
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_6:sill:window_1",
+    "kind": "sill",
+    "wallId": "wall_6",
+    "openingId": "window_1",
+    "position": [
+     0.0,
+     0.381,
+     2.1
+    ],
+    "size": [
+     1.2,
+     0.762,
+     0.15
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_6:glass:window_1",
+    "kind": "glass",
+    "wallId": "wall_6",
+    "openingId": "window_1",
+    "position": [
+     0.0,
+     1.3716,
+     2.1
+    ],
+    "size": [
+     1.2,
+     1.2192,
+     0.02
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_6:wall:1",
+    "kind": "wall",
+    "wallId": "wall_6",
+    "openingId": null,
+    "position": [
+     0.0,
+     1.524,
+     0.7125
+    ],
+    "size": [
+     1.575,
+     3.048,
+     0.15
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "floor",
+    "kind": "floor",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     3.0,
+     -0.025,
+     2.5
+    ],
+    "size": [
+     6.15,
+     0.05,
+     5.15
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "ceiling",
+    "kind": "ceiling",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     3.0,
+     3.073,
+     2.5
+    ],
+    "size": [
+     6.15,
+     0.05,
+     5.15
+    ],
+    "rotationY": 0.0
+   }
+  ],
+  "openings": [
+   {
+    "id": "door_1",
+    "type": "door",
+    "wallId": "wall_1",
+    "position": [
+     1.45,
+     1.0668,
+     0.0
+    ],
+    "width": 0.9,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0
+   },
+   {
+    "id": "window_1",
+    "type": "window",
+    "wallId": "wall_6",
+    "position": [
+     0.0,
+     1.3716,
+     2.1
+    ],
+    "width": 1.2,
+    "height": 1.2192,
+    "sillHeight": 0.762,
+    "rotationY": 1.570796
+   }
+  ],
+  "furniture": [
+   {
+    "id": "furniture_1",
+    "category": "table",
+    "model": "table_by_darwin_yamamoto.glb",
+    "url": "/furniture/table_by_darwin_yamamoto.glb",
+    "position": [
+     4.4994,
+     0.4565,
+     1.499
+    ],
+    "rotationY": 0.0,
+    "scaling": [
+     0.5621,
+     0.6793,
+     0.9744
+    ],
+    "footprintCenter": [
+     4.5,
+     0.0,
+     1.5
+    ],
+    "footprint": [
+     1.2,
+     0.8
+    ],
+    "facing": [
+     0.0,
+     1.0
+    ]
+   },
+   {
+    "id": "furniture_2",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "url": "/furniture/chair_by_quaternius.glb",
+    "position": [
+     1.5,
+     0.0015,
+     4.5806
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.6562,
+     0.509,
+     0.6061
+    ],
+    "footprintCenter": [
+     1.5,
+     0.0,
+     4.6
+    ],
+    "footprint": [
+     0.5,
+     0.5
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_3",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "url": "/furniture/chair_by_quaternius.glb",
+    "position": [
+     3.4194,
+     0.0015,
+     1.5
+    ],
+    "rotationY": 1.570796,
+    "scaling": [
+     0.6562,
+     0.509,
+     0.6061
+    ],
+    "footprintCenter": [
+     3.4,
+     0.0,
+     1.5
+    ],
+    "footprint": [
+     0.5,
+     0.5
+    ],
+    "facing": [
+     1.0,
+     0.0
+    ]
+   }
+  ],
+  "rooms": [
+   {
+    "id": "room_1",
+    "name": "Studio",
+    "position": [
+     1.2,
+     1.6,
+     2.2
+    ]
+   }
+  ],
+  "camera": {
+   "position": [
+    1.2,
+    1.6,
+    2.2
+   ],
+   "target": [
+    1.2,
+    1.6,
+    3.2
+   ],
+   "eyeHeight": 1.6
+  },
+  "materials": {
+   "wall": {
+    "color": "#EEEAE2",
+    "alpha": 1.0
+   },
+   "header": {
+    "color": "#EEEAE2",
+    "alpha": 1.0
+   },
+   "sill": {
+    "color": "#EEEAE2",
+    "alpha": 1.0
+   },
+   "glass": {
+    "color": "#9EC9E8",
+    "alpha": 0.35
+   },
+   "floor": {
+    "color": "#C9B79C",
+    "alpha": 1.0
+   },
+   "ceiling": {
+    "color": "#FAFAF7",
+    "alpha": 1.0
+   }
+  }
+ },
+ "fixture": {
+  "name": "orientation",
+  "warnings": [],
+  "stats": {
+   "detectedUnits": "meters",
+   "unitFactor": 1.0,
+   "wallStyle": "centerline",
+   "extent": [
+    6.0,
+    5.0
+   ],
+   "wallCount": 6,
+   "windowCount": 1,
+   "doorCount": 1,
+   "roomCount": 1,
+   "furnitureCount": 3,
+   "unresolvedFurnitureBlocks": [],
+   "layers": {
+    "DOORS": 1,
+    "MUEBLES": 3,
+    "ROOMS": 2,
+    "WALLS": 1,
+    "WINDOWS": 1
+   }
+  }
+ }
+}

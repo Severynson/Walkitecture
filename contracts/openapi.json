@@ -918,6 +918,145 @@
           }
         ]
       }
+    },
+    "/api/plans/{plan_id}/classify": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Classify",
+        "description": "LLM proposal of layer roles and block categories, as parse options for POST /parse.",
+        "operationId": "classify_api_plans__plan_id__classify_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "apply",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Re-run the pipeline with the proposed parse options.",
+              "default": false,
+              "title": "Apply"
+            },
+            "description": "Re-run the pipeline with the proposed parse options."
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ClassifyRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/review": {
+      "post": {
+        "tags": [
+          "ai"
+        ],
+        "summary": "Review",
+        "description": "Deterministic suspects -> LLM patches from the review allowlist -> validated (and applied) edits.",
+        "operationId": "review_api_plans__plan_id__review_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "apply",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Apply valid patches (each one undoable).",
+              "default": false,
+              "title": "Apply"
+            },
+            "description": "Apply valid patches (each one undoable)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -999,6 +1138,47 @@
           "materials"
         ],
         "title": "BabylonScene"
+      },
+      "BlockProposal": {
+        "properties": {
+          "block": {
+            "type": "string",
+            "title": "Block"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "door",
+              "window",
+              "bed",
+              "chair",
+              "sofa",
+              "desk",
+              "table",
+              "closet",
+              "toilet",
+              "ignore"
+            ],
+            "title": "Role"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "current": {
+            "type": "string",
+            "title": "Current",
+            "description": "Category the rules assigned to this block"
+          }
+        },
+        "type": "object",
+        "required": [
+          "block",
+          "role",
+          "confidence",
+          "current"
+        ],
+        "title": "BlockProposal"
       },
       "Body_token_api_auth_token_post": {
         "properties": {
@@ -1321,6 +1501,91 @@
           "height"
         ],
         "title": "CeilingParams"
+      },
+      "ClassificationProposal": {
+        "properties": {
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerProposal"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/BlockProposal"
+            },
+            "type": "array",
+            "title": "Blocks"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "dropped": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dropped",
+            "description": "Proposals ignored: unknown names or confidence below the threshold"
+          },
+          "parseOptions": {
+            "$ref": "#/components/schemas/ParseOptions",
+            "description": "Ready for POST /parse (or ?apply=true)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layers",
+          "blocks",
+          "notes",
+          "dropped",
+          "parseOptions"
+        ],
+        "title": "ClassificationProposal"
+      },
+      "ClassifyRequest": {
+        "properties": {
+          "minConfidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Minconfidence",
+            "description": "Drop LLM proposals below this confidence",
+            "default": 0.5
+          }
+        },
+        "type": "object",
+        "title": "ClassifyRequest"
+      },
+      "ClassifyResponse": {
+        "properties": {
+          "proposal": {
+            "$ref": "#/components/schemas/ClassificationProposal"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParseResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The re-parsed plan (apply=true only)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal",
+          "applied"
+        ],
+        "title": "ClassifyResponse"
       },
       "Credentials": {
         "properties": {
@@ -2013,6 +2278,47 @@
         ],
         "title": "InterpretResponse"
       },
+      "LayerProposal": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "wall",
+              "window",
+              "door",
+              "opening",
+              "room",
+              "furniture",
+              "ignore"
+            ],
+            "title": "Role"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "current": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Current",
+            "description": "Categories the rules assigned to this layer's entities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "role",
+          "confidence",
+          "current"
+        ],
+        "title": "LayerProposal"
+      },
       "MaterialSpec": {
         "properties": {
           "color": {
@@ -2392,6 +2698,33 @@
               }
             ],
             "title": "Furniturelayers"
+          },
+          "blockOverrides": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "door",
+                    "window",
+                    "bed",
+                    "chair",
+                    "sofa",
+                    "desk",
+                    "table",
+                    "closet",
+                    "toilet",
+                    "ignore"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blockoverrides",
+            "description": "Force a category for named blocks (case-insensitive), e.g. {'18140101': 'chair', 'PC40': 'door'}. 'ignore' drops the block entirely. Takes precedence over every other rule."
           }
         },
         "type": "object",
@@ -2413,6 +2746,66 @@
           "scene"
         ],
         "title": "ParseResponse"
+      },
+      "PatchResult": {
+        "properties": {
+          "command": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Command",
+            "description": "The allowlisted review command (as proposed)"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "valid",
+              "rejected"
+            ],
+            "title": "Status"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "type": "array",
+            "title": "Problems"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Model version after this patch (applied only)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "command",
+          "reason",
+          "status"
+        ],
+        "title": "PatchResult"
       },
       "PlanDetail": {
         "properties": {
@@ -2745,6 +3138,45 @@
         ],
         "title": "ResizeWindows"
       },
+      "ReviewResult": {
+        "properties": {
+          "suspects": {
+            "items": {
+              "$ref": "#/components/schemas/Suspect"
+            },
+            "type": "array",
+            "title": "Suspects"
+          },
+          "patches": {
+            "items": {
+              "$ref": "#/components/schemas/PatchResult"
+            },
+            "type": "array",
+            "title": "Patches"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "suspects",
+          "patches",
+          "notes",
+          "applied",
+          "version"
+        ],
+        "title": "ReviewResult"
+      },
       "Room": {
         "properties": {
           "id": {
@@ -2894,6 +3326,40 @@
           "parameters"
         ],
         "title": "SetCeilingHeight"
+      },
+      "Suspect": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "short_wall",
+              "isolated_wall",
+              "unsnapped_openings",
+              "overlapping_furniture",
+              "furniture_outside_rooms",
+              "unlabelled_room",
+              "unresolved_furniture_blocks"
+            ],
+            "title": "Kind"
+          },
+          "targetIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Targetids"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "title": "Suspect"
       },
       "TokenResponse": {
         "properties": {

@@ -6,11 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
-from app.api import auth, edits, health, interpret, plans
+from app.api import ai, auth, edits, health, interpret, plans
 from app.api.errors import register_error_handlers
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import engine
 from app.spa import mount_spa, spa_available
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -19,9 +21,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     await engine.dispose()
 
 
-def create_app() -> FastAPI:
-    settings = get_settings()
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or get_settings()
     logging.basicConfig(level=settings.log_level.upper(), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    problems = settings.production_problems()
+    if problems:  # fail fast: uvicorn cannot import the app, the container restarts and logs why
+        raise RuntimeError("Refusing to start with APP_ENV=production: " + " ".join(problems))
 
     app = FastAPI(
         title="Walkitecture API",
@@ -30,15 +35,16 @@ def create_app() -> FastAPI:
         "and natural-language edit interpretation.",
         lifespan=lifespan,
     )
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    if settings.cors_origins:  # same-origin in production (SPA served by the backend), so CORS is dev-only
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     register_error_handlers(app)
-    for module in (health, auth, plans, edits, interpret):
+    for module in (health, auth, plans, edits, interpret, ai):
         app.include_router(module.router)
 
     # Production image: serve the built SPA (registered last so API and /docs routes win).

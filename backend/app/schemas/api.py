@@ -11,6 +11,7 @@ from app.schemas.base import CamelModel
 from app.schemas.building import Building, Point2
 from app.schemas.edits import EditCommand
 from app.services.geometry import Problem
+from app.services.llm_classify import ClassificationProposal
 
 
 class ErrorBody(CamelModel):
@@ -133,6 +134,16 @@ class InterpretResponse(CamelModel):
     problems: list[Problem] = Field(default_factory=list)
     preview: EditPreview | None = None
     applied: EditResponse | None = None
+
+
+class ClassifyRequest(CamelModel):
+    min_confidence: float = Field(default=0.5, ge=0, le=1, description="Drop LLM proposals below this confidence")
+
+
+class ClassifyResponse(CamelModel):
+    proposal: ClassificationProposal
+    applied: bool
+    result: ParseResponse | None = Field(default=None, description="The re-parsed plan (apply=true only)")
 
 
 class HealthResponse(CamelModel):

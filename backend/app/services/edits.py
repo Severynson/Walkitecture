@@ -4,27 +4,42 @@ Edits never mutate the input model. Only geometry touched by the edit is validat
 that came from an imported drawing do not block unrelated edits.
 """
 
+import math
 from dataclasses import dataclass
 from typing import NoReturn
 
+from app.config import FOOT
 from app.schemas.building import Building, Opening, Wall
 from app.schemas.edits import (
-    EditCommand,
+    AnyCommand,
+    DeleteFurniture,
+    DeleteOpening,
+    DeleteWall,
+    MergeWalls,
     MoveSelectedWall,
+    RenameRoom,
     ResizeSelectedWindow,
     ResizeWindowParams,
     ResizeWindows,
     SetCeilingHeight,
+    SetFurnitureCategory,
+    SetOpeningType,
 )
+from app.services.furniture_catalog import choose_model
 from app.services.geometry import (
     MAX_CEILING_HEIGHT,
     MAX_WALL_MOVE,
     MIN_CEILING_HEIGHT,
+    MIN_HEADER,
     Problem,
     add,
+    cross,
+    dot,
     left_normal,
     scale,
     segment_distance,
+    sub,
+    unit,
     validate_wall,
     wall_connections,
 )
@@ -45,7 +60,7 @@ class EditResult:
     summary: str
 
 
-def apply_edit(building: Building, command: EditCommand) -> EditResult:
+def apply_edit(building: Building, command: AnyCommand) -> EditResult:
     proposed = building.model_copy(deep=True)
     match command:
         case ResizeSelectedWindow():
@@ -56,6 +71,20 @@ def apply_edit(building: Building, command: EditCommand) -> EditResult:
             affected, summary = _set_ceiling_height(proposed, command)
         case MoveSelectedWall():
             affected, summary = _move_selected_wall(proposed, command)
+        case DeleteWall():
+            affected, summary = _delete_wall(proposed, command)
+        case MergeWalls():
+            affected, summary = _merge_walls(proposed, command)
+        case SetOpeningType():
+            affected, summary = _set_opening_type(proposed, command)
+        case DeleteOpening():
+            affected, summary = _delete_opening(proposed, command)
+        case SetFurnitureCategory():
+            affected, summary = _set_furniture_category(proposed, command)
+        case DeleteFurniture():
+            affected, summary = _delete_furniture(proposed, command)
+        case RenameRoom():
+            affected, summary = _rename_room(proposed, command)
         case _:  # pragma: no cover - the discriminated union makes this unreachable
             _reject("unsupported_operation", f"Unsupported operation: {command!r}")
 
@@ -156,6 +185,127 @@ def _move_selected_wall(b: Building, cmd: MoveSelectedWall) -> tuple[list[str], 
 
     affected = [wall.id, *(o.id for o in wall.openings)]
     return affected, f"Moved wall {wall.id} by {offset:+.2f} m along its normal. Room outlines were not updated."
+
+
+# --- Review operations (ARCHITECTURE.md §4.3) ------------------------------------------
+
+DOOR_HEIGHT = 7 * FOOT
+WINDOW_SILL = 2.5 * FOOT
+WINDOW_HEIGHT = 4 * FOOT
+MERGE_PARALLEL_SIN = math.sin(math.radians(3.0))
+
+
+def _wall_or_reject(b: Building, wall_id: str) -> Wall:
+    wall = b.find_wall(wall_id)
+    if wall is None:
+        _reject("target_not_found", f"No wall with ID {wall_id}.", wall_id)
+    return wall
+
+
+def _delete_wall(b: Building, cmd: DeleteWall) -> tuple[list[str], str]:
+    wall = _wall_or_reject(b, cmd.target_id)
+    b.walls.remove(wall)
+    gone = [o.id for o in wall.openings]
+    note = f" and its openings {', '.join(gone)}" if gone else ""
+    return [wall.id, *gone], f"Deleted wall {wall.id}{note}."
+
+
+def _merge_walls(b: Building, cmd: MergeWalls) -> tuple[list[str], str]:
+    ids = list(dict.fromkeys(cmd.parameters.wall_ids))
+    if len(ids) < 2:
+        _reject("merge_needs_two_walls", "merge_walls needs at least two different walls.")
+    walls = [_wall_or_reject(b, wall_id) for wall_id in ids]
+    base = walls[0]
+    direction = unit(sub(base.end, base.start))
+    reach = max(w.thickness for w in walls) / 2 + 0.05
+    for wall in walls[1:]:
+        parallel = abs(cross(direction, unit(sub(wall.end, wall.start)))) <= MERGE_PARALLEL_SIN
+        on_line = all(abs(cross(direction, sub(p, base.start))) <= reach for p in (wall.start, wall.end))
+        if not (parallel and on_line):
+            _reject("walls_not_collinear", f"Walls {base.id} and {wall.id} are not collinear.", wall.id)
+    ts = [dot(sub(p, base.start), direction) for w in walls for p in (w.start, w.end)]
+    t0, t1 = min(ts), max(ts)
+    start, end = add(base.start, scale(direction, t0)), add(base.start, scale(direction, t1))
+
+    openings: list[Opening] = []
+    for wall in walls:  # re-express every opening along the merged wall
+        wall_dir = unit(sub(wall.end, wall.start))
+        for opening in wall.openings:
+            edges = [dot(sub(add(wall.start, scale(wall_dir, s)), start), direction)
+                     for s in (opening.offset, opening.offset + opening.width)]  # fmt: skip
+            openings.append(opening.model_copy(update={"offset": round(min(edges), 4)}))
+    merged = Wall(
+        id=base.id, start=_round_point(start), end=_round_point(end),
+        thickness=max(w.thickness for w in walls), height=max(w.height for w in walls),
+        openings=sorted(openings, key=lambda o: o.offset),
+    )  # fmt: skip
+    b.walls = [merged if w.id == base.id else w for w in b.walls if w.id not in ids[1:]]
+    affected = [*ids, *(o.id for o in openings)]
+    return affected, f"Merged walls {', '.join(ids)} into {base.id} ({merged.length:.2f} m)."
+
+
+def _find_opening_or_reject(b: Building, opening_id: str) -> tuple[Wall, Opening]:
+    found = b.find_opening(opening_id)
+    if found is None:
+        _reject("target_not_found", f"No door or window with ID {opening_id}.", opening_id)
+    return found
+
+
+def _set_opening_type(b: Building, cmd: SetOpeningType) -> tuple[list[str], str]:
+    wall, opening = _find_opening_or_reject(b, cmd.target_id)
+    new_type = cmd.parameters.type
+    if opening.type == new_type:
+        _reject("no_change", f"{opening.id} is already a {new_type}.", opening.id)
+    top = wall.height - MIN_HEADER
+    if new_type == "door":
+        opening.sill_height, opening.height = 0.0, round(min(DOOR_HEIGHT, top), 4)
+    else:
+        opening.sill_height = round(min(WINDOW_SILL, top - 0.3), 4)
+        opening.height = round(min(WINDOW_HEIGHT, top - opening.sill_height), 4)
+    old = opening.type
+    opening.type = new_type
+    return [opening.id, wall.id], f"Changed {opening.id} from a {old} to a {new_type} (ID kept)."
+
+
+def _delete_opening(b: Building, cmd: DeleteOpening) -> tuple[list[str], str]:
+    wall, opening = _find_opening_or_reject(b, cmd.target_id)
+    wall.openings.remove(opening)
+    return [opening.id, wall.id], f"Deleted {opening.type} {opening.id} from wall {wall.id}."
+
+
+def _furniture_or_reject(b: Building, furniture_id: str):
+    item = next((f for f in b.furniture if f.id == furniture_id), None)
+    if item is None:
+        _reject("target_not_found", f"No furniture with ID {furniture_id}.", furniture_id)
+    return item
+
+
+def _set_furniture_category(b: Building, cmd: SetFurnitureCategory) -> tuple[list[str], str]:
+    item = _furniture_or_reject(b, cmd.target_id)
+    category = cmd.parameters.category
+    model = choose_model(category, item.width, item.depth)
+    if model is None:
+        _reject("no_model", f"No library model for category {category!r}.", item.id)
+    old = item.category
+    item.category, item.model, item.height, item.matched_by = category, model.file, model.real_size[1], "manual"
+    return [item.id], f"Changed {item.id} from {old} to {category} ({model.file})."
+
+
+def _delete_furniture(b: Building, cmd: DeleteFurniture) -> tuple[list[str], str]:
+    item = _furniture_or_reject(b, cmd.target_id)
+    b.furniture.remove(item)
+    return [item.id], f"Deleted {item.category} {item.id}."
+
+
+def _rename_room(b: Building, cmd: RenameRoom) -> tuple[list[str], str]:
+    room = next((r for r in b.rooms if r.id == cmd.target_id), None)
+    if room is None:
+        _reject("target_not_found", f"No room with ID {cmd.target_id}.", cmd.target_id)
+    name = " ".join(cmd.parameters.name.split())
+    if not name:
+        _reject("empty_name", "Room names cannot be empty.", room.id)
+    old, room.name = room.name, name
+    return [room.id], f"Renamed {room.id} from {old!r} to {name!r}."
 
 
 # --- Helpers -------------------------------------------------------------------------

@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import CurrentUser, SessionDep, SettingsDep
+from app.api.deps import CurrentUser, SessionDep, SettingsDep, rate_limited
 from app.api.errors import ApiError
 from app.models import User
 from app.schemas.api import Credentials, TokenResponse, UserOut
@@ -31,7 +31,10 @@ async def _authenticate(session, username: str, password: str) -> User:
     return user
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=TokenResponse)
+@router.post(
+    "/register", status_code=status.HTTP_201_CREATED, response_model=TokenResponse,
+    dependencies=[rate_limited("register", "register_rate_limit")],
+)  # fmt: skip
 async def register(body: Credentials, session: SessionDep, settings: SettingsDep) -> TokenResponse:
     user = User(username=body.username.lower(), password_hash=hash_password(body.password))
     session.add(user)
@@ -44,12 +47,12 @@ async def register(body: Credentials, session: SessionDep, settings: SettingsDep
     return _token_response(user, settings)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[rate_limited("login", "login_rate_limit")])
 async def login(body: Credentials, session: SessionDep, settings: SettingsDep) -> TokenResponse:
     return _token_response(await _authenticate(session, body.username, body.password), settings)
 
 
-@router.post("/token", response_model=TokenResponse, include_in_schema=True)
+@router.post("/token", response_model=TokenResponse, dependencies=[rate_limited("login", "login_rate_limit")])
 async def token(
     form: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep, settings: SettingsDep
 ) -> TokenResponse:

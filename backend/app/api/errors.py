@@ -7,16 +7,23 @@ from app.services.dwg_convert import ConversionError
 from app.services.dxf_parser import ParseError
 from app.services.edits import EditRejected
 from app.services.geometry import Problem
+from app.services.llm import LLMUnavailable
 from app.services.plan_store import NothingToUndo, PlanNotFound, PlanNotParsed, VersionConflict
 
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str, problems: list[Problem] | None = None):
+    def __init__(
+        self, status: int, code: str, message: str, problems: list[Problem] | None = None,
+        headers: dict[str, str] | None = None,
+    ):  # fmt: skip
         self.status, self.code, self.message, self.problems = status, code, message, problems or []
+        self.headers = headers
         super().__init__(message)
 
 
-def _response(status: int, code: str, message: str, problems: list[Problem] | None = None) -> JSONResponse:
+def _response(
+    status: int, code: str, message: str, problems: list[Problem] | None = None, headers: dict[str, str] | None = None
+) -> JSONResponse:
     body = {
         "error": {
             "code": code,
@@ -24,7 +31,7 @@ def _response(status: int, code: str, message: str, problems: list[Problem] | No
             "problems": [p.model_dump(by_alias=True) for p in problems or []],
         }
     }
-    return JSONResponse(status_code=status, content=body)
+    return JSONResponse(status_code=status, content=body, headers=headers)
 
 
 # exception type -> (HTTP status, error code)
@@ -35,13 +42,14 @@ _SIMPLE_ERRORS: dict[type[Exception], tuple[int, str]] = {
     NothingToUndo: (409, "nothing_to_undo"),
     ParseError: (422, "parse_failed"),
     ConversionError: (422, "dwg_conversion_failed"),
+    LLMUnavailable: (503, "llm_unavailable"),
 }
 
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return _response(exc.status, exc.code, exc.message, exc.problems)
+        return _response(exc.status, exc.code, exc.message, exc.problems, exc.headers)
 
     @app.exception_handler(EditRejected)
     async def _edit_rejected(_: Request, exc: EditRejected) -> JSONResponse:

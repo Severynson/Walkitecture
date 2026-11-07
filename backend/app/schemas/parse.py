@@ -5,6 +5,9 @@ from pydantic import Field
 from app.schemas.base import CamelModel
 
 UnitName = Literal["auto", "mm", "cm", "m", "in", "ft"]
+FurnitureCategory = Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet"]
+BlockRole = Literal["door", "window", "bed", "chair", "sofa", "desk", "table", "closet", "toilet", "ignore"]
+FURNITURE_CATEGORIES: tuple[str, ...] = ("bed", "chair", "sofa", "desk", "table", "closet", "toilet")
 
 
 class ParseOptions(CamelModel):
@@ -41,3 +44,8 @@ class ParseOptions(CamelModel):
     )
     room_layers: list[str] | None = None
     furniture_layers: list[str] | None = None
+    block_overrides: dict[str, BlockRole] | None = Field(
+        default=None,
+        description="Force a category for named blocks (case-insensitive), e.g. {'18140101': 'chair', 'PC40': 'door'}. "
+        "'ignore' drops the block entirely. Takes precedence over every other rule.",
+    )

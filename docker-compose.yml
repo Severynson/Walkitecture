@@ -39,6 +39,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      SEED_SAMPLE_PLANS: ${SEED_SAMPLE_PLANS:-true}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
       # Dev login seeded on every start (idempotent). Set SEED_USERNAME= (empty) to disable.
       SEED_USERNAME: ${SEED_USERNAME-demo}
       SEED_PASSWORD: ${SEED_PASSWORD-walkitecture-demo}

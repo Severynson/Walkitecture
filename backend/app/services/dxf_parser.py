@@ -256,9 +256,8 @@ def _collect(
             if cls.category in ("window", "door"):
                 out.openings.append((cls.category, entity))
             elif cls.category == "furniture":
-                matched_by = "block_name" if "block name" in cls.reason else "layer"
-                out.furniture.append((cls.furniture_category, matched_by, entity))
-            elif depth < MAX_INSERT_DEPTH:
+                out.furniture.append((cls.furniture_category, cls.matched_by, entity))
+            elif depth < MAX_INSERT_DEPTH and cls.explode:
                 try:
                     children = list(entity.virtual_entities())
                 except Exception as exc:  # malformed blocks should not abort the whole parse

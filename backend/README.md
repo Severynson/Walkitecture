@@ -109,6 +109,8 @@ All `/api/plans*` and `/api/interpret-edit` routes require `Authorization: Beare
 | `POST /api/plans/{id}/edits[?dryRun=true]` | Apply (or preview) one allowlisted edit |
 | `GET /api/plans/{id}/edits` · `POST /api/plans/{id}/undo` | History · revert latest edit |
 | `POST /api/interpret-edit` | Text + `selectedId` + `planId` → typed command, validation, optional apply |
+| `POST /api/plans/{id}/classify[?apply=true]` | LLM layer/block classification → parse options (re-parse when applied) |
+| `POST /api/plans/{id}/review[?apply=true]` | Suspects → LLM review patches → validated (and applied, undoable) edits |
 
 Edit responses include `affectedIds`, the new `version`, the new `model`, and the regenerated
 `babylon` scene; send `baseVersion` to get `409` instead of overwriting a newer model.
@@ -183,12 +185,58 @@ Results on `/examples`: the call center gives 43 walls, 11 windows, 17 doors, 13
 and 20 furniture models; the apartment gives 26 walls, 6 windows, 7 doors, 8 named rooms, and 17
 furniture models.
 
+## LLM classification and review
+
+Both need `OPENAI_API_KEY`; without one (or if OpenAI fails) they return `503 llm_unavailable`, and the
+rule-based pipeline is unaffected. The LLM output is data, validated by code and executed only through
+allowlisted operations.
+
+- **`/classify`** (ARCHITECTURE.md §4.2) sends only the drawing inventory (layers, blocks, counts, rule
+  categories, sample texts) and gets back layer roles and block categories with confidences. Unknown names and
+  items below `minConfidence` (default 0.5) are dropped. The rest become `parseOptions` (layer lists plus
+  `blockOverrides`), which you can apply (`?apply=true`) or edit and `POST /parse` yourself. The drawing JSON is
+  stored even when building fails, so a `failed` plan can be classified.
+- **`/review`** (§4.3) computes deterministic suspects: walls under 0.3 m, isolated walls, unsnapped openings,
+  overlapping furniture, furniture outside rooms, unnamed rooms, and unidentified blocks. The LLM proposes
+  patches from the review allowlist: `delete_wall`, `merge_walls`, `set_opening_type`, `delete_opening`,
+  `set_furniture_category`, `delete_furniture`, `rename_room`. Without `apply`, patches are validated on a copy.
+  With `apply`, each patch is a separate edit (`source="review"`), undoable with `/undo`. `/edits` does not
+  accept review operations.
+- `blockOverrides` also works by hand: `POST /parse {"blockOverrides": {"18140101": "chair", "PC40": "ignore"}}`.
+
+## Contracts for the frontend
+
+`contracts/openapi.json` (for `openapi-typescript`) and `contracts/fixtures/*.scene.json` (`GET /scene` responses
+for the seeded plans, plus `orientation`, an L-shaped room that checks plan y → z, the glTF +z front, and
+chair-faces-table). They are deterministic, and `tests/test_contracts.py` fails when they drift from the code.
+After any schema or pipeline change, regenerate them in the same PR:
+
+```bash
+uv run python scripts/export_openapi.py
+uv run python scripts/export_fixtures.py                     # demo + orientation
+docker compose exec backend python scripts/export_fixtures.py --examples /examples --out /tmp/f  # DWG fixtures need dwg2dxf
+```
+
+## Production
+
+- `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`: no published ports, Traefik
+  labels for `APP_DOMAIN`, seed off, and `APP_ENV=production`. `JWT_SECRET` and `POSTGRES_PASSWORD` are
+  required (see the root `.env.example`).
+- With `APP_ENV=production` the app refuses to start without a `JWT_SECRET` of ≥ 32 characters, or with the
+  default seed password.
+- `/api/auth/login` and `/token` (shared bucket) and `/register` are limited per client IP
+  (`LOGIN_RATE_LIMIT`=10, `REGISTER_RATE_LIMIT`=5 per minute) and return `429` with `Retry-After`. The image runs
+  uvicorn with `--forwarded-allow-ips '*'` (only Traefik can reach it), so these are real client IPs.
+- The image sets `STATIC_DIR=/app/static` (the built frontend); `app/spa.py` serves it at `/` with an `index.html`
+  fallback for client-side routes, while `/api/*`, `/docs`, and `/openapi.json` keep priority. Without
+  `STATIC_DIR` (local `uvicorn`), `/` redirects to `/docs`.
+
 ## Code map
 
 ```
 app/
   main.py, config.py, db.py, models.py   app factory, settings, async engine, tables
-  api/            auth, plans (upload/drawing/scene), edits, interpret, health; deps + error mapping
+  api/            auth, plans (upload/drawing/scene), edits, interpret, ai (classify/review), health; deps + errors
   schemas/        building model, Babylon scene spec, edit commands, parse options, API bodies
   services/
     dwg_convert.py        format detection + LibreDWG conversion
@@ -200,7 +248,10 @@ app/
     edits.py, geometry.py allowlisted edits + validation
     interpreter.py        OpenAI + rule-based natural-language interpretation
     plan_store.py         persistence: pipeline, edit history, undo, ownership, versions
+    llm.py, llm_classify.py, reviewer.py   shared OpenAI access, §4.2 classification, §4.3 review
+    rate_limit.py, contracts.py            auth rate limits, OpenAPI + fixture export
     auth.py               password hashing + JWT
 scripts/dwg_to_json.py    DWG/DXF -> descriptive JSON (ARCHITECTURE.md test script)
+scripts/export_openapi.py, export_fixtures.py   contracts for the frontend
 alembic/                  migrations
 ```

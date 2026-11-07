@@ -297,6 +297,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plans/{plan_id}/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Classify
+         * @description LLM proposal of layer roles and block categories, as parse options for POST /parse.
+         */
+        post: operations["classify_api_plans__plan_id__classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{plan_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review
+         * @description Deterministic suspects -> LLM patches from the review allowlist -> validated (and applied) edits.
+         */
+        post: operations["review_api_plans__plan_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -336,6 +376,23 @@ export interface components {
             materials: {
                 [key: string]: components["schemas"]["MaterialSpec"];
             };
+        };
+        /** BlockProposal */
+        BlockProposal: {
+            /** Block */
+            block: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "ignore";
+            /** Confidence */
+            confidence: number;
+            /**
+             * Current
+             * @description Category the rules assigned to this block
+             */
+            current: string;
         };
         /** Body_token_api_auth_token_post */
         Body_token_api_auth_token_post: {
@@ -471,6 +528,39 @@ export interface components {
              * @description New ceiling height in meters.
              */
             height: number;
+        };
+        /** ClassificationProposal */
+        ClassificationProposal: {
+            /** Layers */
+            layers: components["schemas"]["LayerProposal"][];
+            /** Blocks */
+            blocks: components["schemas"]["BlockProposal"][];
+            /** Notes */
+            notes: string;
+            /**
+             * Dropped
+             * @description Proposals ignored: unknown names or confidence below the threshold
+             */
+            dropped: string[];
+            /** @description Ready for POST /parse (or ?apply=true) */
+            parseOptions: components["schemas"]["ParseOptions"];
+        };
+        /** ClassifyRequest */
+        ClassifyRequest: {
+            /**
+             * Minconfidence
+             * @description Drop LLM proposals below this confidence
+             * @default 0.5
+             */
+            minConfidence: number;
+        };
+        /** ClassifyResponse */
+        ClassifyResponse: {
+            proposal: components["schemas"]["ClassificationProposal"];
+            /** Applied */
+            applied: boolean;
+            /** @description The re-parsed plan (apply=true only) */
+            result?: components["schemas"]["ParseResponse"] | null;
         };
         /** Credentials */
         Credentials: {
@@ -749,6 +839,25 @@ export interface components {
             preview?: components["schemas"]["EditPreview"] | null;
             applied?: components["schemas"]["EditResponse"] | null;
         };
+        /** LayerProposal */
+        LayerProposal: {
+            /** Layer */
+            layer: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "wall" | "window" | "door" | "opening" | "room" | "furniture" | "ignore";
+            /** Confidence */
+            confidence: number;
+            /**
+             * Current
+             * @description Categories the rules assigned to this layer's entities
+             */
+            current: {
+                [key: string]: number;
+            };
+        };
         /** MaterialSpec */
         MaterialSpec: {
             /** Color */
@@ -907,11 +1016,44 @@ export interface components {
             roomLayers?: string[] | null;
             /** Furniturelayers */
             furnitureLayers?: string[] | null;
+            /**
+             * Blockoverrides
+             * @description Force a category for named blocks (case-insensitive), e.g. {'18140101': 'chair', 'PC40': 'door'}. 'ignore' drops the block entirely. Takes precedence over every other rule.
+             */
+            blockOverrides?: {
+                [key: string]: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "ignore";
+            } | null;
         };
         /** ParseResponse */
         ParseResponse: {
             plan: components["schemas"]["PlanDetail"];
             scene: components["schemas"]["SceneResponse"];
+        };
+        /** PatchResult */
+        PatchResult: {
+            /**
+             * Command
+             * @description The allowlisted review command (as proposed)
+             */
+            command: {
+                [key: string]: unknown;
+            };
+            /** Reason */
+            reason: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "applied" | "valid" | "rejected";
+            /** Summary */
+            summary?: string | null;
+            /** Problems */
+            problems?: components["schemas"]["Problem"][];
+            /**
+             * Version
+             * @description Model version after this patch (applied only)
+             */
+            version?: number | null;
         };
         /** PlanDetail */
         PlanDetail: {
@@ -1058,6 +1200,19 @@ export interface components {
             targetId?: null;
             parameters: components["schemas"]["FactorParams"];
         };
+        /** ReviewResult */
+        ReviewResult: {
+            /** Suspects */
+            suspects: components["schemas"]["Suspect"][];
+            /** Patches */
+            patches: components["schemas"]["PatchResult"][];
+            /** Notes */
+            notes: string;
+            /** Applied */
+            applied: boolean;
+            /** Version */
+            version: number;
+        };
         /** Room */
         Room: {
             /** Id */
@@ -1112,6 +1267,18 @@ export interface components {
             /** Targetid */
             targetId?: null;
             parameters: components["schemas"]["CeilingParams"];
+        };
+        /** Suspect */
+        Suspect: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "short_wall" | "isolated_wall" | "unsnapped_openings" | "overlapping_furniture" | "furniture_outside_rooms" | "unlabelled_room" | "unresolved_furniture_blocks";
+            /** Targetids */
+            targetIds?: string[];
+            /** Detail */
+            detail: string;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -1762,6 +1929,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InterpretResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    classify_api_plans__plan_id__classify_post: {
+        parameters: {
+            query?: {
+                /** @description Re-run the pipeline with the proposed parse options. */
+                apply?: boolean;
+            };
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ClassifyRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassifyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_api_plans__plan_id__review_post: {
+        parameters: {
+            query?: {
+                /** @description Apply valid patches (each one undoable). */
+                apply?: boolean;
+            };
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResult"];
                 };
             };
             /** @description Validation Error */
