@@ -4,8 +4,9 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
+from app.schemas.babylon import BabylonScene
 from app.schemas.base import CamelModel
 from app.schemas.building import Building, Point2
 from app.schemas.edits import EditCommand
@@ -20,6 +21,26 @@ class ErrorBody(CamelModel):
 
 class ErrorResponse(CamelModel):
     error: ErrorBody
+
+
+class Credentials(CamelModel):
+    username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.@-]+$")
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserOut(CamelModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    username: str
+    created_at: datetime
+
+
+class TokenResponse(CamelModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+    user: UserOut
 
 
 class PlanSummary(CamelModel):
@@ -43,7 +64,8 @@ class PlanDetail(PlanSummary):
 class SceneResponse(CamelModel):
     plan_id: uuid.UUID
     version: int
-    model: Building
+    model: Building = Field(description="Canonical building JSON (source of truth for edits)")
+    babylon: BabylonScene = Field(description="Render-ready Babylon.js scene generated from the model")
 
 
 class ParseResponse(CamelModel):
@@ -66,6 +88,7 @@ class EditResponse(CamelModel):
     affected_ids: list[str]
     summary: str
     model: Building
+    babylon: BabylonScene
 
 
 class EditHistoryItem(CamelModel):

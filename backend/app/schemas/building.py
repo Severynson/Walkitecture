@@ -53,12 +53,28 @@ class Room(CamelModel):
     label_position: Point2 | None = None
 
 
+class FurnitureItem(CamelModel):
+    """A piece of furniture matched to a GLB model from the frontend furniture library."""
+
+    id: str
+    category: str = Field(description="bed, chair, sofa, desk, table, closet, toilet")
+    model: str = Field(description="GLB file name in frontend/furniture")
+    source_block: str | None = Field(default=None, description="DWG block (INSERT) this came from")
+    matched_by: Literal["block_name", "layer", "size", "llm", "manual"] = "block_name"
+    position: Point2 = Field(description="Footprint center in plan coordinates (m)")
+    facing: Point2 = Field(description="Unit vector the model's front points to (away from the nearest wall)")
+    width: float = Field(gt=0, description="Footprint extent across the facing direction (m)")
+    depth: float = Field(gt=0, description="Footprint extent along the facing direction (m)")
+    height: float = Field(gt=0)
+
+
 class Building(CamelModel):
     schema_version: Literal[1] = 1
     units: Literal["meters"] = "meters"
     ceiling_height: float = Field(gt=0)
     walls: list[Wall] = Field(default_factory=list)
     rooms: list[Room] = Field(default_factory=list)
+    furniture: list[FurnitureItem] = Field(default_factory=list)
 
     def find_wall(self, wall_id: str) -> Wall | None:
         return next((w for w in self.walls if w.id == wall_id), None)
@@ -78,4 +94,6 @@ class Building(CamelModel):
             return found[1].type
         if any(r.id == object_id for r in self.rooms):
             return "room"
+        if any(f.id == object_id for f in self.furniture):
+            return "furniture"
         return None

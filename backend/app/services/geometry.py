@@ -236,6 +236,7 @@ def validate_building(building: Building) -> list[Problem]:
     ids = [w.id for w in building.walls]
     ids += [o.id for w in building.walls for o in w.openings]
     ids += [r.id for r in building.rooms]
+    ids += [f.id for f in building.furniture]
     for dup, count in Counter(ids).items():
         if count > 1:
             problems.append(Problem(code="duplicate_id", message=f"ID {dup} is used {count} times.", target_id=dup))

@@ -6,6 +6,7 @@ and are skipped if it is unreachable.
 """
 
 import os
+import uuid
 from collections.abc import AsyncIterator
 
 import asyncpg
@@ -82,3 +83,24 @@ async def client(db_engine, settings: Settings) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         yield http
     app.dependency_overrides.clear()
+
+
+async def register(http: AsyncClient, username: str | None = None, password: str = "correct-horse-1") -> dict:
+    username = username or f"user_{uuid.uuid4().hex[:10]}"
+    response = await http.post("/api/auth/register", json={"username": username, "password": password})
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest.fixture
+async def anon_client(client: AsyncClient) -> AsyncClient:
+    """A client without credentials."""
+    return client
+
+
+@pytest.fixture
+async def auth_client(client: AsyncClient) -> AsyncClient:
+    """A client logged in as a fresh user (Authorization header preset)."""
+    token = (await register(client))["accessToken"]
+    client.headers["Authorization"] = f"Bearer {token}"
+    return client

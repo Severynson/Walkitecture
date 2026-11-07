@@ -42,7 +42,7 @@ def test_resize_window_shifts_to_stay_inside_wall(demo_building):
     [
         ({"width": 8.0}, "openings_overlap"),
         ({"width": 11.0}, "opening_outside_wall"),
-        ({"height": 2.0}, "opening_too_tall"),  # sill 0.9 + 2.0 > 2.65
+        ({"height": 2.5}, "opening_too_tall"),  # sill 2.5 ft (0.762) + 2.5 > 10 ft (3.048) - header
     ],
 )
 def test_invalid_window_resizes_are_rejected(demo_building, params, expected_code):

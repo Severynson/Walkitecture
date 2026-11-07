@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
-from app.api import edits, health, interpret, plans
+from app.api import auth, edits, health, interpret, plans
 from app.api.errors import register_error_handlers
 from app.config import get_settings
 from app.db import engine
@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     register_error_handlers(app)
-    for module in (health, plans, edits, interpret):
+    for module in (health, auth, plans, edits, interpret):
         app.include_router(module.router)
 
     @app.get("/", include_in_schema=False)

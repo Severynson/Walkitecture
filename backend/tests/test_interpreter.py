@@ -24,7 +24,7 @@ def dumped(result):
             None,
             {"operation": "set_ceiling_height", "parameters": {"height": 3.0}},
         ),
-        ("Raise the ceiling by 30 cm", None, {"operation": "set_ceiling_height", "parameters": {"height": 3.0}}),
+        ("Raise the ceiling by 30 cm", None, {"operation": "set_ceiling_height", "parameters": {"height": 3.348}}),
         ("Make all windows 20% narrower", None, {"operation": "resize_windows", "parameters": {"factor": 0.8}}),
         (
             "make this window 1.8 m wide",
