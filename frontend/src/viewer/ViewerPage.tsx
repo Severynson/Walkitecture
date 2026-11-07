@@ -1,22 +1,37 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ViewMode } from "./cameras";
 import { Viewer } from "./engine";
-import type { SceneResponse } from "./types";
+import type { MeshMeta, SceneResponse } from "./types";
 
 interface Props {
-  /** Scene to show (from GET /api/plans/{id}/scene or a fixture); null while loading. */
+  /** Scene to show (GET /api/plans/{id}/scene or a fixture); null while loading. Drives the HUD stats. */
   scene: SceneResponse | null;
+  /**
+   * The scene is (re)loaded into the viewer when this key changes (and once `scene` is available).
+   * Later changes (edits, undo, AI fixes) are applied by the parent through the Viewer from `onReady`.
+   */
+  loadKey: string;
   title?: string;
   /** View to start in (e.g. from `?view=top`). */
   initialMode?: ViewMode;
-  /** Called once with the viewer so parents (edit panel, picking) can drive it. */
+  /** Called once with the viewer so parents (edit panel, chat) can drive it. */
   onReady?: (viewer: Viewer) => void;
+  /** Click on an object (crosshair in first person, pointer in top-down); null = clicked nothing. */
+  onSelect?: (meta: MeshMeta | null) => void;
+  /** Overlays shown on the right (edit panel, chat). */
+  children?: ReactNode;
+  /** Extra HUD lines/links under the stats. */
+  hudExtra?: ReactNode;
 }
 
-/** Full-screen Babylon canvas + HUD. Overlays from track E (edit panel, chat) go next to the HUD. */
-export default function ViewerPage({ scene, title, initialMode, onReady }: Props) {
+const DRAG_TOLERANCE_PX = 5;
+
+/** Full-screen Babylon canvas + HUD + crosshair; overlays from the parent go on the right. */
+export default function ViewerPage({ scene, loadKey, title, initialMode, onReady, onSelect, children, hudExtra }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
+  const loadedKey = useRef<string | null>(null);
+  const downAt = useRef<{ x: number; y: number } | null>(null);
   const [mode, setMode] = useState<ViewMode>("first-person");
   const [locked, setLocked] = useState(false);
 
@@ -39,73 +54,70 @@ export default function ViewerPage({ scene, title, initialMode, onReady }: Props
       document.removeEventListener("pointerlockchange", onLockChange);
       viewer.dispose();
       viewerRef.current = null;
+      loadedKey.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the viewer lives as long as the page
   }, []);
 
   useEffect(() => {
-    if (scene && viewerRef.current) {
-      viewerRef.current.load(scene.babylon);
-      if (initialMode) viewerRef.current.setMode(initialMode);
-      setMode(viewerRef.current.cameras.mode);
-    }
-  }, [scene, initialMode]);
+    const viewer = viewerRef.current;
+    if (!scene || !viewer || loadedKey.current === loadKey) return;
+    viewer.load(scene.babylon);
+    if (initialMode && loadedKey.current === null) viewer.setMode(initialMode);
+    loadedKey.current = loadKey;
+    setMode(viewer.cameras.mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only on a new key (see Props.loadKey)
+  }, [loadKey, scene === null]);
 
-  const lookAround = () => {
-    if (mode === "first-person" && document.pointerLockElement !== canvasRef.current) {
-      void canvasRef.current?.requestPointerLock();
+  const onPointerDown = (event: React.PointerEvent) => {
+    downAt.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const onClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+    const start = downAt.current;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG_TOLERANCE_PX) return; // orbit drag
+    if (mode === "first-person") {
+      if (document.pointerLockElement !== canvasRef.current) {
+        void canvasRef.current?.requestPointerLock();
+        return;
+      }
+      onSelect?.(viewer.pick());
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      onSelect?.(viewer.pick(event.clientX - rect.left, event.clientY - rect.top));
     }
   };
+
+  const toggle = () => viewerRef.current && setMode(viewerRef.current.toggleMode());
 
   const stats = scene
     ? `${scene.model.walls?.length ?? 0} walls · ${scene.model.rooms?.length ?? 0} rooms · ${scene.model.furniture?.length ?? 0} furniture`
     : "Loading…";
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#dde5ee" }}>
-      <canvas
-        ref={canvasRef}
-        onClick={lookAround}
-        style={{ width: "100%", height: "100%", display: "block", outline: "none", touchAction: "none" }}
-      />
-      <div style={hudStyle}>
+    <div className="viewer">
+      <canvas ref={canvasRef} onPointerDown={onPointerDown} onClick={onClick} className="viewer-canvas" />
+      {mode === "first-person" && locked && <div className="crosshair" aria-hidden />}
+      <div className="hud">
         <strong>{title ?? "Walkitecture"}</strong>
         <div>{stats}</div>
-        <div style={{ marginTop: 6, opacity: 0.85 }}>
+        <div className="hud-help">
           {mode === "first-person"
             ? locked
-              ? "WASD / arrows to walk · mouse to look · Esc to release · T top-down"
+              ? "WASD / arrows walk · mouse looks · click selects · Esc frees the mouse · T top-down"
               : "Click the view to look around · WASD / arrows to walk · T top-down"
-            : "Drag to orbit · right-drag to pan · wheel to zoom · T first person"}
+            : "Click selects · drag orbits · right-drag pans · wheel zooms · T first person"}
         </div>
-        <button type="button" onClick={() => viewerRef.current && setMode(viewerRef.current.toggleMode())} style={buttonStyle}>
-          {mode === "first-person" ? "Top-down view (T)" : "First person (T)"}
-        </button>
+        <div className="row">
+          <button type="button" onClick={toggle}>
+            {mode === "first-person" ? "Top-down view (T)" : "First person (T)"}
+          </button>
+        </div>
+        {hudExtra}
       </div>
+      {children && <div className="overlays">{children}</div>}
     </div>
   );
 }
-
-const hudStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: 12,
-  maxWidth: "calc(100% - 24px)",
-  padding: "10px 12px",
-  borderRadius: 8,
-  background: "rgba(20, 24, 31, 0.72)",
-  color: "#f4f6f8",
-  font: "13px/1.4 system-ui, sans-serif",
-  pointerEvents: "auto",
-};
-
-const buttonStyle: React.CSSProperties = {
-  marginTop: 8,
-  padding: "4px 10px",
-  borderRadius: 6,
-  border: "1px solid rgba(255,255,255,0.35)",
-  background: "rgba(255,255,255,0.12)",
-  color: "inherit",
-  font: "inherit",
-  cursor: "pointer",
-};

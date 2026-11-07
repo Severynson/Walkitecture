@@ -5,8 +5,12 @@ import {
   DirectionalLight,
   Engine,
   HemisphericLight,
+  HighlightLayer,
+  InstancedMesh,
+  Mesh,
   Ray,
   Scene,
+  StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
 import { Cameras, type ViewMode } from "./cameras";
@@ -15,11 +19,22 @@ import { FurnitureLibrary } from "./load/furniture";
 import { createRoomLabel } from "./load/labels";
 import { Materials } from "./load/materials";
 import { Registry } from "./registry";
-import type { BabylonSceneSpec } from "./types";
+import type { BabylonSceneSpec, MeshMeta } from "./types";
 
 const GRAVITY = -9.81 / 60; // per frame at 60 fps
 const SPAWN_RAYS = 16;
 const MAX_SIGHTLINE = 100; // m
+const SELECTION_COLOR = Color3.FromHexString("#ff9f1c");
+/** Pick targets that are "the building" rather than an editable object. */
+const NOT_SELECTABLE = new Set(["floor", "ceiling"]);
+
+function e2eEnabled(): boolean {
+  try {
+    return localStorage.getItem("walkitecture.e2e") === "1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * React-agnostic viewer: owns the Babylon engine/scene and turns the backend's scene spec into meshes.
@@ -32,7 +47,10 @@ export class Viewer {
   private readonly registry = new Registry();
   private readonly materials: Materials;
   private readonly furniture: FurnitureLibrary;
+  private readonly highlight: HighlightLayer;
+  private readonly selectionMaterial: StandardMaterial;
   private spec: BabylonSceneSpec | null = null;
+  private selectedId: string | null = null;
   private readonly onResize = () => this.engine.resize();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -50,24 +68,133 @@ export class Viewer {
     const sun = new DirectionalLight("sun", new Vector3(-0.4, -1, -0.3), scene);
     sun.intensity = 0.35;
 
+    this.highlight = new HighlightLayer("selection", scene, { isStroke: true });
+    this.highlight.innerGlow = false;
+    this.selectionMaterial = new StandardMaterial("selection-box", scene);
+    this.selectionMaterial.diffuseColor = SELECTION_COLOR;
+    this.selectionMaterial.emissiveColor = SELECTION_COLOR.scale(0.4);
+    this.selectionMaterial.alpha = 0.25;
+
     this.cameras = new Cameras(scene, canvas);
     this.materials = new Materials(scene);
     this.furniture = new FurnitureLibrary(scene);
 
     this.engine.runRenderLoop(() => scene.render());
     window.addEventListener("resize", this.onResize);
+    // Browser smoke test hook (frontend/e2e/smoke.mjs): dev builds, or localStorage "walkitecture.e2e" = "1".
+    if (import.meta.env.DEV || e2eEnabled()) (window as unknown as { __viewer?: Viewer }).__viewer = this;
   }
 
-  /** Replaces whatever is shown with `spec` and moves the walker to the spawn point. */
-  load(spec: BabylonSceneSpec): void {
+  /**
+   * Replaces whatever is shown with `spec`. A fresh load moves the walker to the spawn point;
+   * `keepCamera` keeps both cameras where they are (after edits, AI fixes, undo).
+   */
+  load(spec: BabylonSceneSpec, { keepCamera = false } = {}): void {
+    const walker = this.cameras.walker;
+    const saved = keepCamera && this.spec ? { position: walker.position.clone(), rotation: walker.rotation.clone() } : null;
     this.registry.disposeAll();
     this.spec = spec;
     for (const box of spec.meshes) createBox(this.scene, box, spec, this.materials, this.registry);
     for (const room of spec.rooms) createRoomLabel(this.scene, room, this.registry);
     for (const item of spec.furniture) void this.furniture.place(item, this.registry);
-    this.cameras.fit(spec);
-    this.faceOpenSpace();
+    if (saved) {
+      this.cameras.setBodySize(spec);
+      walker.position.copyFrom(saved.position);
+      walker.rotation.copyFrom(saved.rotation);
+    } else {
+      this.cameras.fit(spec);
+      this.faceOpenSpace();
+    }
     this.syncCeiling();
+    this.select(this.selectedId);
+  }
+
+  /**
+   * Applies a new spec after an edit without moving the camera. `affectedIds` are wall / opening /
+   * furniture ids; "building" (global changes such as the ceiling height) rebuilds everything.
+   */
+  applyUpdate(spec: BabylonSceneSpec, affectedIds: string[]): void {
+    if (!this.spec || affectedIds.includes("building")) {
+      this.load(spec, { keepCamera: true });
+      return;
+    }
+    const affected = new Set(affectedIds);
+    // Openings belong to walls: rebuild the whole wall an affected opening sits in.
+    for (const opening of [...spec.openings, ...this.spec.openings]) {
+      if (affected.has(opening.id)) affected.add(opening.wallId);
+    }
+    for (const id of affected) this.registry.dispose(id);
+    this.spec = spec;
+    for (const box of spec.meshes) {
+      if (affected.has(boxObjectId(box))) createBox(this.scene, box, spec, this.materials, this.registry);
+    }
+    for (const item of spec.furniture) if (affected.has(item.id)) void this.furniture.place(item, this.registry);
+    this.syncCeiling();
+    this.select(this.selectedId);
+  }
+
+  /**
+   * What is under the crosshair (first person, pointer locked: screen center) or under the pointer
+   * (x, y in canvas CSS pixels). Floor and ceiling count as "nothing".
+   */
+  pick(x?: number, y?: number): MeshMeta | null {
+    const canvas = this.engine.getRenderingCanvas()!;
+    const px = x ?? canvas.clientWidth / 2;
+    const py = y ?? canvas.clientHeight / 2;
+    const hit = this.scene.pick(px, py, (mesh) => mesh.isPickable && mesh.isVisible && !!mesh.metadata);
+    const meta = hit?.pickedMesh?.metadata as MeshMeta | undefined;
+    if (!meta || NOT_SELECTABLE.has(meta.objectId) || meta.kind === "ceiling" || meta.kind === "floor") return null;
+    return meta;
+  }
+
+  /** Highlights every mesh of one object (wall, opening, furniture); null clears the selection. */
+  select(objectId: string | null): void {
+    this.selectedId = objectId;
+    this.highlight.removeAllMeshes();
+    for (const mesh of this.scene.meshes) {
+      if (mesh.name.endsWith(":collider")) {
+        mesh.isVisible = false;
+        mesh.material = null;
+      }
+    }
+    if (!objectId) return;
+    for (const mesh of this.scene.meshes) {
+      const meta = mesh.metadata as MeshMeta | undefined;
+      if (meta?.objectId !== objectId) continue;
+      if (mesh.name.endsWith(":collider")) {
+        // Furniture: GLB parts are instances (no highlight support), so show the footprint box instead.
+        mesh.material = this.selectionMaterial;
+        mesh.isVisible = true;
+        this.highlight.addMesh(mesh as Mesh, SELECTION_COLOR);
+      } else if (mesh instanceof Mesh && !(mesh instanceof InstancedMesh)) {
+        this.highlight.addMesh(mesh, SELECTION_COLOR);
+      }
+    }
+  }
+
+  /** Horizontal viewing direction in plan coordinates (plan y = Babylon z), for "move it back". */
+  cameraForward(): [number, number] {
+    const camera = this.scene.activeCamera!;
+    const dir = camera.getDirection(Vector3.Forward());
+    if (this.cameras.mode === "top-down" || Math.hypot(dir.x, dir.z) < 1e-3) {
+      // Looking straight down: "forward" is screen-up, i.e. away from the overhead camera's position.
+      const t = this.cameras.overhead.target.subtract(this.cameras.overhead.position);
+      const len = Math.hypot(t.x, t.z);
+      return len < 1e-6 ? [0, 1] : [t.x / len, t.z / len];
+    }
+    const len = Math.hypot(dir.x, dir.z);
+    return [dir.x / len, dir.z / len];
+  }
+
+  setMode(mode: ViewMode): void {
+    this.cameras.setMode(mode);
+    this.syncCeiling();
+  }
+
+  toggleMode(): ViewMode {
+    const mode = this.cameras.toggle();
+    this.syncCeiling();
+    return mode;
   }
 
   /** Turns the walker toward the longest clear sightline, so you don't spawn staring at a wall. */
@@ -89,42 +216,6 @@ export class Viewer {
     this.cameras.walker.rotation.set(0, bestYaw, 0);
   }
 
-  /**
-   * Applies a new spec after an edit without moving the camera. `affectedIds` are wall / opening /
-   * furniture ids; "building" (global changes such as the ceiling height) rebuilds everything.
-   */
-  applyUpdate(spec: BabylonSceneSpec, affectedIds: string[]): void {
-    if (!this.spec || affectedIds.includes("building")) {
-      const position = this.cameras.walker.position.clone();
-      const rotation = this.cameras.walker.rotation.clone();
-      this.load(spec);
-      this.cameras.walker.position.copyFrom(position);
-      this.cameras.walker.rotation.copyFrom(rotation);
-      return;
-    }
-    const affected = new Set(affectedIds);
-    // Openings belong to walls: rebuild the whole wall an affected opening sits in.
-    for (const opening of spec.openings) if (affected.has(opening.id)) affected.add(opening.wallId);
-    for (const id of affected) this.registry.dispose(id);
-    this.spec = spec;
-    for (const box of spec.meshes) {
-      if (affected.has(boxObjectId(box))) createBox(this.scene, box, spec, this.materials, this.registry);
-    }
-    for (const item of spec.furniture) if (affected.has(item.id)) void this.furniture.place(item, this.registry);
-    this.syncCeiling();
-  }
-
-  setMode(mode: ViewMode): void {
-    this.cameras.setMode(mode);
-    this.syncCeiling();
-  }
-
-  toggleMode(): ViewMode {
-    const mode = this.cameras.toggle();
-    this.syncCeiling();
-    return mode;
-  }
-
   /** The ceiling hides the plan from above, so it is only shown in first person. */
   private syncCeiling(): void {
     const ceiling = this.scene.getMeshByName("ceiling");
@@ -136,6 +227,7 @@ export class Viewer {
     this.registry.disposeAll();
     this.furniture.dispose();
     this.materials.dispose();
+    this.highlight.dispose();
     this.scene.dispose();
     this.engine.dispose();
   }

@@ -1,49 +1,36 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import FixtureLinks from "./viewer/FixtureLinks";
+import { lazy, type ReactNode, Suspense } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import AuthPage from "./auth/AuthPage";
+import PlanListPage from "./plans/PlanListPage";
 
-// Babylon.js is large: load the viewer only when a scene is opened.
+// Babylon.js is large: the 3D pages load only when opened.
+const PlanPage = lazy(() => import("./plans/PlanPage"));
 const FixtureViewer = lazy(() => import("./viewer/FixtureViewer"));
 
-// Placeholder shell. Track E replaces this with react-router routes (/login, /register, /plans,
-// /plans/:id) and renders viewer/ViewerPage for a plan. See IMPLEMENTATION_PLAN.md.
-
 export default function App() {
-  if (window.location.pathname.startsWith("/viewer")) {
-    return (
-      <Suspense fallback={<p style={{ font: "15px system-ui, sans-serif", padding: 16 }}>Loading 3D viewer…</p>}>
-        <FixtureViewer />
-      </Suspense>
-    );
-  }
-  return <Home />;
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Suspense fallback={<p className="loading">Loading 3D viewer…</p>}>
+          <Routes>
+            <Route path="/login" element={<AuthPage mode="login" />} />
+            <Route path="/register" element={<AuthPage mode="register" />} />
+            <Route path="/viewer" element={<FixtureViewer />} />
+            <Route path="/plans" element={<RequireAuth><PlanListPage /></RequireAuth>} />
+            <Route path="/plans/:id" element={<RequireAuth><PlanPage /></RequireAuth>} />
+            <Route path="*" element={<Navigate to="/plans" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </AuthProvider>
+  );
 }
 
-type Health = Record<string, unknown>;
-
-function Home() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/health")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then(setHealth)
-      .catch((e: Error) => setError(e.message));
-  }, []);
-
-  return (
-    <main style={{ fontFamily: "system-ui, sans-serif", maxWidth: 640, margin: "4rem auto", padding: "0 16px" }}>
-      <h1>Walkitecture</h1>
-      <p>Don't just see the floor plan. Walk it.</p>
-      <h2>Walk a sample plan</h2>
-      <FixtureLinks />
-      <p>
-        Login, uploads, and editing are under construction. The API is live: <a href="/docs">/docs</a>
-      </p>
-      <h2>API health</h2>
-      {error && <p style={{ color: "crimson" }}>Unavailable: {error}</p>}
-      {health && <pre style={{ background: "#f4f4f4", padding: 12, overflowX: "auto" }}>{JSON.stringify(health, null, 2)}</pre>}
-      {!health && !error && <p>Checking…</p>}
-    </main>
-  );
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <p className="loading">Signing you in…</p>;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  return <>{children}</>;
 }

@@ -60,26 +60,26 @@ The goal is **spatial understanding and rapid design iteration**, not photoreali
 
 ### P0 — Essential: ship a working experience
 
-- [ ] Register / log in; each user sees only their own plans.
-- [ ] Upload a DWG; the server reads it, classifies it, and stores the building model in PostgreSQL.
-- [ ] React app with a Babylon.js scene generated from the building JSON.
-- [ ] Walls 10 ft (3.048 m); doors 7 ft (2.134 m); windows 2.5–6.5 ft (0.762–1.981 m), with wall sections above
+- [x] Register / log in; each user sees only their own plans.
+- [x] Upload a DWG; the server reads it, classifies it, and stores the building model in PostgreSQL.
+- [x] React app with a Babylon.js scene generated from the building JSON.
+- [x] Walls 10 ft (3.048 m); doors 7 ft (2.134 m); windows 2.5–6.5 ft (0.762–1.981 m), with wall sections above
       doors and above/below windows.
-- [ ] First-person navigation with WASD + mouse, collisions, and a top-down / first-person toggle.
-- [ ] Correct scale from the drawing's units (or a manual scale override).
-- [ ] At least one real-time change through a slider **without reloading**.
-- [ ] Deployed behind Traefik on a subdomain.
+- [x] First-person navigation with WASD + mouse, collisions, and a top-down / first-person toggle.
+- [x] Correct scale from the drawing's units (or a manual scale override).
+- [x] At least one real-time change through a slider **without reloading**.
+- [x] Deployed behind Traefik on a subdomain.
 
 ### P1 — High-impact enhancements
 
-- [ ] Furniture from DWG block inserts, rendered with the GLB library in `frontend/public/furniture`.
-- [ ] Click-to-select a wall, window, or furniture item; highlight the selection.
-- [ ] Natural-language editing mapped to a small allowlist of operations; Undo.
-- [ ] LLM classification of unknown layers/blocks and an LLM review pass that proposes validated fixes.
+- [x] Furniture from DWG block inserts, rendered with the GLB library in `frontend/public/furniture`.
+- [x] Click-to-select a wall, window, or furniture item; highlight the selection.
+- [x] Natural-language editing mapped to a small allowlist of operations; Undo.
+- [x] LLM classification of unknown layers/blocks and an LLM review pass that proposes validated fixes.
 
 ### P2 — Stretch goals
 
-- [ ] Move a **simple, independent** wall by a specified offset.
+- [x] Move a **simple, independent** wall by a specified offset.
 - [ ] Classification review screen for humans.
 - [ ] Room measurements, shareable links, GLB export, PDF/image plans via a vision model.
 
@@ -180,13 +180,17 @@ The LLM never executes JavaScript, mutates meshes, or rewrites the whole scene.
 
 ## Running locally
 
-Live deployment: **https://walkitecture.severyn.xyz** (API docs at `/docs`). The frontend is a placeholder until
-Phase 1 (tracks B/E) lands.
+Live deployment: **https://walkitecture.severyn.xyz** (API docs at `/docs`; a sample office without logging in:
+`/viewer?fixture=call-center-offices`).
 
 ```bash
 docker compose up --build          # app + Postgres: http://localhost:8000 (login demo / walkitecture-demo)
 cd frontend && npm install && npm run dev   # SPA with hot reload: http://localhost:5173 (proxies /api)
+cd frontend && npm run e2e -- http://localhost:5173  # browser smoke test (needs Google Chrome)
 ```
+
+**Controls:** click the view to look around, WASD / arrows to walk, T for top-down, click an object to select it
+(crosshair in first person), Esc to free the mouse.
 
 Put `OPENAI_API_KEY=...` in a top-level `.env` (git-ignored) to enable the LLM features. Production deployment
 behind Traefik: see [`ARCHITECTURE.md` §9](ARCHITECTURE.md#9-deployment).

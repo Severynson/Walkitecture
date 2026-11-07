@@ -1,10 +1,10 @@
 # Walkitecture — Architecture
 
-> **Status (2026-11-07):** the backend is complete: pipeline, accounts, editing, LLM classification (§4.2) and
-> review (§4.3), frontend contracts, and auth hardening (see [`backend/README.md`](backend/README.md)). The
-> single-image deployment behind Traefik is live at https://walkitecture.severyn.xyz with a placeholder frontend; the
-> real frontend is not built yet. Items marked **PLANNED** below are still to do. The phased, parallel build order lives
-> in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+> **Status (2026-11-07):** feature-complete MVP, live at **https://walkitecture.severyn.xyz**. Backend: pipeline,
+> accounts, editing, LLM classification (§4.2) and review (§4.3), contracts, auth hardening (see
+> [`backend/README.md`](backend/README.md)). Frontend: login/register, plan list + DWG upload, first-person/top-down
+> walkthrough with GLB furniture, click-to-select, sliders, chat edits, undo, AI clean-up buttons (§7). Build order and
+> remaining polish: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## 1. Goals and non-goals
 
@@ -198,43 +198,53 @@ Furniture: the GLBs have inconsistent native scales, so the catalog stores each 
 spec always carries an explicit per-axis `scaling`. Every model is assumed to face glTF **+z**. The frontend parents
 the imported glTF `__root__` to a `TransformNode` and applies `position`, `rotationY`, and `scaling` to it.
 
-## 7. Frontend — **PLANNED**
+## 7. Frontend
 
-React + TypeScript + Vite, `@babylonjs/core`, `@babylonjs/loaders` (glTF). The frontend does **no geometry
-reasoning**: it loads the spec, builds meshes, and handles input.
+React 19 + TypeScript 5 + Vite, React Router, `@babylonjs/core` + `@babylonjs/loaders` (glTF). The frontend does **no
+geometry reasoning**: it loads the backend's scene spec, builds meshes, handles input, and sends allowlisted edit
+commands. The 3D pages are lazy-loaded so Babylon.js (~1.3 MB gzip) is not in the login/plan-list bundle.
 
 ```
 frontend/
-  vite.config.ts            dev proxy: /api → http://localhost:8000
+  vite.config.ts            dev proxy: /api → VITE_API_TARGET (default http://localhost:8000)
   public/furniture/         the 10 GLBs → served at /furniture/*.glb
+  e2e/smoke.mjs             browser smoke test (puppeteer-core + local Chrome), see §12
   src/
-    api/client.ts           fetch wrapper: JWT header, JSON, ApiError mapping, 401 → logout
+    App.tsx                 routes: /login /register /plans /plans/:id /viewer; RequireAuth
+    api/client.ts           fetch wrapper: JWT header, ApiError {status, code, message, problems}, 401 → logout
+    api/endpoints.ts        one typed function per route used; api/schema.ts aliases over api/types.ts
     api/types.ts            generated from contracts/openapi.json (`npm run gen:types`)
-    auth/                   AuthContext (token in localStorage), LoginPage, RegisterPage
-    plans/                  PlanListPage, UploadDialog (.dwg), status + parse warnings
+    auth/                   AuthContext (token in localStorage, /me on start), AuthPage (login + register)
+    plans/PlanListPage.tsx  plans, DWG upload (button or drag & drop), sample apartment, delete
+    plans/PlanPage.tsx      viewer + edit panel + chat + AI panel; applies edit results, handles 409/422
+    edit/                   EditPanel (selection editor, ceiling + all-windows), ChatBox (activity log), AiPanel
     viewer/
-      ViewerPage.tsx        canvas + overlays (HUD, edit panel, chat)
-      engine.ts             Engine/Scene lifecycle (React-agnostic)
-      registry.ts           objectId (wallId / openingId / furniture id) → meshes
-      load/boxes.ts         spec.meshes → boxes with materials[kind], collisions on wall/header/sill/glass
-      load/furniture.ts     GLB cache (AssetContainer per url), instances, invisible collider boxes from footprint
-      load/labels.ts        room names
-      load/index.ts         loadScene(scene, spec) · applyUpdate(scene, spec, affectedIds)
-      cameras.ts            first-person UniversalCamera ⇄ top-down ArcRotateCamera
-      picking.ts            click-select + HighlightLayer → selectedId
-    edit/                   EditPanel (sliders), ChatBox (/interpret-edit), UndoButton
+      ViewerPage.tsx        canvas, HUD, crosshair, click-to-select, overlay slot; loads once per `loadKey`
+      engine.ts             Viewer: load(spec, {keepCamera}), applyUpdate(spec, affectedIds), pick, select,
+                            cameraForward; HighlightLayer selection; spawn faces the longest clear sightline
+      registry.ts           objectId (wallId / furniture id / room id) → nodes, for partial rebuilds
+      load/boxes.ts         spec.meshes → boxes with shared per-kind materials; collisions on wall/header/sill/glass/floor
+      load/furniture.ts     one AssetContainer per GLB, instances under a TransformNode, invisible footprint colliders
+      load/labels.ts        billboard room names
+      cameras.ts            first-person UniversalCamera (WASD/arrows, pointer lock, gravity) ⇄ top-down ArcRotate
+      fixtures.ts           contracts/fixtures/*.scene.json as lazy chunks for /viewer?fixture=<name>[&view=top]
 ```
 
-Rules:
-- `applyUpdate`: an edit response carries the full new spec plus `affectedIds`. Dispose and recreate only the meshes
-  whose `wallId`/`openingId`/id is in `affectedIds`; `"building"` means a full rebuild. Camera and render loop are
-  untouched.
-- First-person camera: spawn from `spec.camera`, WASD + mouse (pointer lock), `checkCollisions`, `applyGravity`,
-  ellipsoid `(0.3, 0.8, 0.3)`. GLB meshes don't collide; their footprint collider boxes do.
-- Performance: shared materials per `kind`, `freezeWorldMatrix()` on static meshes, furniture as instances.
-- After an edit, if the camera ends up inside a collider, push it to the nearest free point.
-- Orientation check: a fixture with an asymmetric room and one chair against a wall must look un-mirrored from above,
-  with the chair's back to the wall (verifies plan y → z and the glTF +z front assumption).
+Behaviour:
+- **Loading:** a fresh load spawns at `spec.camera` facing the most open direction. Edits, undo, and AI fixes call
+  `applyUpdate` / `load(…, {keepCamera: true})`, so the walkthrough continues from the same spot.
+- **`applyUpdate`:** disposes and recreates only the meshes of walls / furniture in `affectedIds` (an affected opening
+  rebuilds its wall); `"building"` (e.g. ceiling height) rebuilds everything but keeps the camera.
+- **Selection:** in first person (pointer locked) a click picks what is under the crosshair; in top-down, under the
+  pointer. Openings select by `openingId`, walls by `wallId`, furniture by id (its footprint box is shown, because GLB
+  instances can't be outlined). Floor/ceiling clear the selection.
+- **Edits:** sliders and buttons send `POST /edits` with `baseVersion`; chat sends `POST /interpret-edit` with
+  `selectedId`, `cameraForward` (plan x/y of the view direction) and `apply=true`. `409 version_conflict` reloads the
+  scene, `409 nothing_to_undo` and `422 problems` are shown in the activity log.
+- **AI panel:** "Review plan" (`/review?apply=true`, fixes are undoable) and "Re-classify layers" (`/classify?apply=true`,
+  re-parses and clears history) are enabled when `/api/health` reports `interpreter: "openai"`.
+- First-person body: ellipsoid radius 0.3 m, eye height from `spec.camera.eyeHeight` (1.6 m), gravity on; GLB meshes
+  don't collide, their footprint boxes do. Shared materials per `kind`, `freezeWorldMatrix()` on static meshes.
 
 ## 8. Backend
 
@@ -445,6 +455,8 @@ characters or with the default seed password; login/register are rate-limited pe
 - **Contract:** `tests/test_contracts.py` fails when `contracts/openapi.json` is stale, validates every
   `contracts/fixtures/*.scene.json` against `SceneResponse`, and checks the orientation fixture's semantics (plan
   y → z, glTF +z front, chair faces table); the frontend type-checks against the generated types.
-- **Frontend (PLANNED):** unit tests for spec loading and `applyUpdate`; manual walkthrough checklist per milestone.
-- **End-to-end smoke (manual, per milestone):** register → login → upload `examples/call-center-offices.dwg` → walk →
-  widen a window → undo.
+- **Frontend:** `npm run build` type-checks against the generated contract types.
+- **Browser smoke test:** `cd frontend && npm run e2e -- <baseUrl> [dwgFile]` (puppeteer-core driving the local
+  Chrome): login redirect → register → sample plan → click a window in 3D → +50% → undo → chat ceiling edit → (optional)
+  upload a DWG and walk it → plan list → logout → public sample viewer. Fails on any step, 5xx, or page error. Needs a
+  dev build (`npm run dev`) or a production URL; against production it registers a throwaway `e2e_*` account.

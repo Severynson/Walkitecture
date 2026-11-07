@@ -4,7 +4,7 @@ Companion to [`ARCHITECTURE.md`](ARCHITECTURE.md) (section numbers like §4.2 re
 **phases** (sync points) and **tracks** (parallel work streams). Within a phase every track works independently
 because tracks only touch their own directories and talk to each other through **contracts** (schemas + fixtures).
 
-## Where we are (2026-11-07, after the backend completion on `main`)
+## Where we are (2026-11-07: MVP complete, live at https://walkitecture.severyn.xyz)
 
 | Area | Status |
 | --- | --- |
@@ -18,11 +18,13 @@ because tracks only touch their own directories and talk to each other through *
 | Fixtures: demo apartment, both DWG examples, orientation check (A1) | ✅ done (Phase 0.3, A1) |
 | GLBs in `frontend/public/furniture/` (served at `/furniture/`) | ✅ done (Phase 0.4) |
 | Single image (SPA + API) + Traefik on https://walkitecture.severyn.xyz | ✅ done (F1) |
-| Viewer: `/viewer?fixture=<name>[&view=top]` — walls, openings, glass, labels, GLB furniture, colliders, first-person + top-down | ✅ done (B1, most of B2) |
-| App shell: routing, login/register pages, plan list, upload (E1, E2) | ⬜ next — frontend |
+| Viewer: walls, openings, glass, labels, GLB furniture, footprint colliders, first-person + top-down, spawn facing open space; public `/viewer?fixture=<name>[&view=top]` | ✅ done (B1, B2) |
+| App shell: routing, login/register, plan list, DWG upload (button + drag & drop), sample plan, delete (E1, E2) | ✅ done |
 | LLM layer classification (D1, §4.2), auth hardening (C2) | ✅ done (backend) |
-| LLM review (D2, §4.3) | ✅ done (backend; E4 review UI ⬜) |
-| Picking, edit UI, chat, undo (B3, E3) | ⬜ Phase 3 |
+| LLM review (D2, §4.3) + AI panel (Review plan / Re-classify layers) | ✅ done (needs `OPENAI_API_KEY` on the server) |
+| Picking + highlight, partial rebuild by `affectedIds`, edit panel (window width, ceiling, all windows, move wall), chat, undo (B3, E3) | ✅ done |
+| Browser smoke test `frontend/e2e/smoke.mjs` (`npm run e2e -- <url> [dwg]`) | ✅ passes locally and on production |
+| Remaining polish (Phase 4): per-layer classification review screen (E4), CI (F3), spawn in the largest room, performance on large drawings | ⬜ optional |
 
 ## Tracks and ownership
 

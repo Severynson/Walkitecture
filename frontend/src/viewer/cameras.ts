@@ -43,10 +43,7 @@ export class Cameras {
 
   /** Spawn point, body size, and overhead framing from the scene spec. */
   fit(spec: BabylonSceneSpec): void {
-    const eye = spec.camera.eyeHeight;
-    // Ellipsoid centered half an eye-height below the camera: feet on the floor, eyes at `eye`.
-    this.walker.ellipsoid = new Vector3(BODY_RADIUS, eye / 2, BODY_RADIUS);
-    this.walker.ellipsoidOffset = new Vector3(0, -eye / 2, 0);
+    this.setBodySize(spec);
     this.walker.position.set(spec.camera.position[0], spec.camera.position[1], spec.camera.position[2]);
     this.walker.setTarget(new Vector3(spec.camera.target[0], spec.camera.target[1], spec.camera.target[2]));
 
@@ -58,6 +55,13 @@ export class Cameras {
     this.overhead.beta = 0.01;
     this.overhead.lowerRadiusLimit = 2;
     this.overhead.upperRadiusLimit = this.overhead.radius * 3;
+  }
+
+  /** Ellipsoid centered half an eye-height below the camera: feet on the floor, eyes at eye height. */
+  setBodySize(spec: BabylonSceneSpec): void {
+    const eye = spec.camera.eyeHeight;
+    this.walker.ellipsoid = new Vector3(BODY_RADIUS, eye / 2, BODY_RADIUS);
+    this.walker.ellipsoidOffset = new Vector3(0, -eye / 2, 0);
   }
 
   setMode(mode: ViewMode): void {
