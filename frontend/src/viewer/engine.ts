@@ -1,4 +1,14 @@
-import { Color3, Color4, DirectionalLight, Engine, HemisphericLight, Scene, Vector3 } from "@babylonjs/core";
+import {
+  type AbstractMesh,
+  Color3,
+  Color4,
+  DirectionalLight,
+  Engine,
+  HemisphericLight,
+  Ray,
+  Scene,
+  Vector3,
+} from "@babylonjs/core";
 import { Cameras, type ViewMode } from "./cameras";
 import { boxObjectId, createBox } from "./load/boxes";
 import { FurnitureLibrary } from "./load/furniture";
@@ -8,6 +18,8 @@ import { Registry } from "./registry";
 import type { BabylonSceneSpec } from "./types";
 
 const GRAVITY = -9.81 / 60; // per frame at 60 fps
+const SPAWN_RAYS = 16;
+const MAX_SIGHTLINE = 100; // m
 
 /**
  * React-agnostic viewer: owns the Babylon engine/scene and turns the backend's scene spec into meshes.
@@ -54,7 +66,27 @@ export class Viewer {
     for (const room of spec.rooms) createRoomLabel(this.scene, room, this.registry);
     for (const item of spec.furniture) void this.furniture.place(item, this.registry);
     this.cameras.fit(spec);
+    this.faceOpenSpace();
     this.syncCeiling();
+  }
+
+  /** Turns the walker toward the longest clear sightline, so you don't spawn staring at a wall. */
+  private faceOpenSpace(): void {
+    const origin = this.cameras.walker.position.clone();
+    const solid = (mesh: AbstractMesh) => mesh.checkCollisions && mesh.isEnabled();
+    let bestYaw = this.cameras.walker.rotation.y;
+    let bestDistance = -1;
+    for (let i = 0; i < SPAWN_RAYS; i++) {
+      const yaw = (i / SPAWN_RAYS) * Math.PI * 2;
+      const ray = new Ray(origin, new Vector3(Math.sin(yaw), 0, Math.cos(yaw)), MAX_SIGHTLINE);
+      const hit = this.scene.pickWithRay(ray, solid);
+      const distance = hit?.hit ? hit.distance : MAX_SIGHTLINE;
+      if (distance > bestDistance + 1e-3) {
+        bestDistance = distance;
+        bestYaw = yaw;
+      }
+    }
+    this.cameras.walker.rotation.set(0, bestYaw, 0);
   }
 
   /**

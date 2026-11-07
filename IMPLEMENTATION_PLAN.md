@@ -14,10 +14,14 @@ because tracks only touch their own directories and talk to each other through *
 | Accounts: register/login/me, JWT, plan ownership, dev seed | ✅ done |
 | Edits, undo, natural-language interpretation | ✅ done |
 | Inspection script (`backend/scripts/dwg_to_json.py`) | ✅ done |
-| Contracts export + fixtures for the frontend | ⬜ Phase 0 |
-| Frontend (auth, plans, viewer, editing UI) | ⬜ Phases 1–3 |
-| Single image + Traefik on the VPS | ⬜ Phases 1–2 |
-| LLM layer classification (§4.2), LLM review (§4.3) | ⬜ Phases 1–3 |
+| Contracts: `contracts/openapi.json`, generated `frontend/src/api/types.ts`, `export_openapi.py`, `export_fixtures.py`, `test_contracts.py` | ✅ done (Phase 0.1–0.2) |
+| Fixtures: demo apartment | ✅ done; DWG example fixtures need the image (Phase 0.3) |
+| GLBs in `frontend/public/furniture/` (served at `/furniture/`) | ✅ done (Phase 0.4) |
+| Single image (SPA + API) + Traefik on https://walkitecture.severyn.xyz | ✅ done (F1) |
+| Viewer: `/viewer?fixture=<name>[&view=top]` — walls, openings, glass, labels, GLB furniture, colliders, first-person + top-down | ✅ done (B1, most of B2) |
+| App shell: routing, login/register pages, plan list, upload (E1, E2) | ⬜ next — frontend |
+| LLM layer classification (D1, §4.2), auth hardening (C2) | ⬜ next — backend |
+| Picking, edit UI, chat, undo (B3, E3), LLM review (D2) | ⬜ Phase 3 |
 
 ## Tracks and ownership
 
