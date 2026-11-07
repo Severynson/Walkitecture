@@ -31,6 +31,26 @@ docker compose up --build          # API: http://localhost:8000/docs   Postgres:
 Put secrets in a top-level `.env` (git-ignored): `JWT_SECRET=$(openssl rand -hex 32)` (otherwise
 tokens reset whenever the backend restarts) and optionally `OPENAI_API_KEY=sk-...`.
 
+### Seeded login
+
+On every start (after migrations) the container runs `scripts/seed.py`, which creates a dev
+account, by default **`demo` / `walkitecture-demo`**. That account owns three ready-to-walk plans:
+the built-in sample apartment and both drawings in `/examples` (mounted read-only into the
+container).
+
+- The seed is idempotent. An existing account is never modified, so a changed password survives
+  restarts. Each sample is created once per account, matched by filename, so a deleted sample comes
+  back on the next start.
+- A sample that fails to convert or parse is reported in the logs and skipped. It never blocks
+  startup.
+- To change the credentials, set `SEED_USERNAME` and `SEED_PASSWORD` in the top-level `.env`. To
+  disable seeding, set `SEED_USERNAME=` (empty). `SEED_SAMPLE_PLANS=false` creates the account
+  without plans.
+- To run it by hand: `docker compose exec backend python scripts/seed.py`, or locally with
+  `SEED_USERNAME=demo SEED_PASSWORD=... uv run python scripts/seed.py`.
+
+Don't use the default credentials on a publicly reachable deployment.
+
 Local development without the backend container: `docker compose up -d db`, then in `backend/`:
 `cp .env.example .env && uv sync && uv run alembic upgrade head && uv run uvicorn app.main:app --reload`.
 DWG uploads need `dwg2dxf` on your `PATH`; DXF uploads work anywhere.

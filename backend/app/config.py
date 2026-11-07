@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7
 
+    # --- Seed (scripts/seed.py, run on container start) ---------------------------------
+    # Seeding is off unless both are set (docker-compose sets dev defaults).
+    seed_username: str | None = None
+    seed_password: str | None = None
+    seed_sample_plans: bool = True  # give the seed user the demo apartment + /examples drawings
+    seed_examples_dir: str | None = None  # default: <repo>/examples when present
+
     # --- DWG -> DXF conversion (LibreDWG) ---------------------------------------------
     dwg2dxf_path: str = "dwg2dxf"
     dwg_convert_timeout_s: float = 90.0
