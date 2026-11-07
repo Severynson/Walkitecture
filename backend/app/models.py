@@ -12,10 +12,22 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username: Mapped[str] = mapped_column(String(64), unique=True)  # stored lower-case
+    password_hash: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Plan(Base):
     __tablename__ = "plans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     filename: Mapped[str] = mapped_column(String(255))
     source_format: Mapped[str] = mapped_column(String(8))  # dwg | dxf
     file_size: Mapped[int] = mapped_column(Integer)
@@ -25,6 +37,10 @@ class Plan(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     model: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     model_version: Mapped[int] = mapped_column(Integer, default=0)
+    # Descriptive JSON of every drawing entity + its classification (ARCHITECTURE.md module 1).
+    drawing: Mapped[dict | None] = mapped_column(JSONB, deferred=True)
+    # Render-ready Babylon.js scene spec generated from `model` (ARCHITECTURE.md module 2).
+    scene: Mapped[dict | None] = mapped_column(JSONB, deferred=True)
     parse_warnings: Mapped[list] = mapped_column(JSONB, default=list)
     parse_stats: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)

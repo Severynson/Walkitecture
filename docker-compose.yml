@@ -1,6 +1,6 @@
 # Walkitecture backend + PostgreSQL.
 #   docker compose up --build        -> API on http://localhost:8000 (docs at /docs)
-# Optional: put OPENAI_API_KEY=... in a top-level .env file (never commit it).
+# Optional: put JWT_SECRET=... and OPENAI_API_KEY=... in a top-level .env file (never commit it).
 services:
   db:
     image: postgres:17-alpine
@@ -28,6 +28,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-walkitecture}:${POSTGRES_PASSWORD:-walkitecture}@db:5432/${POSTGRES_DB:-walkitecture}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      # Set JWT_SECRET (e.g. `openssl rand -hex 32`) in a top-level .env; without it tokens reset on restart.
+      JWT_SECRET: ${JWT_SECRET:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}

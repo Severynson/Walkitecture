@@ -1,13 +1,9 @@
 """Natural-language edit interpretation."""
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.api.deps import CurrentUser, SessionDep, SettingsDep
 from app.api.errors import ApiError
-from app.config import Settings, get_settings
-from app.db import get_session
 from app.schemas.api import EditPreview, InterpretRequest, InterpretResponse
 from app.services import plan_store
 from app.services.edits import EditRejected, apply_edit
@@ -19,14 +15,16 @@ router = APIRouter(prefix="/api", tags=["interpret"])
 @router.post("/interpret-edit", response_model=InterpretResponse)
 async def interpret(
     body: InterpretRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
-    settings: Annotated[Settings, Depends(get_settings)],
+    session: SessionDep,
+    settings: SettingsDep,
+    user: CurrentUser,
 ) -> InterpretResponse:
     """Turn text + selected ID + model context into a typed edit command, validate it, and optionally apply it."""
     if body.apply and body.plan_id is None:
         raise ApiError(422, "missing_plan", "apply=true requires planId.")
+    owner_id = user.id  # read before the rollback below expires ORM objects
     if body.plan_id is not None:
-        plan = await plan_store.get_plan(session, body.plan_id)
+        plan = await plan_store.get_plan(session, body.plan_id, owner_id)
         building = plan_store.building_of(plan)
         await session.rollback()  # don't hold a transaction open during the LLM call
     elif body.model is not None:
@@ -55,6 +53,6 @@ async def interpret(
 
     if body.apply:
         response.applied = await plan_store.apply_and_record(
-            session, body.plan_id, result.command, base_version=body.base_version, source=result.source
+            session, body.plan_id, owner_id, result.command, base_version=body.base_version, source=result.source
         )
     return response

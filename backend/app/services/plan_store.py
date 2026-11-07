@@ -1,4 +1,8 @@
-"""Database operations on plans: loading, parsing, applying edits with history, and undo."""
+"""Database operations on plans: loading (owner-scoped), the upload pipeline, edits with history, undo.
+
+Upload pipeline (ARCHITECTURE.md): DWG -> DXF -> descriptive drawing JSON -> canonical building
+model (walls, openings, rooms, furniture) -> Babylon.js scene spec, all written to the database.
+"""
 
 import uuid
 
@@ -9,12 +13,18 @@ from sqlalchemy.orm import undefer
 from app.config import Settings
 from app.models import Plan, PlanEdit
 from app.schemas.api import EditResponse, PlanDetail, PlanSummary, SceneResponse
+from app.schemas.babylon import BabylonScene
 from app.schemas.building import Building
 from app.schemas.edits import EditCommand
 from app.schemas.parse import ParseOptions
+from app.services.babylon_scene import build_scene
+from app.services.drawing_reader import describe_drawing
 from app.services.dwg_convert import convert_dwg_to_dxf
 from app.services.dxf_parser import ParseError, ParseResult, parse_dxf
 from app.services.edits import EditResult, apply_edit
+from app.services.furniture_llm import classify_unknown_furniture
+from app.services.furniture_placement import place_furniture
+from app.services.layers import layer_patterns
 
 
 class PlanNotFound(Exception):
@@ -35,14 +45,24 @@ class NothingToUndo(Exception):
     pass
 
 
-async def get_plan(session: AsyncSession, plan_id: uuid.UUID, *, for_update: bool = False, files: bool = False) -> Plan:
-    stmt = select(Plan).where(Plan.id == plan_id)
+async def get_plan(
+    session: AsyncSession,
+    plan_id: uuid.UUID,
+    owner_id: uuid.UUID,
+    *,
+    for_update: bool = False,
+    files: bool = False,
+    drawing: bool = False,
+) -> Plan:
+    stmt = select(Plan).where(Plan.id == plan_id, Plan.owner_id == owner_id)
     if files:
         stmt = stmt.options(undefer(Plan.original_file), undefer(Plan.dxf_file))
+    if drawing:
+        stmt = stmt.options(undefer(Plan.drawing))
     if for_update:
         stmt = stmt.with_for_update()
     plan = (await session.execute(stmt)).scalar_one_or_none()
-    if plan is None:
+    if plan is None:  # other users' plans are indistinguishable from missing ones
         raise PlanNotFound(f"Plan {plan_id} not found.")
     return plan
 
@@ -55,6 +75,18 @@ def building_of(plan: Plan) -> Building:
 
 def dump_building(building: Building) -> dict:
     return building.model_dump(mode="json", by_alias=True)
+
+
+def dump_scene(scene: BabylonScene) -> dict:
+    return scene.model_dump(mode="json", by_alias=True)
+
+
+def _set_model(plan: Plan, building: Building) -> BabylonScene:
+    """Store a new model and its regenerated Babylon scene; returns the scene."""
+    scene = build_scene(building)
+    plan.model = dump_building(building)
+    plan.scene = dump_scene(scene)
+    return scene
 
 
 def to_summary(plan: Plan) -> PlanSummary:
@@ -79,11 +111,12 @@ def to_detail(plan: Plan) -> PlanDetail:
 
 
 def to_scene(plan: Plan) -> SceneResponse:
-    return SceneResponse(plan_id=plan.id, version=plan.model_version, model=building_of(plan))
+    building = building_of(plan)
+    return SceneResponse(plan_id=plan.id, version=plan.model_version, model=building, babylon=build_scene(building))
 
 
 async def parse_plan(session: AsyncSession, plan: Plan, options: ParseOptions, settings: Settings) -> ParseResult:
-    """(Re)parse the plan's DXF into a fresh model. Clears edit history (IDs may change).
+    """Run the full pipeline and store every stage. Clears edit history (IDs may change).
 
     `plan` must have been loaded with files=True and for_update=True.
     """
@@ -93,14 +126,16 @@ async def parse_plan(session: AsyncSession, plan: Plan, options: ParseOptions, s
     dxf = plan.dxf_file if plan.dxf_file is not None else plan.original_file
     try:
         result = parse_dxf(dxf, options, settings)
+        plan.drawing = describe_drawing(dxf, layer_patterns(settings, options))
     except ParseError as exc:
         plan.status, plan.error = "failed", str(exc)
         await session.commit()
         raise
     result.warnings[:0] = warnings
+    await _llm_furniture_fallback(result, settings)
 
     await session.execute(delete(PlanEdit).where(PlanEdit.plan_id == plan.id))
-    plan.model = dump_building(result.building)
+    _set_model(plan, result.building)
     plan.model_version += 1
     plan.status, plan.error = "parsed", None
     plan.parse_warnings = result.warnings
@@ -110,6 +145,28 @@ async def parse_plan(session: AsyncSession, plan: Plan, options: ParseOptions, s
     return result
 
 
+async def _llm_furniture_fallback(result: ParseResult, settings: Settings) -> None:
+    """Ask the LLM about furniture blocks the rules could not identify, then place them by rule."""
+    unresolved = result.unresolved_furniture
+    if not unresolved or not settings.openai_api_key:
+        return
+    categories = await classify_unknown_furniture(unresolved, result.building.rooms, settings)
+    identified = []
+    for index, category in categories.items():
+        if category != "none":
+            candidate = unresolved[index]
+            candidate.category, candidate.matched_by = category, "llm"
+            identified.append(candidate)
+    if not identified:
+        return
+    start = len(result.building.furniture) + 1
+    added = place_furniture(identified, result.building.walls, result.warnings, start_index=start)
+    result.building.furniture.extend(added)
+    result.stats["furnitureCount"] = len(result.building.furniture)
+    result.stats["llmFurniture"] = [f.source_block for f in added]
+    result.stats["unresolvedFurnitureBlocks"] = sorted({c.block for c in unresolved if c.matched_by != "llm"})
+
+
 def preview_edit(plan: Plan, command: EditCommand) -> EditResult:
     return apply_edit(building_of(plan), command)
 
@@ -117,24 +174,25 @@ def preview_edit(plan: Plan, command: EditCommand) -> EditResult:
 async def apply_and_record(
     session: AsyncSession,
     plan_id: uuid.UUID,
+    owner_id: uuid.UUID,
     command: EditCommand,
     *,
     base_version: int | None,
     source: str,
     dry_run: bool = False,
 ) -> EditResponse:
-    plan = await get_plan(session, plan_id, for_update=not dry_run)
+    plan = await get_plan(session, plan_id, owner_id, for_update=not dry_run)
     if base_version is not None and base_version != plan.model_version:
         raise VersionConflict(plan.model_version)
     result = preview_edit(plan, command)
     if dry_run:
         return EditResponse(
-            plan_id=plan.id, applied=False, version=plan.model_version,
-            affected_ids=result.affected_ids, summary=result.summary, model=result.building,
+            plan_id=plan.id, applied=False, version=plan.model_version, affected_ids=result.affected_ids,
+            summary=result.summary, model=result.building, babylon=build_scene(result.building),
         )  # fmt: skip
 
     previous = plan.model
-    plan.model = dump_building(result.building)
+    scene = _set_model(plan, result.building)
     plan.model_version += 1
     session.add(
         PlanEdit(
@@ -150,19 +208,19 @@ async def apply_and_record(
     version = plan.model_version
     await session.commit()
     return EditResponse(
-        plan_id=plan_id, applied=True, version=version,
-        affected_ids=result.affected_ids, summary=result.summary, model=result.building,
+        plan_id=plan_id, applied=True, version=version, affected_ids=result.affected_ids,
+        summary=result.summary, model=result.building, babylon=scene,
     )  # fmt: skip
 
 
 async def replace_scene(
-    session: AsyncSession, plan_id: uuid.UUID, building: Building, base_version: int | None
+    session: AsyncSession, plan_id: uuid.UUID, owner_id: uuid.UUID, building: Building, base_version: int | None
 ) -> Plan:
-    plan = await get_plan(session, plan_id, for_update=True)
+    plan = await get_plan(session, plan_id, owner_id, for_update=True)
     if base_version is not None and base_version != plan.model_version:
         raise VersionConflict(plan.model_version)
     previous = plan.model
-    plan.model = dump_building(building)
+    _set_model(plan, building)
     plan.model_version += 1
     plan.status, plan.error = "parsed", None
     if previous is not None:
@@ -182,8 +240,8 @@ async def replace_scene(
     return plan
 
 
-async def undo_last(session: AsyncSession, plan_id: uuid.UUID) -> EditResponse:
-    plan = await get_plan(session, plan_id, for_update=True)
+async def undo_last(session: AsyncSession, plan_id: uuid.UUID, owner_id: uuid.UUID) -> EditResponse:
+    plan = await get_plan(session, plan_id, owner_id, for_update=True)
     stmt = (
         select(PlanEdit)
         .where(PlanEdit.plan_id == plan.id)
@@ -195,7 +253,7 @@ async def undo_last(session: AsyncSession, plan_id: uuid.UUID) -> EditResponse:
     if last is None:
         raise NothingToUndo("There is nothing to undo.")
     restored = Building.model_validate(last.previous_model)
-    plan.model = last.previous_model
+    scene = _set_model(plan, restored)
     plan.model_version += 1  # versions only move forward, so stale clients still get a 409
     version = plan.model_version
     summary = f"Undid: {last.summary}"
@@ -203,12 +261,12 @@ async def undo_last(session: AsyncSession, plan_id: uuid.UUID) -> EditResponse:
     await session.delete(last)
     await session.commit()
     return EditResponse(
-        plan_id=plan_id, applied=True, version=version,
-        affected_ids=affected, summary=summary, model=restored,
+        plan_id=plan_id, applied=True, version=version, affected_ids=affected,
+        summary=summary, model=restored, babylon=scene,
     )  # fmt: skip
 
 
-async def list_edits(session: AsyncSession, plan_id: uuid.UUID) -> list[PlanEdit]:
-    await get_plan(session, plan_id)
+async def list_edits(session: AsyncSession, plan_id: uuid.UUID, owner_id: uuid.UUID) -> list[PlanEdit]:
+    await get_plan(session, plan_id, owner_id)
     stmt = select(PlanEdit).where(PlanEdit.plan_id == plan_id).order_by(PlanEdit.id)
     return list((await session.execute(stmt)).scalars())
