@@ -211,25 +211,22 @@ def _furniture_spec(item: FurnitureItem) -> FurnitureSpec | None:
 # --- Camera -----------------------------------------------------------------------------
 
 
-def _polygon_area(polygon: list[Point2] | None) -> float:
-    if not polygon or len(polygon) < 3:
-        return 0.0
-    pts = list(polygon)
-    return abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1], strict=True))) / 2
+MIN_SPAWN_CLEARANCE = 0.5  # m between the walker and the nearest wall or furniture
+
+
+def _clearance(point: Point2, building: Building) -> float:
+    """Free distance around a point: nearest wall face or furniture footprint (approximated by its circumradius)."""
+    walls = (point_segment_distance(point, w.start, w.end) - w.thickness / 2 for w in building.walls)
+    furniture = (math.dist(point, f.position) - math.hypot(f.width, f.depth) / 2 for f in building.furniture)
+    return min([*walls, *furniture], default=9.0)
 
 
 def _camera(building: Building, fallback: Point2) -> CameraSpec:
-    """Spawn at the label of the largest room that is clear of walls (so the walkthrough starts in an
-    open space, not a corridor), else the plan center. Rooms without an outline come last."""
-    rooms = sorted((r for r in building.rooms if r.label_position), key=lambda r: -_polygon_area(r.polygon))
-    candidates = [r.label_position for r in rooms] + [fallback]
-    spot = candidates[-1]
-    for point in candidates:
-        clearance = min(
-            (point_segment_distance(point, w.start, w.end) - w.thickness / 2 for w in building.walls), default=9.0
-        )
-        if clearance >= 0.5:
-            spot = point
-            break
-    x, z = spot
+    """Spawn at the room label with the most open space around it (the main room, not a corridor or a
+    store), else the plan center. Real drawings rarely have room outlines, so clearance is the measure."""
+    candidates = [r.label_position for r in building.rooms if r.label_position]
+    scored = [
+        (clearance, point) for point in candidates if (clearance := _clearance(point, building)) >= MIN_SPAWN_CLEARANCE
+    ]
+    x, z = max(scored)[1] if scored else fallback
     return CameraSpec(position=_v(x, EYE_HEIGHT, z), target=_v(x, EYE_HEIGHT, z + 1.0), eye_height=EYE_HEIGHT)

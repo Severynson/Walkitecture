@@ -85,7 +85,7 @@ def test_camera_spawns_inside_a_room_at_eye_height(demo_building):
     assert 0 < camera.position[0] < 10 and 0 < camera.position[2] < 8
 
 
-def test_camera_spawns_in_the_largest_room():
+def test_camera_spawns_in_the_most_open_room():
     from app.schemas.building import Room
 
     walls = [
