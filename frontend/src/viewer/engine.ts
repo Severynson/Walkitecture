@@ -22,7 +22,8 @@ import { Registry } from "./registry";
 import type { BabylonSceneSpec, MeshMeta } from "./types";
 
 const GRAVITY = -9.81 / 60; // per frame at 60 fps
-const SPAWN_RAYS = 16;
+const SPAWN_RAYS = 72; // every 5°
+const SPAWN_FOV = (80 * Math.PI) / 180;
 const MAX_SIGHTLINE = 100; // m
 const SELECTION_COLOR = Color3.FromHexString("#ff9f1c");
 /** Pick targets that are "the building" rather than an editable object. */
@@ -197,23 +198,30 @@ export class Viewer {
     return mode;
   }
 
-  /** Turns the walker toward the longest clear sightline, so you don't spawn staring at a wall. */
+  /**
+   * Turns the walker toward the longest sightline that stays inside the building, so you don't spawn
+   * staring at a wall — or out of an open front door at the sky (rays that hit nothing don't count).
+   */
   private faceOpenSpace(): void {
     const origin = this.cameras.walker.position.clone();
     const solid = (mesh: AbstractMesh) => mesh.checkCollisions && mesh.isEnabled();
-    let bestYaw = this.cameras.walker.rotation.y;
-    let bestDistance = -1;
-    for (let i = 0; i < SPAWN_RAYS; i++) {
+    // Sightline length in every direction (0 when the ray leaves the building).
+    const distances = Array.from({ length: SPAWN_RAYS }, (_, i) => {
       const yaw = (i / SPAWN_RAYS) * Math.PI * 2;
-      const ray = new Ray(origin, new Vector3(Math.sin(yaw), 0, Math.cos(yaw)), MAX_SIGHTLINE);
-      const hit = this.scene.pickWithRay(ray, solid);
-      const distance = hit?.hit ? hit.distance : MAX_SIGHTLINE;
-      if (distance > bestDistance + 1e-3) {
-        bestDistance = distance;
-        bestYaw = yaw;
-      }
+      const hit = this.scene.pickWithRay(new Ray(origin, new Vector3(Math.sin(yaw), 0, Math.cos(yaw)), MAX_SIGHTLINE), solid);
+      return hit?.hit ? hit.distance : 0;
+    });
+    // Score each heading by the mean sightline across the field of view, so the view runs along the
+    // room (not into its farthest corner, which is the longest single ray in a rectangular room).
+    const half = Math.round((SPAWN_FOV / 2 / (Math.PI * 2)) * SPAWN_RAYS);
+    let best = { score: -1, yaw: this.cameras.walker.rotation.y };
+    for (let i = 0; i < SPAWN_RAYS; i++) {
+      let sum = 0;
+      for (let k = -half; k <= half; k++) sum += distances[(i + k + SPAWN_RAYS) % SPAWN_RAYS];
+      const score = sum / (2 * half + 1);
+      if (score > best.score + 1e-3) best = { score, yaw: (i / SPAWN_RAYS) * Math.PI * 2 };
     }
-    this.cameras.walker.rotation.set(0, bestYaw, 0);
+    this.cameras.walker.rotation.set(0, best.yaw, 0);
   }
 
   /** The ceiling hides the plan from above, so it is only shown in first person. */
