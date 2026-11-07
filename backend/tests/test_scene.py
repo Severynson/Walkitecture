@@ -83,3 +83,21 @@ def test_camera_spawns_inside_a_room_at_eye_height(demo_building):
     camera = build_scene(demo_building).camera
     assert camera.position[1] == camera.eye_height == 1.6
     assert 0 < camera.position[0] < 10 and 0 < camera.position[2] < 8
+
+
+def test_camera_spawns_in_the_largest_room():
+    from app.schemas.building import Room
+
+    walls = [
+        Wall(id="w1", start=(0, 0), end=(12, 0), thickness=0.15, height=3),
+        Wall(id="w2", start=(12, 0), end=(12, 8), thickness=0.15, height=3),
+        Wall(id="w3", start=(12, 8), end=(0, 8), thickness=0.15, height=3),
+        Wall(id="w4", start=(0, 8), end=(0, 0), thickness=0.15, height=3),
+        Wall(id="w5", start=(2, 0), end=(2, 8), thickness=0.15, height=3),
+    ]
+    rooms = [
+        Room(id="hall", name="Hall", polygon=[(0, 0), (2, 0), (2, 8), (0, 8)], label_position=(1, 4)),
+        Room(id="office", name="Office", polygon=[(2, 0), (12, 0), (12, 8), (2, 8)], label_position=(7, 4)),
+    ]
+    camera = build_scene(Building(ceiling_height=3, walls=walls, rooms=rooms)).camera
+    assert (camera.position[0], camera.position[2]) == (7, 4)

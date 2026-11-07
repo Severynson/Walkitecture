@@ -2,7 +2,7 @@
 //
 //   npm run e2e -- <baseUrl> [dwgFile]           e.g. npm run e2e -- http://localhost:5173 ../examples/call-center-offices.dwg
 //
-// Env: CHROME_PATH (default: macOS Google Chrome), E2E_SHOTS=<dir> to save screenshots,
+// Env: CHROME_PATH (default: macOS Google Chrome), CHROME_ARGS (one extra flag), E2E_SHOTS=<dir> to save screenshots,
 //      E2E_USER / E2E_PASSWORD to log in instead of registering a throwaway e2e_* account.
 import puppeteer from "puppeteer-core";
 
@@ -20,7 +20,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: true,
-  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--window-size=1400,900"],
+  args: [
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--window-size=1400,900",
+    // e.g. CHROME_ARGS='--host-resolver-rules=MAP example.com 1.2.3.4' while DNS propagates
+    ...(process.env.CHROME_ARGS ? [process.env.CHROME_ARGS] : []),
+  ],
   defaultViewport: { width: 1400, height: 900 },
 });
 const page = await browser.newPage();

@@ -211,9 +211,18 @@ def _furniture_spec(item: FurnitureItem) -> FurnitureSpec | None:
 # --- Camera -----------------------------------------------------------------------------
 
 
+def _polygon_area(polygon: list[Point2] | None) -> float:
+    if not polygon or len(polygon) < 3:
+        return 0.0
+    pts = list(polygon)
+    return abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1], strict=True))) / 2
+
+
 def _camera(building: Building, fallback: Point2) -> CameraSpec:
-    """Spawn at the first labelled room position that is clear of walls, else the plan center."""
-    candidates = [r.label_position for r in building.rooms if r.label_position] + [fallback]
+    """Spawn at the label of the largest room that is clear of walls (so the walkthrough starts in an
+    open space, not a corridor), else the plan center. Rooms without an outline come last."""
+    rooms = sorted((r for r in building.rooms if r.label_position), key=lambda r: -_polygon_area(r.polygon))
+    candidates = [r.label_position for r in rooms] + [fallback]
     spot = candidates[-1]
     for point in candidates:
         clearance = min(
