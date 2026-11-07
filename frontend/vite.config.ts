@@ -7,6 +7,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Fixtures are imported from ../contracts (see src/viewer/fixtures.ts).
+    fs: { allow: [".."] },
     proxy: {
       "/api": { target: process.env.VITE_API_TARGET ?? "http://localhost:8000", changeOrigin: true },
     },

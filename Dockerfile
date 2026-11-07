@@ -19,6 +19,8 @@ WORKDIR /web
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
+# The viewer bundles the scene fixtures from ../contracts (src/viewer/fixtures.ts).
+COPY contracts/ /contracts/
 RUN npm run build
 
 # ---- Stage 3: runtime --------------------------------------------------------------------------
