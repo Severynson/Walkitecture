@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     cors_origins: CsvList = ["http://localhost:5173", "http://localhost:3000"]
     max_upload_mb: int = 25
     log_level: str = "INFO"
+    # Built frontend (Vite dist/) to serve at "/"; set in the Docker image. Unset -> "/" redirects to /docs.
+    static_dir: str | None = None
 
     # --- Auth (JWT) ---------------------------------------------------------------------
     jwt_secret: str | None = None  # unset -> random per process (tokens die on restart)

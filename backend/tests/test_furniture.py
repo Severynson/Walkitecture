@@ -9,10 +9,10 @@ from app.services.furniture_catalog import CATALOG, category_for, category_from_
 from app.services.furniture_placement import FurnitureCandidate, place_furniture
 from app.services.glb_bounds import glb_bounds
 
-FURNITURE_DIR = Path(__file__).resolve().parents[2] / "frontend" / "furniture"
+FURNITURE_DIR = Path(__file__).resolve().parents[2] / "frontend" / "public" / "furniture"
 
 
-@pytest.mark.skipif(not FURNITURE_DIR.is_dir(), reason="frontend/furniture not present")
+@pytest.mark.skipif(not FURNITURE_DIR.is_dir(), reason="frontend/public/furniture not present")
 def test_catalog_matches_the_glb_library():
     files = {p.name for p in FURNITURE_DIR.glob("*.glb")}
     assert {m.file for m in CATALOG} == files

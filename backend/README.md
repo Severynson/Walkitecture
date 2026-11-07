@@ -132,7 +132,7 @@ Babylon world space, meters, **y up; plan x → x, plan y → z**. Heights follo
 | Doors | Open from 0 to **7 ft**; a `header` box (same thickness) from 7 ft to the wall top |
 | Windows | Open from **2.5 ft to 6.5 ft**; a `sill` box below, a `header` above, and a thin `glass` pane |
 | Floor / ceiling | `floor` and `ceiling` slabs over the plan bounds |
-| Furniture | GLB placements from `frontend/furniture` |
+| Furniture | GLB placements from `frontend/public/furniture` (served at `/furniture/`) |
 
 ```js
 for (const m of scene.meshes) {

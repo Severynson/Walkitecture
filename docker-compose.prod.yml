@@ -1,0 +1,33 @@
+# Production override for the VPS (Traefik already running on the external network).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Required in the top-level .env: APP_DOMAIN, POSTGRES_PASSWORD, JWT_SECRET (`openssl rand -hex 32`).
+# Seeding is off unless SEED_USERNAME and SEED_PASSWORD are both set there (never the dev defaults).
+services:
+  db:
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+  backend:
+    ports: !reset []
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-walkitecture}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-walkitecture}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGINS: ""  # same origin: the SPA is served by the backend
+      SEED_USERNAME: ${SEED_USERNAME:-}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+    networks: [default, traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-web}
+      - traefik.http.routers.walkitecture.rule=Host(`${APP_DOMAIN:?APP_DOMAIN is required}`)
+      - traefik.http.routers.walkitecture.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.walkitecture.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.services.walkitecture.loadbalancer.server.port=8000
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-web}

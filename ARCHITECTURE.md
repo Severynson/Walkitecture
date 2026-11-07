@@ -1,8 +1,8 @@
 # Walkitecture — Architecture
 
 > **Status (2026-11-07):** the backend pipeline, accounts, and editing are implemented (PR #2, see
-> [`backend/README.md`](backend/README.md)). The frontend, single-image deployment behind Traefik, and the remaining
-> LLM steps are not built yet. Items marked **PLANNED** below are still to do. The phased, parallel build order lives
+> [`backend/README.md`](backend/README.md)). The single-image deployment behind Traefik is live at https://walkitecture.severyn.xyz with a placeholder
+> frontend; the real frontend and the remaining LLM steps are not built yet. Items marked **PLANNED** below are still to do. The phased, parallel build order lives
 > in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## 1. Goals and non-goals
@@ -26,7 +26,7 @@ uploads. (DXF uploads work too, but DWG is the product's input format.)
 | D5 | Units & heights | **Meters.** All walls 10 ft = **3.048 m**; doors 0 → 7 ft (**2.134 m**); windows 2.5 → 6.5 ft (**0.762 → 1.981 m**) | Existing schema is metric; the UI can display feet | Storing feet |
 | D6 | Furniture placement | **Rule-based:** match block → GLB by name (then footprint), size it from the drawing, align it to the INSERT's own axes, and turn its **back to the wall it stands against**; free-standing items face away from the nearest wall; **chairs near a table/desk face it**. LLM only names unknown blocks | DWG blocks have no shared "front" convention, so the wall rule is more reliable than trusting block rotation alone; rotation still gives the axes | Trusting the INSERT rotation as the facing; LLM placing furniture |
 | D7 | Auth | **Username + password** (argon2id), **JWT bearer** tokens (HS256, 7 days, `JWT_SECRET`), `plans.owner_id` FK; every plan route scoped to the caller | Simple for a SPA; implemented | Session cookies (needs CSRF) |
-| D8 | Hosting | **One app container** (FastAPI serves `/api/*` *and* the built SPA) + one PostgreSQL container, behind the VPS's existing **Traefik** on a subdomain. **PLANNED** | Same origin ⇒ no CORS, one image, one Traefik router | Separate frontend container (Nginx/Vite) |
+| D8 | Hosting | **One app container** (FastAPI serves `/api/*` *and* the built SPA) + one PostgreSQL container, behind the VPS's existing **Traefik** on `walkitecture.severyn.xyz` | Same origin ⇒ no CORS, one image, one Traefik router | Separate frontend container (Nginx/Vite) |
 | D9 | LLM provider | **OpenAI** (`OPENAI_MODEL`, default `gpt-5-mini`), structured outputs, rule-based fallback when no key | Implemented in `interpreter.py` and `furniture_llm.py` | Switching providers mid-hackathon |
 | D10 | Where edits execute | **Server-authoritative.** Frontend sends an allowlisted edit command; backend validates, applies, stores an undo snapshot, and returns `{model, babylon, affectedIds, version}` | One validation path for sliders, chat, and LLM review; persistent undo | Client-side edits |
 
@@ -200,10 +200,10 @@ reasoning**: it loads the spec, builds meshes, and handles input.
 ```
 frontend/
   vite.config.ts            dev proxy: /api → http://localhost:8000
-  public/furniture/         the 10 GLBs (moved from frontend/furniture/) → served at /furniture/*.glb
+  public/furniture/         the 10 GLBs → served at /furniture/*.glb
   src/
     api/client.ts           fetch wrapper: JWT header, JSON, ApiError mapping, 401 → logout
-    api/types.ts            generated from the backend's OpenAPI schema (openapi-typescript)
+    api/types.ts            generated from contracts/openapi.json (`npm run gen:types`)
     auth/                   AuthContext (token in localStorage), LoginPage, RegisterPage
     plans/                  PlanListPage, UploadDialog (.dwg), status + parse warnings
     viewer/
@@ -236,7 +236,7 @@ Rules:
 
 ```
 backend/app/
-  main.py                 app factory, CORS, routers; PLANNED: serve STATIC_DIR + index.html fallback
+  main.py, spa.py         app factory, CORS, routers; serve the built SPA from STATIC_DIR
   config.py               settings: DB, JWT, seed, LibreDWG, OpenAI, layer patterns, height defaults
   db.py, models.py        async engine; users, plans, plan_edits
   api/
@@ -352,52 +352,39 @@ Migrations (Alembic, run on container start): `0001_initial`, `0002_users_drawin
 `0002_users_drawing_scene`; if two PRs add one in parallel, the second adds an `alembic merge heads` revision.
 `plan_edits.source` values: `api | ui | openai | rules`, plus `review` once §4.3 exists.
 
-## 9. Deployment — **PLANNED** (today: `backend/Dockerfile` + `docker-compose.yml` for local dev)
+## 9. Deployment
+
+Live at **https://walkitecture.severyn.xyz** (VPS stack in `/opt/stacks/walkitecture`, Traefik network `web`).
 
 ### 9.1 Image
 
-One root `Dockerfile` (replaces `backend/Dockerfile`; compose build context becomes the repo root):
+One root `Dockerfile` (compose build context = repo root):
 
-1. `libredwg` stage — builds `dwg2dxf` (existing).
-2. `frontend` stage — `node:22-alpine`, `npm ci && npm run build` → `/web/dist`.
+1. `libredwg` stage — builds `dwg2dxf`.
+2. `frontend` stage — `node:22-alpine`, `npm ci && npm run build` → `/web/dist` (includes `public/furniture/*.glb`).
 3. `runtime` stage — Python 3.12 + uv + LibreDWG + `backend/` + `COPY --from=frontend /web/dist /app/static`.
 
-FastAPI serves `/api/*`, `/docs`, and, when `STATIC_DIR` exists, the SPA: static files from `/app/static` and
-`index.html` for any other non-`/api` GET (client-side routing; `/` no longer redirects to `/docs`). Runs as
-non-root user `app`; startup = migrate → seed (if enabled) → uvicorn.
+With `STATIC_DIR` set (the image sets `/app/static`), `app/spa.py` serves real files from it (hashed `/assets/*`
+cached as immutable) and `index.html` for any other non-API GET (client-side routing). Unknown `/api/*` paths keep
+the JSON 404. Without `STATIC_DIR` (local `uvicorn`), `/` redirects to `/docs`. Runs as non-root user `app`;
+startup = migrate → seed (if enabled) → uvicorn with `--proxy-headers --forwarded-allow-ips '*'`.
 
 ### 9.2 Compose
 
-- `docker-compose.yml` — local dev (exists): `db` on `localhost:5433`, `backend` on `:8000`, `/examples` mounted for
-  the seed. The frontend runs on the host with `npm run dev` (Vite, hot reload, proxies `/api`).
-- `docker-compose.prod.yml` — VPS override: no published ports, seed off, joins the external Traefik network:
+- `docker-compose.yml` — local dev: `db` on `localhost:5433`, `backend` on `:8000`, `/examples` mounted for the seed
+  (dev seed defaults `demo` / `walkitecture-demo`). Frontend dev runs on the host: `cd frontend && npm run dev`
+  (Vite, hot reload, proxies `/api` to `:8000`).
+- `docker-compose.prod.yml` — VPS override: no published ports, `POSTGRES_PASSWORD` / `JWT_SECRET` / `APP_DOMAIN`
+  required (compose fails fast without them), seeding **off unless `SEED_USERNAME` and `SEED_PASSWORD` are set in
+  `.env`**, backend joins the external Traefik network (`TRAEFIK_NETWORK`, default `web`) with router labels for
+  `Host(${APP_DOMAIN})`, entrypoint `websecure`, certresolver `letsencrypt`.
 
-```yaml
-services:
-  backend:
-    ports: !reset []
-    environment:
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      SEED_USERNAME: ""
-      CORS_ORIGINS: ""
-    networks: [default, traefik]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
-      - traefik.http.routers.walkitecture.rule=Host(`${APP_DOMAIN:?APP_DOMAIN is required}`)
-      - traefik.http.routers.walkitecture.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.walkitecture.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.services.walkitecture.loadbalancer.server.port=8000
-  db:
-    ports: !reset []
-networks:
-  traefik:
-    external: true
-    name: ${TRAEFIK_NETWORK:-traefik}
+Deploy / update on the VPS:
+
+```bash
+cd /opt/stacks/walkitecture && git pull --ff-only
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
-
-Deploy: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` (Compose ≥ 2.24 for `!reset`).
-Uvicorn needs `--forwarded-allow-ips='*'` next to the existing `--proxy-headers` (only Traefik can reach it).
 
 ### 9.3 Environment variables
 
@@ -409,7 +396,7 @@ Uvicorn needs `--forwarded-allow-ips='*'` next to the existing `--proxy-headers`
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | backend | optional; rules-only without a key |
 | `MAX_UPLOAD_MB` | backend | default 25 |
 | `*_LAYERS` | backend | layer-name globs (see `backend/.env.example`) |
-| `APP_DOMAIN`, `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | prod compose | match the VPS's Traefik setup |
+| `APP_DOMAIN`, `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | prod compose | `walkitecture.severyn.xyz`, `web`, `websecure`, `letsencrypt` on our VPS |
 
 ## 10. Security notes
 
@@ -437,8 +424,8 @@ Uvicorn needs `--forwarded-allow-ips='*'` next to the existing `--proxy-headers`
 
 - **Backend (exists):** parser, edits, interpreter, furniture, scene, auth, seed, and API tests (`uv run pytest`).
   API tests need the compose database; the `/examples` end-to-end tests need `dwg2dxf` and run inside the image.
-- **Contract (PLANNED):** fixtures in `contracts/fixtures/` (scene responses exported from the seeded plans) validate
-  against the backend schemas in pytest and against the generated TS types in the frontend type-check.
+- **Contract:** `tests/test_contracts.py` fails when `contracts/openapi.json` is stale and validates every
+  `contracts/fixtures/*.scene.json` against `SceneResponse`; the frontend type-checks against the generated types.
 - **Frontend (PLANNED):** unit tests for spec loading and `applyUpdate`; manual walkthrough checklist per milestone.
 - **End-to-end smoke (manual, per milestone):** register → login → upload `examples/call-center-offices.dwg` → walk →
   widen a window → undo.

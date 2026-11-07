@@ -180,10 +180,11 @@ The LLM never executes JavaScript, mutates meshes, or rewrites the whole scene.
 
 ## Running locally
 
-The frontend is not scaffolded yet (Phase 1, track B/E); the backend runs today.
+Live deployment: **https://walkitecture.severyn.xyz** (API docs at `/docs`). The frontend is a placeholder until
+Phase 1 (tracks B/E) lands.
 
 ```bash
-docker compose up --build          # API + Postgres: http://localhost:8000/docs
+docker compose up --build          # app + Postgres: http://localhost:8000 (login demo / walkitecture-demo)
 cd frontend && npm install && npm run dev   # SPA with hot reload: http://localhost:5173 (proxies /api)
 ```
 

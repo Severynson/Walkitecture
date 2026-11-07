@@ -58,7 +58,7 @@ class FurnitureItem(CamelModel):
 
     id: str
     category: str = Field(description="bed, chair, sofa, desk, table, closet, toilet")
-    model: str = Field(description="GLB file name in frontend/furniture")
+    model: str = Field(description="GLB file name in frontend/public/furniture")
     source_block: str | None = Field(default=None, description="DWG block (INSERT) this came from")
     matched_by: Literal["block_name", "layer", "size", "llm", "manual"] = "block_name"
     position: Point2 = Field(description="Footprint center in plan coordinates (m)")

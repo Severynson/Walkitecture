@@ -1,4 +1,4 @@
-"""The GLB furniture library in frontend/furniture and the rules for matching drawing blocks to it.
+"""The GLB furniture library in frontend/public/furniture (served at /furniture/) and the rules for matching drawing blocks to it.
 
 `native_size` / `native_center` were measured from each GLB (glTF axes: x = width, y = up, z = depth),
 because the models are authored at inconsistent scales; the scene spec therefore always carries

@@ -1,0 +1,3066 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Walkitecture API",
+    "description": "Floor-plan ingestion (DWG/DXF), canonical building model, validated edits, and natural-language edit interpretation.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Register",
+        "operationId": "register_api_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Token",
+        "description": "OAuth2 password flow (form-encoded); used by the Swagger UI 'Authorize' button.",
+        "operationId": "token_api_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_token_api_auth_token_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/plans": {
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Upload Plan",
+        "description": "Upload a DWG/DXF. By default this runs the whole pipeline: DWG -> DXF -> descriptive drawing JSON ->\nbuilding model -> Babylon.js scene, all stored for this plan. Parse failures are recorded on the plan.",
+        "operationId": "upload_plan_api_plans_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Run the full pipeline immediately (default).",
+              "default": true,
+              "title": "Parse"
+            },
+            "description": "Run the full pipeline immediately (default)."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_plan_api_plans_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "List Plans",
+        "operationId": "list_plans_api_plans_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanSummary"
+                  },
+                  "title": "Response List Plans Api Plans Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/demo": {
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Create Demo Plan",
+        "description": "Create and parse the built-in two-bedroom sample plan (a known-good DXF).",
+        "operationId": "create_demo_plan_api_plans_demo_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/plans/{plan_id}": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Get Plan",
+        "operationId": "get_plan_api_plans__plan_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Delete Plan",
+        "operationId": "delete_plan_api_plans__plan_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/parse": {
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Parse Plan",
+        "description": "(Re)run the pipeline with custom options (units, wall style, layer names...). Clears edit history.",
+        "operationId": "parse_plan_api_plans__plan_id__parse_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ParseOptions"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Options"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/drawing": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Get Drawing",
+        "description": "Descriptive JSON of the drawing: every entity's geometry and classification, layers, and blocks.",
+        "operationId": "get_drawing_api_plans__plan_id__drawing_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "entities",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include the per-entity list (can be large).",
+              "default": true,
+              "title": "Entities"
+            },
+            "description": "Include the per-entity list (can be large)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Drawing Api Plans  Plan Id  Drawing Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/scene": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Get Scene",
+        "description": "The canonical building JSON plus the Babylon.js scene generated from it.",
+        "operationId": "get_scene_api_plans__plan_id__scene_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Replace Scene",
+        "description": "Replace the building model with a hand-authored one (fully validated). Undoable.",
+        "operationId": "replace_scene_api_plans__plan_id__scene_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceSceneRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/file": {
+      "get": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Download File",
+        "description": "Download the uploaded file, or the DXF that a DWG was converted to.",
+        "operationId": "download_file_api_plans__plan_id__file_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "original",
+                "dxf"
+              ],
+              "type": "string",
+              "description": "'dxf' returns the converted DXF.",
+              "default": "original",
+              "title": "Kind"
+            },
+            "description": "'dxf' returns the converted DXF."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/edits": {
+      "post": {
+        "tags": [
+          "edits"
+        ],
+        "summary": "Apply Edit",
+        "description": "Apply one allowlisted edit. Returns the new model, its Babylon scene, and the IDs to rebuild.",
+        "operationId": "apply_edit_api_plans__plan_id__edits_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Validate and preview without saving.",
+              "default": false,
+              "title": "Dryrun"
+            },
+            "description": "Validate and preview without saving."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "edits"
+        ],
+        "summary": "Edit History",
+        "operationId": "edit_history_api_plans__plan_id__edits_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EditHistoryItem"
+                  },
+                  "title": "Response Edit History Api Plans  Plan Id  Edits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/undo": {
+      "post": {
+        "tags": [
+          "edits"
+        ],
+        "summary": "Undo",
+        "description": "Revert the most recent edit.",
+        "operationId": "undo_api_plans__plan_id__undo_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interpret-edit": {
+      "post": {
+        "tags": [
+          "interpret"
+        ],
+        "summary": "Interpret",
+        "description": "Turn text + selected ID + model context into a typed edit command, validate it, and optionally apply it.",
+        "operationId": "interpret_api_interpret_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BabylonScene": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "units": {
+            "type": "string",
+            "const": "meters",
+            "title": "Units",
+            "default": "meters"
+          },
+          "coordinateSystem": {
+            "type": "string",
+            "title": "Coordinatesystem",
+            "default": "Babylon world space, y up; plan x -> x, plan y -> z"
+          },
+          "wallHeight": {
+            "type": "number",
+            "title": "Wallheight"
+          },
+          "bounds": {
+            "$ref": "#/components/schemas/Bounds"
+          },
+          "meshes": {
+            "items": {
+              "$ref": "#/components/schemas/BoxMesh"
+            },
+            "type": "array",
+            "title": "Meshes"
+          },
+          "openings": {
+            "items": {
+              "$ref": "#/components/schemas/OpeningSpec"
+            },
+            "type": "array",
+            "title": "Openings"
+          },
+          "furniture": {
+            "items": {
+              "$ref": "#/components/schemas/FurnitureSpec"
+            },
+            "type": "array",
+            "title": "Furniture"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomLabel"
+            },
+            "type": "array",
+            "title": "Rooms"
+          },
+          "camera": {
+            "$ref": "#/components/schemas/CameraSpec"
+          },
+          "materials": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MaterialSpec"
+            },
+            "type": "object",
+            "title": "Materials"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallHeight",
+          "bounds",
+          "meshes",
+          "openings",
+          "furniture",
+          "rooms",
+          "camera",
+          "materials"
+        ],
+        "title": "BabylonScene"
+      },
+      "Body_token_api_auth_token_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_token_api_auth_token_post"
+      },
+      "Body_upload_plan_api_plans_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "A .dwg or .dxf floor plan."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_plan_api_plans_post"
+      },
+      "Bounds": {
+        "properties": {
+          "min": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Min"
+          },
+          "max": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "min",
+          "max"
+        ],
+        "title": "Bounds"
+      },
+      "BoxMesh": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "wall",
+              "header",
+              "sill",
+              "glass",
+              "floor",
+              "ceiling"
+            ],
+            "title": "Kind"
+          },
+          "wallId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallid"
+          },
+          "openingId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openingid"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position",
+            "description": "Box center"
+          },
+          "size": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Size",
+            "description": "[width (local x, along the wall), height, depth (local z, wall thickness)]"
+          },
+          "rotationY": {
+            "type": "number",
+            "title": "Rotationy",
+            "description": "Radians; aligns local +x with the wall direction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "position",
+          "size",
+          "rotationY"
+        ],
+        "title": "BoxMesh"
+      },
+      "Building": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "units": {
+            "type": "string",
+            "const": "meters",
+            "title": "Units",
+            "default": "meters"
+          },
+          "ceilingHeight": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Ceilingheight"
+          },
+          "walls": {
+            "items": {
+              "$ref": "#/components/schemas/Wall"
+            },
+            "type": "array",
+            "title": "Walls"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "type": "array",
+            "title": "Rooms"
+          },
+          "furniture": {
+            "items": {
+              "$ref": "#/components/schemas/FurnitureItem"
+            },
+            "type": "array",
+            "title": "Furniture"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ceilingHeight"
+        ],
+        "title": "Building"
+      },
+      "CameraSpec": {
+        "properties": {
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position",
+            "description": "First-person spawn point at eye height"
+          },
+          "target": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Target"
+          },
+          "eyeHeight": {
+            "type": "number",
+            "title": "Eyeheight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "target",
+          "eyeHeight"
+        ],
+        "title": "CameraSpec"
+      },
+      "CeilingParams": {
+        "properties": {
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "description": "New ceiling height in meters."
+          }
+        },
+        "type": "object",
+        "required": [
+          "height"
+        ],
+        "title": "CeilingParams"
+      },
+      "Credentials": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "pattern": "^[A-Za-z0-9_.@-]+$",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Credentials"
+      },
+      "EditHistoryItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "command": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Command"
+          },
+          "affectedIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affectedids"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "command",
+          "affectedIds",
+          "summary",
+          "source",
+          "createdAt"
+        ],
+        "title": "EditHistoryItem"
+      },
+      "EditPreview": {
+        "properties": {
+          "affectedIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affectedids"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "affectedIds",
+          "summary"
+        ],
+        "title": "EditPreview"
+      },
+      "EditRequest": {
+        "properties": {
+          "command": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ResizeSelectedWindow"
+              },
+              {
+                "$ref": "#/components/schemas/ResizeWindows"
+              },
+              {
+                "$ref": "#/components/schemas/SetCeilingHeight"
+              },
+              {
+                "$ref": "#/components/schemas/MoveSelectedWall"
+              }
+            ],
+            "title": "Command",
+            "discriminator": {
+              "propertyName": "operation",
+              "mapping": {
+                "move_selected_wall": "#/components/schemas/MoveSelectedWall",
+                "resize_selected_window": "#/components/schemas/ResizeSelectedWindow",
+                "resize_windows": "#/components/schemas/ResizeWindows",
+                "set_ceiling_height": "#/components/schemas/SetCeilingHeight"
+              }
+            }
+          },
+          "baseVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseversion",
+            "description": "Model version the client edited against; mismatches return 409."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "api",
+              "ui",
+              "openai",
+              "rules"
+            ],
+            "title": "Source",
+            "default": "api"
+          }
+        },
+        "type": "object",
+        "required": [
+          "command"
+        ],
+        "title": "EditRequest"
+      },
+      "EditResponse": {
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Planid"
+          },
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "affectedIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affectedids"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "model": {
+            "$ref": "#/components/schemas/Building"
+          },
+          "babylon": {
+            "$ref": "#/components/schemas/BabylonScene"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planId",
+          "applied",
+          "version",
+          "affectedIds",
+          "summary",
+          "model",
+          "babylon"
+        ],
+        "title": "EditResponse"
+      },
+      "FactorParams": {
+        "properties": {
+          "factor": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Factor",
+            "description": "Width multiplier applied to every window."
+          }
+        },
+        "type": "object",
+        "required": [
+          "factor"
+        ],
+        "title": "FactorParams"
+      },
+      "FurnitureItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "description": "bed, chair, sofa, desk, table, closet, toilet"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "GLB file name in frontend/public/furniture"
+          },
+          "sourceBlock": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceblock",
+            "description": "DWG block (INSERT) this came from"
+          },
+          "matchedBy": {
+            "type": "string",
+            "enum": [
+              "block_name",
+              "layer",
+              "size",
+              "llm",
+              "manual"
+            ],
+            "title": "Matchedby",
+            "default": "block_name"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Position",
+            "description": "Footprint center in plan coordinates (m)"
+          },
+          "facing": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Facing",
+            "description": "Unit vector the model's front points to (away from the nearest wall)"
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "description": "Footprint extent across the facing direction (m)"
+          },
+          "depth": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Depth",
+            "description": "Footprint extent along the facing direction (m)"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "model",
+          "position",
+          "facing",
+          "width",
+          "depth",
+          "height"
+        ],
+        "title": "FurnitureItem",
+        "description": "A piece of furniture matched to a GLB model from the frontend furniture library."
+      },
+      "FurnitureSpec": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Path of the GLB in the frontend furniture library"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position",
+            "description": "Position of a parent TransformNode holding the imported GLB"
+          },
+          "rotationY": {
+            "type": "number",
+            "title": "Rotationy",
+            "description": "Radians, so the model's front (glTF +z) points along `facing`"
+          },
+          "scaling": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Scaling",
+            "description": "Per-axis scale fitting the drawing's footprint and a realistic height"
+          },
+          "footprintCenter": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Footprintcenter",
+            "description": "Where the scaled model's footprint center ends up (on the floor)"
+          },
+          "footprint": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Footprint",
+            "description": "[width, depth] in meters"
+          },
+          "facing": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Facing",
+            "description": "Front direction in Babylon x/z"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "model",
+          "url",
+          "position",
+          "rotationY",
+          "scaling",
+          "footprintCenter",
+          "footprint",
+          "facing"
+        ],
+        "title": "FurnitureSpec"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable"
+            ],
+            "title": "Database"
+          },
+          "dwgConverter": {
+            "type": "boolean",
+            "title": "Dwgconverter"
+          },
+          "interpreter": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "rules"
+            ],
+            "title": "Interpreter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database",
+          "dwgConverter",
+          "interpreter"
+        ],
+        "title": "HealthResponse"
+      },
+      "InterpretRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "selectedId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedid"
+          },
+          "planId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planid",
+            "description": "Use the stored model of this plan as context."
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Building"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Inline model context (when no planId is given)."
+          },
+          "cameraForward": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cameraforward",
+            "description": "Camera forward direction in plan coordinates; resolves 'forward'/'back'."
+          },
+          "apply": {
+            "type": "boolean",
+            "title": "Apply",
+            "description": "Also apply the command to planId if it validates.",
+            "default": false
+          },
+          "baseVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseversion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "InterpretRequest"
+      },
+      "InterpretResponse": {
+        "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ResizeSelectedWindow"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ResizeWindows"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SetCeilingHeight"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MoveSelectedWall"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "operation",
+                  "mapping": {
+                    "move_selected_wall": "#/components/schemas/MoveSelectedWall",
+                    "resize_selected_window": "#/components/schemas/ResizeSelectedWindow",
+                    "resize_windows": "#/components/schemas/ResizeWindows",
+                    "set_ceiling_height": "#/components/schemas/SetCeilingHeight"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "rules"
+            ],
+            "title": "Source"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          },
+          "clarification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid",
+            "description": "Whether the command passes validation (null if unknown)."
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "type": "array",
+            "title": "Problems"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "command",
+          "source",
+          "explanation"
+        ],
+        "title": "InterpretResponse"
+      },
+      "MaterialSpec": {
+        "properties": {
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "alpha": {
+            "type": "number",
+            "title": "Alpha",
+            "default": 1.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "color"
+        ],
+        "title": "MaterialSpec"
+      },
+      "MoveSelectedWall": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "move_selected_wall",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "string",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/MoveWallParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "targetId",
+          "parameters"
+        ],
+        "title": "MoveSelectedWall"
+      },
+      "MoveWallParams": {
+        "properties": {
+          "offset": {
+            "type": "number",
+            "title": "Offset",
+            "description": "Signed distance in meters along the wall's left-hand normal (perpendicular, to the left when looking from start to end)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "offset"
+        ],
+        "title": "MoveWallParams"
+      },
+      "Opening": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "window",
+              "door"
+            ],
+            "title": "Type"
+          },
+          "offset": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Offset",
+            "description": "Distance (m) along the wall from its start point to the opening's left edge."
+          },
+          "width": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "sillHeight": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Sillheight",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "offset",
+          "width",
+          "height"
+        ],
+        "title": "Opening"
+      },
+      "OpeningSpec": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "window",
+              "door"
+            ],
+            "title": "Type"
+          },
+          "wallId": {
+            "type": "string",
+            "title": "Wallid"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position",
+            "description": "Center of the opening"
+          },
+          "width": {
+            "type": "number",
+            "title": "Width"
+          },
+          "height": {
+            "type": "number",
+            "title": "Height"
+          },
+          "sillHeight": {
+            "type": "number",
+            "title": "Sillheight"
+          },
+          "rotationY": {
+            "type": "number",
+            "title": "Rotationy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "wallId",
+          "position",
+          "width",
+          "height",
+          "sillHeight",
+          "rotationY"
+        ],
+        "title": "OpeningSpec"
+      },
+      "ParseOptions": {
+        "properties": {
+          "units": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "mm",
+              "cm",
+              "m",
+              "in",
+              "ft"
+            ],
+            "title": "Units",
+            "description": "Drawing units. 'auto' reads $INSUNITS from the file and guesses from extents if missing.",
+            "default": "auto"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scale",
+            "description": "Explicit drawing-units -> meters multiplier (calibration). Overrides units."
+          },
+          "wallStyle": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "centerline",
+              "double_line"
+            ],
+            "title": "Wallstyle",
+            "description": "'centerline': each wall-layer line is a wall centerline. 'double_line': walls are drawn as parallel face lines (2 or more per wall); thickness is inferred. 'auto': double_line when most wall lines have a parallel partner, else centerline.",
+            "default": "auto"
+          },
+          "wallThickness": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallthickness",
+            "description": "Centerline-mode wall thickness (m)."
+          },
+          "minWallThickness": {
+            "type": "number",
+            "maximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Minwallthickness",
+            "description": "Double-line mode: smallest face gap (m).",
+            "default": 0.05
+          },
+          "maxWallThickness": {
+            "type": "number",
+            "maximum": 1.5,
+            "exclusiveMinimum": 0.0,
+            "title": "Maxwallthickness",
+            "description": "Double-line mode: largest face gap (m).",
+            "default": 0.5
+          },
+          "ceilingHeight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 6.0,
+                "minimum": 2.1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ceilingheight",
+            "description": "Wall height (default 10 ft)."
+          },
+          "placeFurniture": {
+            "type": "boolean",
+            "title": "Placefurniture",
+            "description": "Match furniture blocks to the GLB library.",
+            "default": true
+          },
+          "windowHeight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Windowheight"
+          },
+          "windowSillHeight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Windowsillheight"
+          },
+          "doorHeight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doorheight"
+          },
+          "wallLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Walllayers",
+            "description": "Layer-name globs, e.g. ['WALLS', 'A-WALL*']."
+          },
+          "windowLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Windowlayers"
+          },
+          "doorLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doorlayers"
+          },
+          "openingLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openinglayers",
+            "description": "Mixed door/window layers: blocks with a swing arc become doors, others windows."
+          },
+          "roomLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roomlayers"
+          },
+          "furnitureLayers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Furniturelayers"
+          }
+        },
+        "type": "object",
+        "title": "ParseOptions",
+        "description": "Per-request overrides for plan parsing. Omitted fields fall back to server settings."
+      },
+      "ParseResponse": {
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PlanDetail"
+          },
+          "scene": {
+            "$ref": "#/components/schemas/SceneResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan",
+          "scene"
+        ],
+        "title": "ParseResponse"
+      },
+      "PlanDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "dwg",
+              "dxf"
+            ],
+            "title": "Sourceformat"
+          },
+          "fileSize": {
+            "type": "integer",
+            "title": "Filesize"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "uploaded",
+              "parsed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "modelVersion": {
+            "type": "integer",
+            "title": "Modelversion"
+          },
+          "hasModel": {
+            "type": "boolean",
+            "title": "Hasmodel"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updatedat"
+          },
+          "parseWarnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Parsewarnings"
+          },
+          "parseStats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parsestats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "sourceFormat",
+          "fileSize",
+          "status",
+          "modelVersion",
+          "hasModel",
+          "error",
+          "createdAt",
+          "updatedAt",
+          "parseWarnings",
+          "parseStats"
+        ],
+        "title": "PlanDetail"
+      },
+      "PlanSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "sourceFormat": {
+            "type": "string",
+            "enum": [
+              "dwg",
+              "dxf"
+            ],
+            "title": "Sourceformat"
+          },
+          "fileSize": {
+            "type": "integer",
+            "title": "Filesize"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "uploaded",
+              "parsed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "modelVersion": {
+            "type": "integer",
+            "title": "Modelversion"
+          },
+          "hasModel": {
+            "type": "boolean",
+            "title": "Hasmodel"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "sourceFormat",
+          "fileSize",
+          "status",
+          "modelVersion",
+          "hasModel",
+          "error",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "PlanSummary"
+      },
+      "Problem": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "Problem",
+        "description": "A single validation failure, safe to show to end users."
+      },
+      "ReplaceSceneRequest": {
+        "properties": {
+          "model": {
+            "$ref": "#/components/schemas/Building"
+          },
+          "baseVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseversion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model"
+        ],
+        "title": "ReplaceSceneRequest"
+      },
+      "ResizeSelectedWindow": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "resize_selected_window",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "string",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/ResizeWindowParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "targetId",
+          "parameters"
+        ],
+        "title": "ResizeSelectedWindow"
+      },
+      "ResizeWindowParams": {
+        "properties": {
+          "factor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factor",
+            "description": "Width multiplier, e.g. 1.5 = 50% wider."
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width",
+            "description": "Absolute new width in meters."
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height",
+            "description": "Absolute new height in meters."
+          },
+          "sillHeight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sillheight",
+            "description": "Absolute new sill height in meters."
+          }
+        },
+        "type": "object",
+        "title": "ResizeWindowParams"
+      },
+      "ResizeWindows": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "resize_windows",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "null",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/FactorParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "parameters"
+        ],
+        "title": "ResizeWindows"
+      },
+      "Room": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "polygon": {
+            "anyOf": [
+              {
+                "items": {
+                  "prefixItems": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "type": "array",
+                  "maxItems": 2,
+                  "minItems": 2
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Polygon"
+          },
+          "labelPosition": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Labelposition"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Room"
+      },
+      "RoomLabel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "position"
+        ],
+        "title": "RoomLabel"
+      },
+      "SceneResponse": {
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Planid"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "model": {
+            "$ref": "#/components/schemas/Building",
+            "description": "Canonical building JSON (source of truth for edits)"
+          },
+          "babylon": {
+            "$ref": "#/components/schemas/BabylonScene",
+            "description": "Render-ready Babylon.js scene generated from the model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "planId",
+          "version",
+          "model",
+          "babylon"
+        ],
+        "title": "SceneResponse"
+      },
+      "SetCeilingHeight": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "set_ceiling_height",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "null",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/CeilingParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "parameters"
+        ],
+        "title": "SetCeilingHeight"
+      },
+      "TokenResponse": {
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "title": "Accesstoken"
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Tokentype",
+            "default": "bearer"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "title": "Expiresin"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "user"
+        ],
+        "title": "TokenResponse"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "createdAt"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Wall": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "start": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Start"
+          },
+          "end": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "End"
+          },
+          "thickness": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Thickness"
+          },
+          "height": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          },
+          "openings": {
+            "items": {
+              "$ref": "#/components/schemas/Opening"
+            },
+            "type": "array",
+            "title": "Openings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "start",
+          "end",
+          "thickness",
+          "height"
+        ],
+        "title": "Wall"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/auth/token"
+          }
+        }
+      }
+    }
+  }
+}

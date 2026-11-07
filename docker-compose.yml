@@ -1,6 +1,9 @@
-# Walkitecture backend + PostgreSQL.
-#   docker compose up --build        -> API on http://localhost:8000 (docs at /docs)
+# Walkitecture app (FastAPI API + built SPA in one image) + PostgreSQL.
+#   docker compose up --build        -> app on http://localhost:8000 (API docs at /docs)
+#   frontend dev with hot reload:    cd frontend && npm run dev   -> http://localhost:5173
 # Optional: put JWT_SECRET=... and OPENAI_API_KEY=... in a top-level .env file (never commit it).
+# Production (VPS behind Traefik): add -f docker-compose.prod.yml, see ARCHITECTURE.md §9.
+name: walkitecture
 services:
   db:
     image: postgres:17-alpine
@@ -20,7 +23,10 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: walkitecture-backend
     restart: unless-stopped
     depends_on:
       db:

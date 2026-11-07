@@ -10,6 +10,7 @@ from app.api import auth, edits, health, interpret, plans
 from app.api.errors import register_error_handlers
 from app.config import get_settings
 from app.db import engine
+from app.spa import mount_spa, spa_available
 
 
 @asynccontextmanager
@@ -40,9 +41,14 @@ def create_app() -> FastAPI:
     for module in (health, auth, plans, edits, interpret):
         app.include_router(module.router)
 
-    @app.get("/", include_in_schema=False)
-    async def root() -> RedirectResponse:
-        return RedirectResponse("/docs")
+    # Production image: serve the built SPA (registered last so API and /docs routes win).
+    if static_dir := spa_available(settings.static_dir):
+        mount_spa(app, static_dir)
+    else:
+
+        @app.get("/", include_in_schema=False)
+        async def root() -> RedirectResponse:
+            return RedirectResponse("/docs")
 
     return app
 
