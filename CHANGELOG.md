@@ -2,6 +2,11 @@
 
 What changed recently, in plain language. Newest first. Every commit adds an entry here (see `CLAUDE.md`).
 
+## 2026-11-08 — Pitch deck notes kept off GitHub
+
+- `PRESENTATION.md` (the pitch deck content) is no longer in the repository. It stays only on its author's
+  computer and is git-ignored, so it won't be committed again by accident.
+
 ## 2026-11-08 — Pitch deck content and team notes
 
 - **Pitch deck content** (`PRESENTATION.md`): the text, footer and picture for each of the 12 slides, in the

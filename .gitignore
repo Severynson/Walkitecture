@@ -9,3 +9,6 @@ frontend/dist/
 *.tsbuildinfo
 .DS_Store
 frontend/.vite/
+
+# Local-only pitch notes (not for the repo)
+PRESENTATION.md
