@@ -518,8 +518,17 @@ export interface components {
                 number,
                 number
             ];
-            /** Eyeheight */
+            /**
+             * Eyeheight
+             * @description Walker's eye level above the floor (m)
+             */
             eyeHeight: number;
+            /**
+             * Bodyheight
+             * @description Walker's height (m) for collisions: 6 ft by default
+             * @default 1.8288
+             */
+            bodyHeight: number;
         };
         /** CeilingParams */
         CeilingParams: {

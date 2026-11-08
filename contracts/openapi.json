@@ -1476,7 +1476,14 @@
           },
           "eyeHeight": {
             "type": "number",
-            "title": "Eyeheight"
+            "title": "Eyeheight",
+            "description": "Walker's eye level above the floor (m)"
+          },
+          "bodyHeight": {
+            "type": "number",
+            "title": "Bodyheight",
+            "description": "Walker's height (m) for collisions: 6 ft by default",
+            "default": 1.8288
           }
         },
         "type": "object",

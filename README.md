@@ -189,7 +189,7 @@ cd frontend && npm install && npm run dev   # SPA with hot reload: http://localh
 cd frontend && npm run e2e -- http://localhost:5173  # browser smoke test (needs Google Chrome)
 ```
 
-**Controls:** click the view to look around, WASD / arrows to walk, T for top-down, click an object to select it
+**Controls:** click the view to look around, WASD / arrows to walk, hold Shift to run, T for top-down, click an object to select it
 (crosshair in first person), Esc to free the mouse.
 
 Put `OPENAI_API_KEY=...` in a top-level `.env` (git-ignored) to enable the LLM features. Production deployment

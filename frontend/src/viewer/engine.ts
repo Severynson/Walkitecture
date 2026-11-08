@@ -232,6 +232,7 @@ export class Viewer {
 
   dispose(): void {
     window.removeEventListener("resize", this.onResize);
+    this.cameras.dispose();
     this.registry.disposeAll();
     this.furniture.dispose();
     this.materials.dispose();

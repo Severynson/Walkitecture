@@ -81,7 +81,8 @@ def test_furniture_spec_scales_and_turns_the_model():
 
 def test_camera_spawns_inside_a_room_at_eye_height(demo_building):
     camera = build_scene(demo_building).camera
-    assert camera.position[1] == camera.eye_height == 1.6
+    assert camera.body_height == pytest.approx(6 * FT)  # the walker is 6 ft tall
+    assert camera.position[1] == camera.eye_height == pytest.approx(6 * FT - 0.12, abs=1e-3)
     assert 0 < camera.position[0] < 10 and 0 < camera.position[2] < 8
 
 

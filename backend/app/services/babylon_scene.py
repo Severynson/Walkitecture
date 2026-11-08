@@ -29,7 +29,8 @@ from app.schemas.building import Building, FurnitureItem, Opening, Point2, Wall
 from app.services.furniture_catalog import CATALOG, FURNITURE_URL_PREFIX
 from app.services.geometry import point_segment_distance, sub, unit
 
-EYE_HEIGHT = 1.6
+BODY_HEIGHT = 6 * 0.3048  # the walker is 6 ft tall
+EYE_HEIGHT = round(BODY_HEIGHT - 0.12, 3)  # eyes ~12 cm below the top of the head: 1.709 m
 GLASS_THICKNESS = 0.02
 SLAB_THICKNESS = 0.05
 MATERIALS = {
@@ -229,4 +230,6 @@ def _camera(building: Building, fallback: Point2) -> CameraSpec:
         (clearance, point) for point in candidates if (clearance := _clearance(point, building)) >= MIN_SPAWN_CLEARANCE
     ]
     x, z = max(scored)[1] if scored else fallback
-    return CameraSpec(position=_v(x, EYE_HEIGHT, z), target=_v(x, EYE_HEIGHT, z + 1.0), eye_height=EYE_HEIGHT)
+    return CameraSpec(
+        position=_v(x, EYE_HEIGHT, z), target=_v(x, EYE_HEIGHT, z + 1.0), eye_height=EYE_HEIGHT, body_height=BODY_HEIGHT
+    )

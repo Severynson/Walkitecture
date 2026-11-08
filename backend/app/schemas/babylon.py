@@ -62,7 +62,8 @@ class MaterialSpec(CamelModel):
 class CameraSpec(CamelModel):
     position: Vec3 = Field(description="First-person spawn point at eye height")
     target: Vec3
-    eye_height: float
+    eye_height: float = Field(description="Walker's eye level above the floor (m)")
+    body_height: float = Field(default=1.8288, description="Walker's height (m) for collisions: 6 ft by default")
 
 
 class Bounds(CamelModel):

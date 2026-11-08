@@ -587,7 +587,7 @@
     "name": "Studio",
     "position": [
      1.2,
-     1.6,
+     1.709,
      2.2
     ]
    }
@@ -595,15 +595,16 @@
   "camera": {
    "position": [
     1.2,
-    1.6,
+    1.709,
     2.2
    ],
    "target": [
     1.2,
-    1.6,
+    1.709,
     3.2
    ],
-   "eyeHeight": 1.6
+   "eyeHeight": 1.709,
+   "bodyHeight": 1.8288000000000002
   },
   "materials": {
    "wall": {

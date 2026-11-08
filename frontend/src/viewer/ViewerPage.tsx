@@ -106,8 +106,8 @@ export default function ViewerPage({ scene, loadKey, title, initialMode, onReady
         <div className="hud-help">
           {mode === "first-person"
             ? locked
-              ? "WASD / arrows walk · mouse looks · click selects · Esc frees the mouse · T top-down"
-              : "Click the view to look around · WASD / arrows to walk · T top-down"
+              ? "WASD / arrows walk · Shift runs · mouse looks · click selects · Esc frees the mouse · T top-down"
+              : "Click the view to look around · WASD / arrows to walk · Shift to run · T top-down"
             : "Click selects · drag orbits · right-drag pans · wheel zooms · T first person"}
         </div>
         <div className="row">

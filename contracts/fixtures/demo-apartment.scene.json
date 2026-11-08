@@ -990,7 +990,7 @@
     "name": "Living Room",
     "position": [
      2.3,
-     1.6,
+     1.709,
      4.0
     ]
    },
@@ -999,7 +999,7 @@
     "name": "Bedroom 1",
     "position": [
      7.3,
-     1.6,
+     1.709,
      2.0
     ]
    },
@@ -1008,7 +1008,7 @@
     "name": "Bedroom 2",
     "position": [
      7.3,
-     1.6,
+     1.709,
      6.0
     ]
    }
@@ -1016,15 +1016,16 @@
   "camera": {
    "position": [
     2.3,
-    1.6,
+    1.709,
     4.0
    ],
    "target": [
     2.3,
-    1.6,
+    1.709,
     5.0
    ],
-   "eyeHeight": 1.6
+   "eyeHeight": 1.709,
+   "bodyHeight": 1.8288000000000002
   },
   "materials": {
    "wall": {

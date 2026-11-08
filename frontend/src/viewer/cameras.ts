@@ -4,22 +4,34 @@ import type { BabylonSceneSpec } from "./types";
 export type ViewMode = "first-person" | "top-down";
 
 const WASD = { up: [87, 38], down: [83, 40], left: [65, 37], right: [68, 39] }; // W/S/A/D + arrows
-const BODY_RADIUS = 0.3;
+const BODY_RADIUS = 0.3; // m
+const DEFAULT_BODY_HEIGHT = 6 * 0.3048; // 6 ft, for specs that predate `bodyHeight`
+const WALK_SPEED = 0.27; // Babylon units per frame (about 3x the original 0.09)
+const SPRINT_FACTOR = 2.5; // while Shift is held
 
-/** First-person walker (WASD + mouse, collisions, gravity) and an overhead orbit camera. */
+/** First-person walker (WASD + mouse, Shift to run, collisions, gravity) and an overhead orbit camera. */
 export class Cameras {
   readonly walker: UniversalCamera;
   readonly overhead: ArcRotateCamera;
   mode: ViewMode = "first-person";
+  private sprinting = false;
+
+  private readonly onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Shift") this.setSprint(true);
+  };
+  private readonly onKeyUp = (event: KeyboardEvent) => {
+    if (event.key === "Shift") this.setSprint(false);
+  };
+  private readonly onBlur = () => this.setSprint(false);
 
   constructor(
     private readonly scene: Scene,
     private readonly canvas: HTMLCanvasElement,
   ) {
-    const walker = new UniversalCamera("walker", new Vector3(0, 1.6, 0), scene);
+    const walker = new UniversalCamera("walker", new Vector3(0, DEFAULT_BODY_HEIGHT, 0), scene);
     walker.minZ = 0.05;
     walker.fov = 1.1;
-    walker.speed = 0.09;
+    walker.speed = WALK_SPEED;
     walker.inertia = 0.6;
     walker.angularSensibility = 2500;
     walker.keysUp = WASD.up;
@@ -39,6 +51,9 @@ export class Cameras {
 
     scene.activeCamera = walker;
     walker.attachControl(canvas, true);
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", this.onBlur);
   }
 
   /** Spawn point, body size, and overhead framing from the scene spec. */
@@ -57,11 +72,23 @@ export class Cameras {
     this.overhead.upperRadiusLimit = this.overhead.radius * 3;
   }
 
-  /** Ellipsoid centered half an eye-height below the camera: feet on the floor, eyes at eye height. */
+  /**
+   * Collision body: an ellipsoid from the floor to the top of the head (`bodyHeight`, 6 ft) with the
+   * camera at `eyeHeight`. Babylon places the ellipsoid center at `position - ellipsoid.y + ellipsoidOffset`,
+   * so resting on the floor (center = H/2) with the camera at eye level E needs an offset of H - E.
+   */
   setBodySize(spec: BabylonSceneSpec): void {
-    const eye = spec.camera.eyeHeight;
-    this.walker.ellipsoid = new Vector3(BODY_RADIUS, eye / 2, BODY_RADIUS);
-    this.walker.ellipsoidOffset = new Vector3(0, -eye / 2, 0);
+    const height = spec.camera.bodyHeight ?? DEFAULT_BODY_HEIGHT;
+    const eye = Math.min(spec.camera.eyeHeight, height);
+    this.walker.ellipsoid = new Vector3(BODY_RADIUS, height / 2, BODY_RADIUS);
+    this.walker.ellipsoidOffset = new Vector3(0, height - eye, 0);
+  }
+
+  /** Shift held: run at 2.5x walking speed. */
+  setSprint(on: boolean): void {
+    if (on === this.sprinting) return;
+    this.sprinting = on;
+    this.walker.speed = on ? WALK_SPEED * SPRINT_FACTOR : WALK_SPEED;
   }
 
   setMode(mode: ViewMode): void {
@@ -78,5 +105,11 @@ export class Cameras {
   toggle(): ViewMode {
     this.setMode(this.mode === "first-person" ? "top-down" : "first-person");
     return this.mode;
+  }
+
+  dispose(): void {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
+    window.removeEventListener("blur", this.onBlur);
   }
 }
