@@ -12,7 +12,8 @@ const STAGES: [string, string][] = [
   ["rebuilding", "Rebuilding with the AI's layer roles"],
   ["furniture", "AI: identifying unknown furniture"],
   ["checking", "Checking furniture, windows and room entrances"],
-  ["reviewing", "AI: deciding how to fix what the checks found"],
+  ["rendering", "Drawing the plan for the AI to look at"],
+  ["reviewing", "AI: comparing the drawing with the model, room by room, and deciding fixes"],
   ["fixing", "Applying the fixes"],
   ["saving", "Building the 3D model"],
 ];

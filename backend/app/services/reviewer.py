@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.schemas.base import CamelModel
 from app.schemas.building import Building, FurnitureItem
-from app.schemas.checks import CheckFinding
+from app.schemas.checks import CheckFinding, RoomComparison
 from app.schemas.edits import REVIEW_OPERATIONS, ReviewCommand, ReviewCommandAdapter
 from app.schemas.parse import FurnitureCategory
 from app.services.edits import EditRejected, apply_edit
@@ -162,7 +162,16 @@ class _Decision(BaseModel):
     reason: str
 
 
+class _Room(BaseModel):
+    room: str
+    drawing: str
+    model: str
+    matches: bool
+    note: str
+
+
 class _Answer(BaseModel):
+    rooms: list[_Room]
     patches: list[_Patch]
     decisions: list[_Decision]
     notes: str
@@ -175,6 +184,7 @@ class AiReview(BaseModel):
     decisions: dict[str, tuple[str, str]]  # finding id -> (option id, reason)
     rejected: list[str]
     notes: str
+    rooms: list[RoomComparison] = []
 
 
 PROMPT = f"""You review a building model reconstructed from an architectural CAD drawing, before it is
@@ -207,13 +217,34 @@ interpretation most likely is:
   with the entrance door when the space behind is a hall or entrance (or the building has no other exterior
   door), with glazing when it is a living room or faces a terrace, with a plain wall otherwise; keep it open
   only for a real porch, terrace or open passage.
+- missing_wall: a room missing a whole outer wall, open to the street with no window or door, is impossible in
+  a house. Keep it open only for a balcony, terrace, veranda, porch or yard (judge from the room's name, its
+  furniture and the drawing); otherwise the lost wall most likely held a window a bit wider than the others
+  ("window"), or a door when the drawing shows the entrance or a terrace door there.
 - bathroom_open: a bathroom either has doors or has none; one with a door that is also open to another room
   is impossible (a lost wall piece, e.g. a curved or angled wall around a shower). Close the opening with a
   wall when the bathroom already has a door; a door in it when that is the bathroom's only way in. This rule
   is for bathrooms only: other rooms may well be open to each other.
+- incompatible_furniture: bathroom fixtures (toilet, shower, bathtub) never share a room with a kitchen unit
+  or stove, a kitchen sink, a fridge, or living/sleeping furniture (a washbasin is fine but is not modelled).
+  One group is misidentified (a washbasin read as a kitchen sink, a symbol read as a toilet): remove the group
+  the room's name, size and the drawing contradict. Keep both only when they plainly stand in two rooms whose
+  dividing wall is missing.
 - furniture_outside: usually a drawing artefact (legend, symbol library, another sheet): remove it unless it
   plausibly stands on a balcony, terrace or garden.
 Return empty lists when there is nothing to do."""
+
+VISUAL = """
+
+3. Pictures. You also get two pictures at the same scale and crop: the ORIGINAL DRAWING (first) and the
+MODEL built from it (second: walls grey, doors orange and windows blue with their IDs, furniture boxes with
+their ID (f12 = furniture_12) and category, an arrow for the side they face, room names in green). Compare
+them room by room, as an architect would: walls, doors, windows, and the furniture and fixtures the drawing
+shows versus what the model has. List every room in `rooms` with what the drawing shows, what the model has,
+whether they match, and a short note. Use what you see to fix mismatches with patches (only IDs from the
+model picture or the objects list; e.g. delete furniture the drawing does not have, change a category the
+drawing contradicts, turn a door the drawing shows as a window into a door) and to ground your decisions on
+findings. You cannot add furniture, walls or openings that are not offered as finding options."""
 
 
 def to_command(patch: _Patch) -> ReviewCommand:
@@ -248,12 +279,14 @@ async def ai_review(
     *,
     suspects: list[Suspect] | None = None,
     client: AsyncOpenAI | None = None,
+    images: tuple[bytes, bytes] | None = None,
 ) -> AiReview:
-    """One LLM call for suspects and findings. Raises LLMUnavailable (callers fall back to defaults)."""
+    """One LLM call for suspects and findings, plus a visual room-by-room comparison when `images`
+    (drawing.png, model.png) are given. Raises LLMUnavailable (callers fall back to defaults)."""
     stats = dict(stats or {})
     stats.pop("layers", None)
     suspects = find_suspects(building, warnings, stats) if suspects is None else suspects
-    if not suspects and not findings:
+    if not suspects and not findings and not images:
         return AiReview(patches=[], decisions={}, rejected=[], notes="Nothing to review.")
     payload = {
         "suspects": [s.model_dump(by_alias=True) for s in suspects],
@@ -262,7 +295,12 @@ async def ai_review(
         "warnings": warnings,
         "stats": stats,
     }
-    answer = await structured(settings, PROMPT, json.dumps(payload, ensure_ascii=False), _Answer, client)
+    if images:
+        payload["model"] = _model_inventory(building)
+    prompt = PROMPT + (VISUAL if images else "")
+    answer = await structured(
+        settings, prompt, json.dumps(payload, ensure_ascii=False), _Answer, client, images=list(images or [])
+    )
     patches: list[ReviewCommand] = []
     rejected: list[str] = []
     for patch in answer.patches:
@@ -277,7 +315,19 @@ async def ai_review(
             decisions[decision.finding_id] = (decision.option_id, decision.reason)
         else:
             rejected.append(f"decision {decision.finding_id} -> {decision.option_id}: not one of its options")
-    return AiReview(patches=patches, decisions=decisions, rejected=rejected, notes=answer.notes)
+    rooms = [RoomComparison(**room.model_dump()) for room in answer.rooms] if images else []
+    return AiReview(patches=patches, decisions=decisions, rejected=rejected, notes=answer.notes, rooms=rooms)
+
+
+def _model_inventory(building: Building) -> dict[str, Any]:
+    """Every object of the model in a few words, so patches can name IDs the pictures show."""
+    return {
+        "rooms": [{"id": r.id, "name": r.name} for r in building.rooms],
+        "openings": [{"id": o.id, "type": o.type, "wall": w.id, "width": round(o.width, 2)}
+                     for w in building.walls for o in w.openings],
+        "furniture": [{"id": f.id, "category": f.category, "block": f.source_block,
+                       "size": [round(f.width, 2), round(f.depth, 2)]} for f in building.furniture],
+    }  # fmt: skip
 
 
 async def review_plan(

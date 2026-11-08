@@ -3543,6 +3543,10 @@
   "stats": {
    "detectedUnits": "m (guessed)",
    "unitFactor": 1.0,
+   "planOrigin": [
+    977.358753,
+    434.712732
+   ],
    "wallStyle": "double_line",
    "extent": [
     16.902,

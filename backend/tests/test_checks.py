@@ -15,7 +15,7 @@ from app.services.edits import apply_edit
 from app.services.furniture_catalog import CATALOG
 from app.services.llm_classify import _Answer as ClassifyAnswer
 from app.services.reviewer import _Answer as ReviewAnswer
-from app.services.reviewer import _Decision
+from app.services.reviewer import _Decision, _Room
 from app.services.sample_plan import build_demo_dxf, furniture_showroom
 
 T, H = 0.2, 3.048
@@ -137,7 +137,9 @@ def test_the_furniture_showroom_holds_every_model_without_conflicts():
     showroom = furniture_showroom()
     assert {f.model for f in showroom.furniture} == {m.file for m in CATALOG}
     assert guardrails.find_conflicts(showroom) == []
-    assert guardrails.analyze(showroom).findings == []
+    # One hall with a toilet beside a bed is exactly what the incompatible-furniture rule forbids in a real
+    # plan; the showroom fixture is built without the guardrails, on purpose.
+    assert [f.kind for f in guardrails.analyze(showroom).findings] == ["incompatible_furniture"]
 
 
 # --- Judgement calls --------------------------------------------------------------------------------
@@ -300,10 +302,12 @@ class ScriptedClient:
 
     def __init__(self, answers: dict):
         self.calls: list[type] = []
+        self.requests: list[dict] = []
 
         async def parse(**kwargs):
             schema = kwargs["response_format"]
             self.calls.append(schema)
+            self.requests.append(kwargs)
             answer = answers.get(schema)
             if isinstance(answer, Exception):
                 raise answer
@@ -321,8 +325,11 @@ def keyed(settings):
 async def test_pipeline_runs_classification_and_review_before_the_model_is_built(monkeypatch, keyed):
     client = ScriptedClient({
         ClassifyAnswer: ClassifyAnswer(layers=[], blocks=[], notes="Layer names already clear."),
-        ReviewAnswer: ReviewAnswer(patches=[], decisions=[_Decision(finding_id="F9", option_id="x", reason="?")],
-                                   notes="Looks fine."),
+        ReviewAnswer: ReviewAnswer(
+            rooms=[_Room(room="Bedroom 1", drawing="a bed, a door", model="no furniture, a door", matches=False,
+                         note="the bed block was not recognised")],
+            patches=[], decisions=[_Decision(finding_id="F9", option_id="x", reason="?")], notes="Looks fine.",
+        ),
     })  # fmt: skip
     monkeypatch.setattr(llm, "make_client", lambda _settings: client)
     stages: list[str] = []
@@ -332,9 +339,14 @@ async def test_pipeline_runs_classification_and_review_before_the_model_is_built
 
     built = await pipeline.build_model(build_demo_dxf(), None, keyed, ai=True, stage=stage)
     assert built.error is None and built.result.building.walls
-    assert stages == ["reading", "classifying", "checking", "reviewing", "fixing"]
+    assert stages == ["reading", "classifying", "checking", "rendering", "reviewing", "fixing"]
     assert client.calls == [ClassifyAnswer, ReviewAnswer]
+    # The review sees two pictures: the original drawing and the model built from it.
+    content = client.requests[1]["messages"][1]["content"]
+    pictures = [part["image_url"]["url"] for part in content if part["type"] == "image_url"]
+    assert len(pictures) == 2 and all(url.startswith("data:image/png;base64,iVBOR") for url in pictures)
     report = built.report
+    assert [(r.room, r.matches) for r in report.visual] == [("Bedroom 1", False)]
     assert report.ai == "used" and report.classification.notes == "Layer names already clear."
     assert "AI review: Looks fine." in report.notes
     assert any("F9" in note for note in report.notes)  # an unknown finding id is ignored, not applied
@@ -388,3 +400,61 @@ async def test_retry_processes_the_drawing_again(auth_client):
     again = await auth_client.post(f"/api/plans/{plan['id']}/process")
     assert again.status_code == 202 and again.json()["status"] == "parsed"
     assert again.json()["modelVersion"] == plan["modelVersion"] + 1
+
+
+def test_a_kitchen_sink_never_shares_a_room_with_a_toilet():
+    toilet = item("f1", "toilet", "toilet_by_quaternius.glb", (0.5, 1.0), 0.4, 0.7, facing=(1.0, 0.0))
+    sink = item("f2", "sink", "kitchen_sink_by_kay_lousberg.glb", (2.0, 3.4), 1.2, 0.7)  # a washbasin, misread
+    building = two_rooms([door("door_2", 1.5)], furniture=[toilet, sink])
+    building.rooms[0].name = "Bathroom"
+    (finding,) = [f for f in guardrails.analyze(building).findings if f.kind == "incompatible_furniture"]
+    assert finding.default == "remove_other" and "kitchen sink f2" in finding.detail
+    assert [f.id for f in guardrails.resolve(building, [finding], [], {}).building.furniture] == ["f1"]
+
+
+def test_open_plan_kitchens_and_studios_are_fine():
+    fridge = item("f1", "fridge", "kitchen_fridge_quarternius.glb", (0.5, 3.5), 0.7, 0.7)
+    bed = item("f2", "bed", BED, (2.5, 2.0), 1.93, 2.03)
+    sofa = item("f3", "sofa", "couch_medium_by_quaternius.glb", (1.2, 0.8), 2.0, 0.9, facing=(0.0, 1.0))
+    building = two_rooms([door("door_2", 1.5)], furniture=[fridge, bed, sofa])
+    assert not [f for f in guardrails.analyze(building).findings if f.kind == "incompatible_furniture"]
+
+
+def three_sided_room(name="Living room"):
+    """5 x 4 m room whose south wall is missing entirely; a sofa stands in it."""
+    sofa = item("f1", "sofa", "couch_medium_by_quaternius.glb", (2.5, 3.0), 2.0, 0.9)
+    return Building(
+        ceiling_height=H,
+        walls=[wall("w", (0, 0), (0, 4), window("window_1", 1.5, 1.0)), wall("n", (0, 4), (5, 4)),
+               wall("e", (5, 4), (5, 0), window("window_2", 1.5, 1.0))],
+        rooms=[Room(id="room_1", name=name, label_position=(2.5, 2.0))],
+        furniture=[sofa],
+    )  # fmt: skip
+
+
+def test_a_room_missing_its_whole_outer_wall_gets_a_wider_window_by_default():
+    building = three_sided_room()
+    (finding,) = [f for f in guardrails.analyze(building).findings if f.kind == "missing_wall"]
+    assert finding.default == "window" and "Living room with sofa f1" in finding.detail
+    assert [o.id for o in finding.options] == ["window", "door", "wall", "keep"]
+    closed = guardrails.resolve(building, [finding], [], {}).building
+    (added,) = [w for w in closed.walls if w.id not in {"w", "n", "e"}]
+    (glass,) = added.openings
+    assert glass.type == "window" and glass.width == pytest.approx(1.3)  # 1.3 x the typical 1.0 m window
+    assert not [f for f in guardrails.analyze(closed).findings if f.kind == "missing_wall"]
+
+
+def test_a_terrace_stays_open_by_default():
+    (finding,) = [f for f in guardrails.analyze(three_sided_room("Terraza")).findings if f.kind == "missing_wall"]
+    assert finding.default == "keep"
+
+
+def test_the_drawing_and_the_model_are_rendered_for_the_visual_review(settings):
+    from app.services.dxf_parser import parse_dxf
+    from app.services.plan_images import render_pair
+
+    dxf = build_demo_dxf()
+    result = parse_dxf(dxf, ParseOptions(), settings)
+    drawing, model = render_pair(dxf, result.building, result.stats["unitFactor"], tuple(result.stats["planOrigin"]))
+    assert drawing.startswith(b"\x89PNG") and model.startswith(b"\x89PNG")
+    assert len(drawing) > 5_000 and len(model) > 5_000  # not blank

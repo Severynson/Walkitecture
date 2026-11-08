@@ -26,7 +26,8 @@ to walk around the proposal.
    rules first, then an LLM pass over every fresh upload.
 3. **Checks before 3D:** Nothing impossible reaches the scene. Furniture never cuts into walls or other furniture (it is
    nudged, shrunk a little, or removed), windows between two rooms and rooms without an entrance are caught, and
-   stray symbols outside the building are dropped. Code finds each problem and the safe fixes; the AI picks the fix.
+   stray symbols outside the building are dropped. Code finds each problem and the safe fixes; the AI picks the fix,
+   looking at a picture of the original drawing next to a picture of the model and comparing them room by room.
 4. **Procedural 3D generation:** The backend turns the building JSON into a render-ready Babylon.js scene spec—walls
    with real openings, doors that open, floors, and furniture placements at real-world scale, inside a landscape
    with a sky—and one generic browser loader draws it.

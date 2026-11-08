@@ -4,7 +4,8 @@
     classify   (AI) layer and block roles from the drawing's inventory; rebuild when they differ
     furniture  (AI) identify furniture blocks the rules could not
     check      guardrail findings: furniture conflicts, interior windows, rooms without an entrance...
-    review     (AI) patches for suspects + one decision per finding
+    render     pictures of the original drawing and of the model (plan_images.py)
+    review     (AI, with vision) room-by-room comparison of the pictures, patches, one decision per finding
     fix        apply them, then enforce the furniture rule (guardrails.resolve)
 
 The AI steps run when asked (uploads) and an OpenAI key is configured. Any AI failure falls back to the
@@ -19,7 +20,7 @@ from dataclasses import dataclass
 from app.config import Settings
 from app.schemas.checks import CheckReport, ClassificationSummary
 from app.schemas.parse import ParseOptions
-from app.services import guardrails, reviewer, workers
+from app.services import guardrails, plan_images, reviewer, workers
 from app.services.drawing_reader import DrawingReadError
 from app.services.dxf_parser import ParseError, ParseResult
 from app.services.furniture_llm import classify_unknown_furniture
@@ -31,8 +32,8 @@ from app.services.llm_classify import propose_classification
 logger = logging.getLogger(__name__)
 
 Stage = Callable[[str], Awaitable[None]]
-STAGES = ("queued", "converting", "reading", "classifying", "rebuilding", "furniture", "checking", "reviewing",
-          "fixing", "saving")  # fmt: skip
+STAGES = ("queued", "converting", "reading", "classifying", "rebuilding", "furniture", "checking", "rendering",
+          "reviewing", "fixing", "saving")  # fmt: skip
 MIN_WALL_SHARE = 0.3  # the AI's layer roles are rejected if they keep fewer walls than this share of the rules'
 
 
@@ -124,15 +125,27 @@ async def build_model(
     report.notes += analysis.notes
     patches, decisions = [], {}
     if use_ai:
+        images = None
+        await stage("rendering")
+        try:
+            factor, origin = result.stats.get("unitFactor"), result.stats.get("planOrigin")
+            if factor and origin:
+                images = await workers.run(
+                    settings, plan_images.render_pair, dxf, result.building, factor, tuple(origin)
+                )
+        except Exception as exc:  # noqa: BLE001 - the review still runs, without pictures
+            logger.warning("Rendering the plan for the visual review failed: %s", exc)
+            report.notes.append(f"Visual check skipped: the drawing could not be rendered ({type(exc).__name__}).")
         await stage("reviewing")
         try:
             review = await reviewer.ai_review(
-                result.building, result.warnings, result.stats, analysis.findings, settings
+                result.building, result.warnings, result.stats, analysis.findings, settings, images=images
             )
         except Exception as exc:  # noqa: BLE001
             failed("review", exc)
         else:
             patches, decisions = review.patches, review.decisions
+            report.visual = review.rooms
             report.notes += [f"Ignored AI answer: {r}" for r in review.rejected]
             if review.notes:
                 report.notes.append(f"AI review: {review.notes}")

@@ -804,6 +804,10 @@
   "stats": {
    "detectedUnits": "meters",
    "unitFactor": 1.0,
+   "planOrigin": [
+    0.0,
+    0.0
+   ],
    "wallStyle": "centerline",
    "extent": [
     6.0,

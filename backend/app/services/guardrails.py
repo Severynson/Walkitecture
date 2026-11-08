@@ -38,6 +38,7 @@ from app.services.geometry import (
     point_segment_distance,
     project_param,
     scale,
+    segments_intersect,
     sub,
     unit,
 )
@@ -972,6 +973,170 @@ def _bathroom_findings(b: _Builder) -> None:
             break
 
 
+OPEN_SIDE = (1.0, 12.0)  # m between two free wall ends that may be the two sides of a missing outer wall
+OUTDOOR_ROOM = re.compile(
+    r"balc|terra|veranda|porch|patio|yard|garden|jard[ií]n|deck|loggia|galer[ií]a|porche|tendedero|azotea",
+    re.IGNORECASE,
+)
+WIDE_WINDOW = 1.3  # x the building's typical window: a missing wall most likely held a wider window
+
+
+def _free_ends(walls: list[Wall]) -> list[tuple[Wall, Point2]]:
+    out = []
+    for wall in walls:
+        if wall.length > 0:
+            out += [(wall, p) for p in (wall.start, wall.end) if not _connected(p, wall, walls)]
+    return out
+
+
+def _behind(p: Point2, middle: Point2, inside: Point2, reach: float) -> bool:
+    """Is `p` on the building's side of an opening centered at `middle`, within `reach`?"""
+    return math.dist(p, middle) <= reach and dot(sub(p, middle), inside) > 0
+
+
+def _missing_wall_findings(b: _Builder) -> None:
+    """A room missing an entire outer wall: two walls stop in mid-air facing each other across a side of the
+    building, so the room (and its furniture) opens straight to the street. Impossible in a house unless it is
+    a balcony, terrace, veranda or yard; the lost wall most likely held a window a bit wider than the others."""
+    building = b.building
+    walls = building.walls
+    hull = _hull([corner for _, box in wall_boxes(walls) for corner in _corners(box)])
+    taken = {tuple(round(v, 3) for v in g.point) for g in _wall_gaps(walls, FACADE_GAP[1])}  # facade holes
+    ends = [(w, p) for w, p in _free_ends(walls) if tuple(round(v, 3) for v in p) not in taken]
+    windows = sorted(o.width for w in walls for o in w.openings if o.type == "window")
+    typical = windows[len(windows) // 2] if windows else 1.2
+    pairs = []
+    for i, (wall_a, a) in enumerate(ends):
+        for wall_b, c in ends[i + 1 :]:
+            length = math.dist(a, c)
+            if wall_a is wall_b or not OPEN_SIDE[0] <= length <= OPEN_SIDE[1]:
+                continue
+            d = unit(sub(c, a))
+            inner = (add(a, scale(d, 0.1)), sub(c, scale(d, 0.1)))
+            if any(segments_intersect(*inner, w.start, w.end) for w in walls if w is not wall_a and w is not wall_b):
+                continue
+            middle = scale(add(a, c), 0.5)
+            n = (-d[1], d[0])
+            sides = [_outside_hull(add(middle, scale(n, s * SIDE_PROBE)), hull) > 0.05 for s in (1, -1)]
+            if sides[0] == sides[1]:
+                continue  # not on the building's outline
+            inside = scale(n, -1.0 if sides[0] else 1.0)
+            pairs.append((length, wall_a, a, wall_b, c, inside))
+    used: set[tuple] = set()
+    for length, wall_a, a, wall_b, c, inside in sorted(pairs, key=lambda p: p[0]):
+        if tuple(a) in used or tuple(c) in used:
+            continue
+        used |= {tuple(a), tuple(c)}
+        middle = scale(add(a, c), 0.5)
+        reach = length / 2 + 4.0
+        names = sorted(
+            {r.name for r in building.rooms if r.label_position and _behind(r.label_position, middle, inside, reach)}
+        )
+        items = [f for f in building.furniture if _behind(f.position, middle, inside, reach)]
+        wall_id = b.wall_id()
+        add_wall = {"operation": "add_wall", "targetId": wall_id,
+                    "parameters": {"start": list(a), "end": list(c),
+                                   "thickness": max(wall_a.thickness, wall_b.thickness)}}  # fmt: skip
+        window = round(min(length - 0.6, max(1.0, typical * WIDE_WINDOW)), 3)
+        door = round(min(0.9, length - 0.3), 3)
+        options = []
+        if window >= 0.6:
+            options.append(CheckOption(
+                id="window", description=f"Close it with a wall holding a {window:.2f} m window (the lost one)",
+                commands=[add_wall, {"operation": "add_opening", "targetId": wall_id,
+                                     "parameters": {"type": "window", "offset": round((length - window) / 2, 3),
+                                                    "width": window}}],
+            ))  # fmt: skip
+        if door >= 0.7:
+            options.append(CheckOption(
+                id="door", description=f"Close it with a wall holding a {door:.2f} m door (entrance or terrace)",
+                commands=[add_wall, {"operation": "add_opening", "targetId": wall_id,
+                                     "parameters": {"type": "door", "offset": round((length - door) / 2, 3),
+                                                    "width": door}}],
+            ))  # fmt: skip
+        options += [
+            CheckOption(id="wall", description="Close it with a plain wall", commands=[add_wall]),
+            CheckOption(id="keep", description="Keep it open: a balcony, terrace, veranda, porch or yard"),
+        ]
+        outdoor = any(OUTDOOR_ROOM.search(n) for n in names)
+        what = f" with {_what(items)}" if items else ""
+        b.add(
+            "missing_wall", [wall_a.id, wall_b.id],
+            f"{' / '.join(names) or 'A room'}{what} is open to the outside along {length:.2f} m between "
+            f"{wall_a.id} and {wall_b.id}: no wall, window or door there.",
+            options, "keep" if outdoor else "window" if window >= 0.6 else "wall",
+        )  # fmt: skip
+
+
+# Furniture from contradictory contexts never shares a room: a toilet (shower, bathtub) with a kitchen unit
+# or stove, a kitchen sink, a fridge, or living/sleeping furniture. Washbasins are not modelled, so a
+# bathroom's own sink never counts; a kitchen with a bed (a studio) or a sofa (open plan) is fine.
+NEVER_WITH_BATH_FIXTURES = ("kitchen", "sink", "fridge", "bed", "sofa", "desk", "table", "bookshelf", "nightstand",
+                            "dresser")  # fmt: skip
+CATEGORY_WORDS = {"sink": "kitchen sink", "kitchen": "kitchen unit"}
+
+
+def _with_defaults(building: Building, findings: list[CheckFinding], kinds: tuple[str, ...]) -> Building:
+    """The building with the default option of some findings applied (to judge rooms as they will be)."""
+    for finding in findings:
+        if finding.kind not in kinds:
+            continue
+        option = next(o for o in finding.options if o.id == finding.default)
+        for raw in option.commands:
+            try:
+                building = apply_edit(building, AnyCommandAdapter.validate_python(raw)).building
+            except EditRejected:
+                break
+    return building
+
+
+def _what(items: list[FurnitureItem]) -> str:
+    return ", ".join(f"{CATEGORY_WORDS.get(i.category, i.category)} {i.id}" for i in items[:4]) + (
+        f" (+{len(items) - 4})" if len(items) > 4 else ""
+    )
+
+
+def _incompatible_findings(b: _Builder, rooms_from: Building) -> None:
+    """Rooms (free areas of `rooms_from`) holding bathroom fixtures together with things that never stand in a
+    bathroom: one of the two groups is misidentified (a washbasin read as a kitchen sink, a symbol read as a
+    toilet), or a wall between two rooms is missing."""
+    regions = _regions(rooms_from, [box for _, box in wall_boxes(rooms_from.walls)])
+    if regions is None:
+        return
+    by_room: dict[int, list[FurnitureItem]] = defaultdict(list)
+    for item in b.building.furniture:
+        idx = regions.index(item.position)
+        if idx is not None and regions.labels[idx] >= 0 and not regions.outdoor[idx]:
+            by_room[regions.labels[idx]].append(item)
+    names: dict[int, list[str]] = defaultdict(list)
+    for room in rooms_from.rooms:
+        if room.label_position and (label := _region_label(regions, room.label_position)) is not None:
+            names[label].append(room.name)
+    for label, items in sorted(by_room.items()):
+        bath = [i for i in items if i.category in BATH_FIXTURES]
+        other = [i for i in items if i.category in NEVER_WITH_BATH_FIXTURES]
+        if not bath or not other:
+            continue
+        here = names.get(label, [])
+        bath_named = any(BATHROOM.search(n) for n in here)
+        other_named = any(not BATHROOM.search(n) for n in here)
+        if bath_named != other_named:
+            default = "remove_other" if bath_named else "remove_bath"
+        else:
+            default = "remove_other" if len(other) <= len(bath) else "remove_bath"
+        b.add(
+            "incompatible_furniture", [i.id for i in bath + other],
+            f"{_what(bath)} and {_what(other)} stand in the same room ({' / '.join(here) or 'unnamed'}): bathroom "
+            "fixtures never share a room with these.",
+            [CheckOption(id="remove_other", description=f"Remove {_what(other)} (misidentified: this is a bathroom)",
+                         remove_furniture=[i.id for i in other]),
+             CheckOption(id="remove_bath", description=f"Remove {_what(bath)} (misidentified: this is not a bathroom)",
+                         remove_furniture=[i.id for i in bath]),
+             CheckOption(id="keep", description="Keep both: they are in two rooms and a wall between them is missing")],
+            default,
+        )  # fmt: skip
+
+
 def _hull(points: list[Point2]) -> list[Point2]:
     """Convex hull, counter-clockwise (Andrew's monotone chain)."""
     pts = sorted(set(points))
@@ -1078,7 +1243,9 @@ def analyze(building: Building) -> Analysis:
     b = _Builder(building)
     notes: list[str] = []
     _gap_findings(b)
+    _missing_wall_findings(b)
     _bathroom_findings(b)
+    _incompatible_findings(b, _with_defaults(building, b.findings, ("facade_gap", "missing_wall", "bathroom_open")))
     regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
     if regions is None:
         if building.walls:

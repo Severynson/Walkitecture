@@ -1278,6 +1278,10 @@
   "stats": {
    "detectedUnits": "millimeters",
    "unitFactor": 0.001,
+   "planOrigin": [
+    0.0,
+    0.0
+   ],
    "wallStyle": "centerline",
    "extent": [
     10.0,

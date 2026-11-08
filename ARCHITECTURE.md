@@ -80,8 +80,8 @@ upload ─► [1 convert] ─► DXF ─┬─► [2 describe]  ─► drawing J
 ```
 
 An upload (`POST /api/plans`) returns at once with `status=processing`; a background job (`services/jobs.py`) runs the
-stages (`plans.stage`: `queued → converting → reading → classifying → rebuilding → furniture → checking → reviewing →
-fixing → saving`) and stores every result through `services/plan_store.py`. `plans.status`: `uploaded → processing →
+stages (`plans.stage`: `queued → converting → reading → classifying → rebuilding → furniture → checking → rendering →
+reviewing → fixing → saving`) and stores every result through `services/plan_store.py`. `plans.status`: `uploaded → processing →
 parsed | failed`. The orchestration is `services/pipeline.py`; CPU-heavy steps (describe + build, checks) run in worker
 processes (`services/workers.py`, `PARSE_WORKERS`, `PARSE_TIMEOUT_S`) so a huge drawing can't freeze the server.
 AI steps need `OPENAI_API_KEY`; any AI failure falls back to the rule-based result and the findings' defaults, and is
@@ -160,6 +160,8 @@ AI can choose, never invent geometry.
 | Every room has an entrance; the building has an exterior door | Room graph: rooms ≥ 1.5 m² and ≥ 0.6 m wide, joined by doors; components not reachable from the main part | turn a window on its boundary into a door, remove a 0.5–1.5 m wall closing it (a door leaf drawn on the wall layer), add a 0.8–0.9 m door on a shared wall (up to 3 candidates, circulation rooms first), **keep** (shaft, light well) |
 | Furniture outside the building | Farther than 0.3 m outside the convex outline of the walls | **remove** (> 1.5 m from any wall: legend/library symbols), **keep** (closer: terrace) |
 | No holes in the facade | A wall end in mid-air whose line reaches another wall (or a collinear piece) within 0.6–4 m, with the building's outline on one side only | **entrance** (wall + 0.9 m door), glazing, plain wall, keep open |
+| No room misses a whole outer wall (open to the street) unless it is a balcony, terrace, veranda or yard | Two free wall ends 1–12 m apart whose connecting line runs along the building's outline and crosses no wall | **window** (a wall with a window 1.3x the building's typical window), door, plain wall, keep (**default** when the room is named balcony/terrace/patio…) |
+| Furniture from contradictory contexts never shares a room | A free area (after the default seals) holding bathroom fixtures (toilet, shower, bathtub) and a kitchen unit/stove, kitchen sink, fridge, or living/sleeping furniture (washbasins are not modelled; kitchen + bed or sofa is fine) | remove the non-bathroom group or the bathroom group (**default** by the room's name, else the smaller group), keep (a wall between two rooms is missing) |
 | A bathroom has doors or none, never a door plus a door-free connection (bathrooms only: other rooms may be open to each other) | Bathrooms found by their fixtures (toilet, shower, bathtub; labels are often printed beside the room); another room's label in the same free area; the hole whose closing separates them | **wall** (when the bathroom has a door), door, keep (only offered when it has no door) |
 
 The parser feeds these checks better geometry first: a window or door filling the gap between a wall's end and
@@ -167,6 +169,18 @@ the next wall extends that wall; doors hang on the wall line through their swing
 door block's square outline touches two walls); double-line pairs shorter than 0.3 m rank after long pairs and
 count only when they cover most of both lines (tile grids drawn on the wall layer used to eat partitions); a
 cryptic door-like name with an arc is not a door on a sanitary layer (shower trays).
+
+### 4.5 Visual review — implemented (`services/plan_images.py`)
+
+Before the review (stage `rendering`, in a worker process), two pictures are drawn at the same scale and crop
+(the building + 0.6 m, 1600 px on the long side): the **original drawing** (every layer, grey levels on white,
+via ezdxf + matplotlib) and the **model** built from it (walls grey, doors orange and windows blue with their IDs,
+furniture footprints with ID, category and facing arrow, room names). They go into the same review call as the
+suspects and findings (a vision model, `detail: high`), so it costs no extra call. The answer adds `rooms`: for
+every room, what the drawing shows, what the model has, whether they match, and a note; mismatches are fixed with
+the same allowlisted patches (IDs only; no new geometry except through finding options), and the pictures ground
+the decisions on findings. The comparison is stored in `report.visual` and summarised in the plan's activity log.
+If rendering fails, the review runs without pictures and a note says so.
 
 `resolve` applies the review patches, then the chosen options, then `settle` (the furniture rule) on the result, so the
 hard rule holds whatever was decided. A corrected item keeps its drawn footprint in `drawn`. The same `settle` runs after

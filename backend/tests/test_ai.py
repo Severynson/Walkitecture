@@ -242,6 +242,7 @@ async def test_review_endpoint_previews_applies_and_undoes(auth_client, llm_answ
             patch("rename_room", "room_99", name="Hall", reason="invented id"),
             patch("set_opening_type", "window_1", reason="missing parameter"),
         ],
+        rooms=[],
         decisions=[],
         notes="One stray wall.",
     )

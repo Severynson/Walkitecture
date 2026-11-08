@@ -1622,7 +1622,9 @@
               "enclosed_space",
               "no_exterior_door",
               "facade_gap",
-              "bathroom_open"
+              "bathroom_open",
+              "incompatible_furniture",
+              "missing_wall"
             ],
             "title": "Kind"
           },
@@ -1767,6 +1769,14 @@
             },
             "type": "array",
             "title": "Changes"
+          },
+          "visual": {
+            "items": {
+              "$ref": "#/components/schemas/RoomComparison"
+            },
+            "type": "array",
+            "title": "Visual",
+            "description": "Room-by-room comparison of the drawing's picture with the model's"
           },
           "notes": {
             "items": {
@@ -3770,6 +3780,42 @@
           "name"
         ],
         "title": "Room"
+      },
+      "RoomComparison": {
+        "properties": {
+          "room": {
+            "type": "string",
+            "title": "Room"
+          },
+          "drawing": {
+            "type": "string",
+            "title": "Drawing",
+            "description": "What the drawing shows there"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "What the model has there"
+          },
+          "matches": {
+            "type": "boolean",
+            "title": "Matches"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "room",
+          "drawing",
+          "model",
+          "matches"
+        ],
+        "title": "RoomComparison",
+        "description": "The AI's visual check of one room: the original drawing next to the model built from it."
       },
       "RoomLabel": {
         "properties": {

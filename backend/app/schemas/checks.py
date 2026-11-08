@@ -8,7 +8,7 @@ from app.schemas.base import CamelModel
 
 FindingKind = Literal[
     "furniture_conflict", "furniture_outside", "interior_window", "enclosed_space", "no_exterior_door", "facade_gap",
-    "bathroom_open"
+    "bathroom_open", "incompatible_furniture", "missing_wall"
 ]  # fmt: skip
 
 
@@ -44,9 +44,22 @@ class ClassificationSummary(CamelModel):
     notes: str
 
 
+class RoomComparison(CamelModel):
+    """The AI's visual check of one room: the original drawing next to the model built from it."""
+
+    room: str
+    drawing: str = Field(description="What the drawing shows there")
+    model: str = Field(description="What the model has there")
+    matches: bool
+    note: str = ""
+
+
 class CheckReport(CamelModel):
     ai: Literal["used", "unavailable", "off"]
     classification: ClassificationSummary | None = None
     findings: list[CheckFinding] = Field(default_factory=list)
     changes: list[CheckChange] = Field(default_factory=list)
+    visual: list[RoomComparison] = Field(
+        default_factory=list, description="Room-by-room comparison of the drawing's picture with the model's"
+    )
     notes: list[str] = Field(default_factory=list)

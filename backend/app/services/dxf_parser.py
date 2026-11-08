@@ -237,6 +237,7 @@ def parse_dxf(data: bytes, options: ParseOptions, settings: Settings) -> ParseRe
     stats = {
         "detectedUnits": units_label,
         "unitFactor": factor,
+        "planOrigin": [round(origin[0], 6), round(origin[1], 6)],  # drawing units * factor - origin = plan
         "wallStyle": style,
         "extent": [round(max(xs, default=0), 3), round(max(ys, default=0), 3)],
         "wallCount": len(walls),

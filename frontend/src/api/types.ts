@@ -585,7 +585,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "furniture_conflict" | "furniture_outside" | "interior_window" | "enclosed_space" | "no_exterior_door" | "facade_gap" | "bathroom_open";
+            kind: "furniture_conflict" | "furniture_outside" | "interior_window" | "enclosed_space" | "no_exterior_door" | "facade_gap" | "bathroom_open" | "incompatible_furniture" | "missing_wall";
             /** Targetids */
             targetIds: string[];
             /** Detail */
@@ -635,6 +635,11 @@ export interface components {
             findings?: components["schemas"]["CheckFinding"][];
             /** Changes */
             changes?: components["schemas"]["CheckChange"][];
+            /**
+             * Visual
+             * @description Room-by-room comparison of the drawing's picture with the model's
+             */
+            visual?: components["schemas"]["RoomComparison"][];
             /** Notes */
             notes?: string[];
         };
@@ -1448,6 +1453,31 @@ export interface components {
                 number,
                 number
             ] | null;
+        };
+        /**
+         * RoomComparison
+         * @description The AI's visual check of one room: the original drawing next to the model built from it.
+         */
+        RoomComparison: {
+            /** Room */
+            room: string;
+            /**
+             * Drawing
+             * @description What the drawing shows there
+             */
+            drawing: string;
+            /**
+             * Model
+             * @description What the model has there
+             */
+            model: string;
+            /** Matches */
+            matches: boolean;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** RoomLabel */
         RoomLabel: {

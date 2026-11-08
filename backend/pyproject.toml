@@ -10,6 +10,7 @@ dependencies = [
     "asyncpg>=0.32.0",
     "ezdxf>=1.4.5",
     "fastapi>=0.162.2",
+    "matplotlib>=3.11.2",
     "openai>=3.46.0",
     "pydantic-settings>=2.16.2",
     "pyjwt>=2.15.1",

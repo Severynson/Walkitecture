@@ -23,13 +23,21 @@ function checkSummary(report: CheckReport | null | undefined): string | null {
   if (!report) return null;
   const changes = report.changes ?? [];
   const kept = (report.findings ?? []).filter((f) => f.decision === "keep" || f.decision === "accept");
-  if (!changes.length && !(report.findings ?? []).length) return null;
+  if (!changes.length && !(report.findings ?? []).length && !(report.visual ?? []).length) return null;
   const who = report.ai === "used" ? "AI-reviewed checks" : "Automatic checks";
   const lines = [
     `${who} before building the 3D model: ${changes.length} fix${changes.length === 1 ? "" : "es"}${kept.length ? `, ${kept.length} item${kept.length === 1 ? "" : "s"} kept as drawn` : ""}.`,
     ...changes.slice(0, 10).map((c) => `• ${c.summary}`),
   ];
   if (changes.length > 10) lines.push(`• …and ${changes.length - 10} more.`);
+  const visual = report.visual ?? [];
+  if (visual.length) {
+    const differ = visual.filter((r) => !r.matches);
+    lines.push(
+      `AI compared the drawing with the 3D model in ${visual.length} room${visual.length === 1 ? "" : "s"}: ${differ.length ? `${differ.length} with differences` : "all match"}.`,
+      ...differ.slice(0, 6).map((r) => `• ${r.room}: ${r.note || `drawing: ${r.drawing}; model: ${r.model}`}`),
+    );
+  }
   return lines.join("\n");
 }
 
