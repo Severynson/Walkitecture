@@ -1,0 +1,1608 @@
+{
+ "planId": "39f8b0f1-61de-502b-bc7e-9a44d7bfc184",
+ "version": 1,
+ "model": {
+  "schemaVersion": 1,
+  "units": "meters",
+  "ceilingHeight": 3.048,
+  "walls": [
+   {
+    "id": "wall_1",
+    "start": [
+     0.0,
+     0.0
+    ],
+    "end": [
+     20.799999999999997,
+     0.0
+    ],
+    "thickness": 0.2,
+    "height": 3.048,
+    "openings": [
+     {
+      "id": "door_1",
+      "type": "door",
+      "offset": 9.95,
+      "width": 0.9,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
+   },
+   {
+    "id": "wall_2",
+    "start": [
+     20.799999999999997,
+     0.0
+    ],
+    "end": [
+     20.799999999999997,
+     17.2
+    ],
+    "thickness": 0.2,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_3",
+    "start": [
+     20.799999999999997,
+     17.2
+    ],
+    "end": [
+     0.0,
+     17.2
+    ],
+    "thickness": 0.2,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_4",
+    "start": [
+     0.0,
+     17.2
+    ],
+    "end": [
+     0.0,
+     0.0
+    ],
+    "thickness": 0.2,
+    "height": 3.048,
+    "openings": []
+   }
+  ],
+  "rooms": [
+   {
+    "id": "room_1",
+    "name": "Furniture library",
+    "polygon": null,
+    "labelPosition": [
+     10.399999999999999,
+     1.5
+    ]
+   }
+  ],
+  "furniture": [
+   {
+    "id": "furniture_1",
+    "category": "bed",
+    "model": "bed_king_by_quaternius.glb",
+    "sourceBlock": "bed_king_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     2.15,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.93,
+    "depth": 2.03,
+    "height": 0.6,
+    "drawn": null
+   },
+   {
+    "id": "furniture_2",
+    "category": "bed",
+    "model": "bed_single_by_quaternius.glb",
+    "sourceBlock": "bed_single_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     5.45,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.99,
+    "depth": 1.9,
+    "height": 0.6,
+    "drawn": null
+   },
+   {
+    "id": "furniture_3",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "sourceBlock": "chair_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     8.75,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.5,
+    "depth": 0.55,
+    "height": 0.9,
+    "drawn": null
+   },
+   {
+    "id": "furniture_4",
+    "category": "chair",
+    "model": "office_chair_quaternius.glb",
+    "sourceBlock": "office_chair_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     12.05,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.6,
+    "depth": 0.65,
+    "height": 1.0,
+    "drawn": null
+   },
+   {
+    "id": "furniture_5",
+    "category": "closet",
+    "model": "closet_by_quaternius.glb",
+    "sourceBlock": "closet_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     15.35,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.2,
+    "depth": 0.6,
+    "height": 2.1,
+    "drawn": null
+   },
+   {
+    "id": "furniture_6",
+    "category": "sofa",
+    "model": "couch_medium_by_quaternius.glb",
+    "sourceBlock": "couch_medium_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     18.65,
+     15.05
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 2.0,
+    "depth": 0.9,
+    "height": 0.85,
+    "drawn": null
+   },
+   {
+    "id": "furniture_7",
+    "category": "sofa",
+    "model": "couch_small_quarternius.glb",
+    "sourceBlock": "couch_small_quarternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     2.15,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.9,
+    "depth": 0.85,
+    "height": 0.85,
+    "drawn": null
+   },
+   {
+    "id": "furniture_8",
+    "category": "sofa",
+    "model": "lounge_sofa_corner_by_kenney.glb",
+    "sourceBlock": "lounge_sofa_corner_by_kenney.glb",
+    "matchedBy": "manual",
+    "position": [
+     5.45,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 2.4,
+    "depth": 2.4,
+    "height": 0.85,
+    "drawn": null
+   },
+   {
+    "id": "furniture_9",
+    "category": "desk",
+    "model": "desk_by_creativetrio.glb",
+    "sourceBlock": "desk_by_creativetrio.glb",
+    "matchedBy": "manual",
+    "position": [
+     8.75,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.4,
+    "depth": 0.7,
+    "height": 0.75,
+    "drawn": null
+   },
+   {
+    "id": "furniture_10",
+    "category": "table",
+    "model": "table_by_darwin_yamamoto.glb",
+    "sourceBlock": "table_by_darwin_yamamoto.glb",
+    "matchedBy": "manual",
+    "position": [
+     12.05,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.6,
+    "depth": 0.9,
+    "height": 0.75,
+    "drawn": null
+   },
+   {
+    "id": "furniture_11",
+    "category": "table",
+    "model": "table_large_circular_by_creativetrio.glb",
+    "sourceBlock": "table_large_circular_by_creativetrio.glb",
+    "matchedBy": "manual",
+    "position": [
+     15.35,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.2,
+    "depth": 1.2,
+    "height": 0.75,
+    "drawn": null
+   },
+   {
+    "id": "furniture_12",
+    "category": "toilet",
+    "model": "toilet_by_quaternius.glb",
+    "sourceBlock": "toilet_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     18.65,
+     11.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.4,
+    "depth": 0.7,
+    "height": 0.8,
+    "drawn": null
+   },
+   {
+    "id": "furniture_13",
+    "category": "bathtub",
+    "model": "bathtub_by_kenney.glb",
+    "sourceBlock": "bathtub_by_kenney.glb",
+    "matchedBy": "manual",
+    "position": [
+     2.15,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.7,
+    "depth": 0.75,
+    "height": 0.55,
+    "drawn": null
+   },
+   {
+    "id": "furniture_14",
+    "category": "shower",
+    "model": "shower_round_by_kenney.glb",
+    "sourceBlock": "shower_round_by_kenney.glb",
+    "matchedBy": "manual",
+    "position": [
+     5.45,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.9,
+    "depth": 0.9,
+    "height": 1.9,
+    "drawn": null
+   },
+   {
+    "id": "furniture_15",
+    "category": "sink",
+    "model": "kitchen_sink_by_kay_lousberg.glb",
+    "sourceBlock": "kitchen_sink_by_kay_lousberg.glb",
+    "matchedBy": "manual",
+    "position": [
+     8.75,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.2,
+    "depth": 0.7,
+    "height": 0.9,
+    "drawn": null
+   },
+   {
+    "id": "furniture_16",
+    "category": "kitchen",
+    "model": "kitchen_cabinet_by_kenney.glb",
+    "sourceBlock": "kitchen_cabinet_by_kenney.glb",
+    "matchedBy": "manual",
+    "position": [
+     12.05,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.6,
+    "depth": 0.6,
+    "height": 0.9,
+    "drawn": null
+   },
+   {
+    "id": "furniture_17",
+    "category": "kitchen",
+    "model": "kitchen_bar_by_kenney.glb",
+    "sourceBlock": "kitchen_bar_by_kenney.glb",
+    "matchedBy": "manual",
+    "position": [
+     15.35,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.9,
+    "depth": 0.45,
+    "height": 0.9,
+    "drawn": null
+   },
+   {
+    "id": "furniture_18",
+    "category": "fridge",
+    "model": "kitchen_fridge_quarternius.glb",
+    "sourceBlock": "kitchen_fridge_quarternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     18.65,
+     8.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.7,
+    "depth": 0.7,
+    "height": 1.8,
+    "drawn": null
+   },
+   {
+    "id": "furniture_19",
+    "category": "cabinet",
+    "model": "cabinet_by_creativetrio.glb",
+    "sourceBlock": "cabinet_by_creativetrio.glb",
+    "matchedBy": "manual",
+    "position": [
+     2.15,
+     5.15
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.9,
+    "depth": 0.5,
+    "height": 0.85,
+    "drawn": null
+   },
+   {
+    "id": "furniture_20",
+    "category": "cabinet",
+    "model": "file_cabinet_j-toastie.glb",
+    "sourceBlock": "file_cabinet_j-toastie.glb",
+    "matchedBy": "manual",
+    "position": [
+     5.45,
+     5.15
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.45,
+    "depth": 0.6,
+    "height": 1.3,
+    "drawn": null
+   },
+   {
+    "id": "furniture_21",
+    "category": "dresser",
+    "model": "drawer_by_quaternius.glb",
+    "sourceBlock": "drawer_by_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     8.75,
+     5.15
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.2,
+    "depth": 0.5,
+    "height": 0.8,
+    "drawn": null
+   },
+   {
+    "id": "furniture_22",
+    "category": "nightstand",
+    "model": "night_stand_quaternius.glb",
+    "sourceBlock": "night_stand_quaternius.glb",
+    "matchedBy": "manual",
+    "position": [
+     12.05,
+     5.15
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 0.5,
+    "depth": 0.45,
+    "height": 0.55,
+    "drawn": null
+   },
+   {
+    "id": "furniture_23",
+    "category": "bookshelf",
+    "model": "medium_book_shelf_zsky.glb",
+    "sourceBlock": "medium_book_shelf_zsky.glb",
+    "matchedBy": "manual",
+    "position": [
+     15.35,
+     5.15
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ],
+    "width": 1.2,
+    "depth": 0.35,
+    "height": 1.0,
+    "drawn": null
+   }
+  ]
+ },
+ "babylon": {
+  "schemaVersion": 1,
+  "units": "meters",
+  "coordinateSystem": "Babylon world space, y up; plan x -> x, plan y -> z",
+  "wallHeight": 3.048,
+  "bounds": {
+   "min": [
+    -0.1,
+    0.0,
+    -0.1
+   ],
+   "max": [
+    20.9,
+    3.048,
+    17.3
+   ]
+  },
+  "mapBounds": {
+   "min": [
+    -6.1,
+    -0.01,
+    -6.1
+   ],
+   "max": [
+    26.9,
+    10.0,
+    23.3
+   ]
+  },
+  "meshes": [
+   {
+    "id": "wall_1:wall:0",
+    "kind": "wall",
+    "wallId": "wall_1",
+    "openingId": null,
+    "position": [
+     4.925,
+     1.524,
+     0.0
+    ],
+    "size": [
+     10.05,
+     3.048,
+     0.2
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_1:header:door_1",
+    "kind": "header",
+    "wallId": "wall_1",
+    "openingId": "door_1",
+    "position": [
+     10.4,
+     2.5908,
+     0.0
+    ],
+    "size": [
+     0.9,
+     0.9144,
+     0.2
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_1:wall:1",
+    "kind": "wall",
+    "wallId": "wall_1",
+    "openingId": null,
+    "position": [
+     15.875,
+     1.524,
+     0.0
+    ],
+    "size": [
+     10.05,
+     3.048,
+     0.2
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_2:wall:0",
+    "kind": "wall",
+    "wallId": "wall_2",
+    "openingId": null,
+    "position": [
+     20.8,
+     1.524,
+     8.6
+    ],
+    "size": [
+     17.4,
+     3.048,
+     0.2
+    ],
+    "rotationY": -1.570796
+   },
+   {
+    "id": "wall_3:wall:0",
+    "kind": "wall",
+    "wallId": "wall_3",
+    "openingId": null,
+    "position": [
+     10.4,
+     1.524,
+     17.2
+    ],
+    "size": [
+     21.0,
+     3.048,
+     0.2
+    ],
+    "rotationY": -3.141593
+   },
+   {
+    "id": "wall_4:wall:0",
+    "kind": "wall",
+    "wallId": "wall_4",
+    "openingId": null,
+    "position": [
+     0.0,
+     1.524,
+     8.6
+    ],
+    "size": [
+     17.4,
+     3.048,
+     0.2
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "floor",
+    "kind": "floor",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     -0.025,
+     8.6
+    ],
+    "size": [
+     21.0,
+     0.05,
+     17.4
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "ceiling",
+    "kind": "ceiling",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     3.073,
+     8.6
+    ],
+    "size": [
+     21.0,
+     0.05,
+     17.4
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:ground",
+    "kind": "ground",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     -0.11,
+     8.6
+    ],
+    "size": [
+     34.0,
+     0.2,
+     30.4
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:south",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     5.0,
+     -6.35
+    ],
+    "size": [
+     34.0,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:north",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     5.0,
+     23.55
+    ],
+    "size": [
+     34.0,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:west",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     -6.35,
+     5.0,
+     8.6
+    ],
+    "size": [
+     30.4,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:boundary:east",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     27.15,
+     5.0,
+     8.6
+    ],
+    "size": [
+     30.4,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:sky",
+    "kind": "sky",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     10.4,
+     10.1,
+     8.6
+    ],
+    "size": [
+     34.0,
+     0.2,
+     30.4
+    ],
+    "rotationY": 0.0
+   }
+  ],
+  "openings": [
+   {
+    "id": "door_1",
+    "type": "door",
+    "wallId": "wall_1",
+    "position": [
+     10.4,
+     1.0668,
+     0.0
+    ],
+    "width": 0.9,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      9.95,
+      0.0,
+      0.0
+     ],
+     "rotationY": 0.0,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
+      2.1336,
+      0.045
+     ]
+    }
+   }
+  ],
+  "furniture": [
+   {
+    "id": "furniture_1",
+    "category": "bed",
+    "model": "bed_king_by_quaternius.glb",
+    "url": "/furniture/bed_king_by_quaternius.glb",
+    "position": [
+     2.15,
+     0.0002,
+     15.05
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.6299,
+     0.4938,
+     0.5135
+    ],
+    "footprintCenter": [
+     2.15,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     1.93,
+     2.03
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_2",
+    "category": "bed",
+    "model": "bed_single_by_quaternius.glb",
+    "url": "/furniture/bed_single_by_quaternius.glb",
+    "position": [
+     5.4385,
+     0.0002,
+     15.05
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.5003,
+     0.4428,
+     0.4822
+    ],
+    "footprintCenter": [
+     5.45,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     0.99,
+     1.9
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_3",
+    "category": "chair",
+    "model": "chair_by_quaternius.glb",
+    "url": "/furniture/chair_by_quaternius.glb",
+    "position": [
+     8.75,
+     0.0015,
+     15.0287
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.6562,
+     0.509,
+     0.6667
+    ],
+    "footprintCenter": [
+     8.75,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     0.5,
+     0.55
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_4",
+    "category": "chair",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
+    "position": [
+     12.05,
+     0.0,
+     15.0194
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.831,
+     0.8865,
+     0.8055
+    ],
+    "footprintCenter": [
+     12.05,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     0.6,
+     0.65
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_5",
+    "category": "closet",
+    "model": "closet_by_quaternius.glb",
+    "url": "/furniture/closet_by_quaternius.glb",
+    "position": [
+     15.3508,
+     0.0056,
+     15.0534
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.7727,
+     0.7052,
+     0.6897
+    ],
+    "footprintCenter": [
+     15.35,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     1.2,
+     0.6
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_6",
+    "category": "sofa",
+    "model": "couch_medium_by_quaternius.glb",
+    "url": "/furniture/couch_medium_by_quaternius.glb",
+    "position": [
+     18.65,
+     0.0058,
+     15.0165
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.4266,
+     0.445,
+     0.4085
+    ],
+    "footprintCenter": [
+     18.65,
+     0.0,
+     15.05
+    ],
+    "footprint": [
+     2.0,
+     0.9
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_7",
+    "category": "sofa",
+    "model": "couch_small_quarternius.glb",
+    "url": "/furniture/couch_small_quarternius.glb",
+    "position": [
+     2.15,
+     0.0058,
+     11.7184
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.312,
+     0.445,
+     0.3858
+    ],
+    "footprintCenter": [
+     2.15,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     0.9,
+     0.85
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_8",
+    "category": "sofa",
+    "model": "lounge_sofa_corner_by_kenney.glb",
+    "url": "/furniture/lounge_sofa_corner_by_kenney.glb",
+    "position": [
+     6.65,
+     0.0,
+     12.95
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     2.449,
+     1.8478,
+     2.449
+    ],
+    "footprintCenter": [
+     5.45,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     2.4,
+     2.4
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_9",
+    "category": "desk",
+    "model": "desk_by_creativetrio.glb",
+    "url": "/furniture/desk_by_creativetrio.glb",
+    "position": [
+     8.3916,
+     0.0009,
+     11.7568
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     1.12,
+     1.7321,
+     1.1254
+    ],
+    "footprintCenter": [
+     8.75,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     1.4,
+     0.7
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_10",
+    "category": "table",
+    "model": "table_by_darwin_yamamoto.glb",
+    "url": "/furniture/table_by_darwin_yamamoto.glb",
+    "position": [
+     12.0507,
+     0.4565,
+     11.7511
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.7494,
+     0.6793,
+     1.0962
+    ],
+    "footprintCenter": [
+     12.05,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     1.6,
+     0.9
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_11",
+    "category": "table",
+    "model": "table_large_circular_by_creativetrio.glb",
+    "url": "/furniture/table_large_circular_by_creativetrio.glb",
+    "position": [
+     15.35,
+     0.0,
+     11.75
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.9456,
+     1.6593,
+     0.9456
+    ],
+    "footprintCenter": [
+     15.35,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     1.2,
+     1.2
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_12",
+    "category": "toilet",
+    "model": "toilet_by_quaternius.glb",
+    "url": "/furniture/toilet_by_quaternius.glb",
+    "position": [
+     18.65,
+     0.0057,
+     11.7276
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.3342,
+     0.4208,
+     0.414
+    ],
+    "footprintCenter": [
+     18.65,
+     0.0,
+     11.75
+    ],
+    "footprint": [
+     0.4,
+     0.7
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_13",
+    "category": "bathtub",
+    "model": "bathtub_by_kenney.glb",
+    "url": "/furniture/bathtub_by_kenney.glb",
+    "position": [
+     3.0,
+     0.0,
+     8.825
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     1.4286,
+     1.3095,
+     1.3393
+    ],
+    "footprintCenter": [
+     2.15,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     1.7,
+     0.75
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_14",
+    "category": "shower",
+    "model": "shower_round_by_kenney.glb",
+    "url": "/furniture/shower_round_by_kenney.glb",
+    "position": [
+     5.0,
+     0.0,
+     8.0
+    ],
+    "rotationY": 0.0,
+    "scaling": [
+     1.6014,
+     1.7367,
+     1.6014
+    ],
+    "footprintCenter": [
+     5.45,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     0.9,
+     0.9
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_15",
+    "category": "sink",
+    "model": "kitchen_sink_by_kay_lousberg.glb",
+    "url": "/furniture/kitchen_sink_by_kay_lousberg.glb",
+    "position": [
+     8.75,
+     0.0002,
+     8.45
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.4,
+     0.4622,
+     0.35
+    ],
+    "footprintCenter": [
+     8.75,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     1.2,
+     0.7
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_16",
+    "category": "kitchen",
+    "model": "kitchen_cabinet_by_kenney.glb",
+    "url": "/furniture/kitchen_cabinet_by_kenney.glb",
+    "position": [
+     12.35,
+     0.0,
+     8.75
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     1.3953,
+     2.0,
+     1.3333
+    ],
+    "footprintCenter": [
+     12.05,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     0.6,
+     0.6
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_17",
+    "category": "kitchen",
+    "model": "kitchen_bar_by_kenney.glb",
+    "url": "/furniture/kitchen_bar_by_kenney.glb",
+    "position": [
+     15.8,
+     0.0,
+     8.675
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     2.093,
+     2.1429,
+     2.1429
+    ],
+    "footprintCenter": [
+     15.35,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     0.9,
+     0.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_18",
+    "category": "fridge",
+    "model": "kitchen_fridge_quarternius.glb",
+    "url": "/furniture/kitchen_fridge_quarternius.glb",
+    "position": [
+     18.65,
+     -0.0038,
+     8.486
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.5393,
+     0.5441,
+     0.5376
+    ],
+    "footprintCenter": [
+     18.65,
+     0.0,
+     8.45
+    ],
+    "footprint": [
+     0.7,
+     0.7
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_19",
+    "category": "cabinet",
+    "model": "cabinet_by_creativetrio.glb",
+    "url": "/furniture/cabinet_by_creativetrio.glb",
+    "position": [
+     2.15,
+     0.0,
+     4.9218
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     1.8145,
+     1.7276,
+     1.6779
+    ],
+    "footprintCenter": [
+     2.15,
+     0.0,
+     5.15
+    ],
+    "footprint": [
+     0.9,
+     0.5
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_20",
+    "category": "cabinet",
+    "model": "file_cabinet_j-toastie.glb",
+    "url": "/furniture/file_cabinet_j-toastie.glb",
+    "position": [
+     5.45,
+     0.0143,
+     5.0774
+    ],
+    "rotationY": 1.570796,
+    "scaling": [
+     0.7895,
+     0.8409,
+     0.6829
+    ],
+    "footprintCenter": [
+     5.45,
+     0.0,
+     5.15
+    ],
+    "footprint": [
+     0.45,
+     0.6
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_21",
+    "category": "dresser",
+    "model": "drawer_by_quaternius.glb",
+    "url": "/furniture/drawer_by_quaternius.glb",
+    "position": [
+     8.75,
+     -0.0066,
+     5.1591
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.4295,
+     0.6006,
+     0.4337
+    ],
+    "footprintCenter": [
+     8.75,
+     0.0,
+     5.15
+    ],
+    "footprint": [
+     1.2,
+     0.5
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_22",
+    "category": "nightstand",
+    "model": "night_stand_quaternius.glb",
+    "url": "/furniture/night_stand_quaternius.glb",
+    "position": [
+     12.05,
+     -0.002,
+     5.15
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.5252,
+     0.582,
+     0.4727
+    ],
+    "footprintCenter": [
+     12.05,
+     0.0,
+     5.15
+    ],
+    "footprint": [
+     0.5,
+     0.45
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   },
+   {
+    "id": "furniture_23",
+    "category": "bookshelf",
+    "model": "medium_book_shelf_zsky.glb",
+    "url": "/furniture/medium_book_shelf_zsky.glb",
+    "position": [
+     15.5312,
+     0.0483,
+     5.1007
+    ],
+    "rotationY": 3.141593,
+    "scaling": [
+     0.4313,
+     0.4234,
+     0.7955
+    ],
+    "footprintCenter": [
+     15.35,
+     0.0,
+     5.15
+    ],
+    "footprint": [
+     1.2,
+     0.35
+    ],
+    "facing": [
+     0.0,
+     -1.0
+    ]
+   }
+  ],
+  "rooms": [
+   {
+    "id": "room_1",
+    "name": "Furniture library",
+    "position": [
+     10.4,
+     1.709,
+     1.5
+    ]
+   }
+  ],
+  "camera": {
+   "position": [
+    10.4,
+    1.709,
+    1.5
+   ],
+   "target": [
+    10.4,
+    1.709,
+    2.5
+   ],
+   "eyeHeight": 1.709,
+   "bodyHeight": 1.8288000000000002
+  },
+  "materials": {
+   "wall": {
+    "color": "#EEEAE2",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "header": {
+    "color": "#EEEAE2",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "sill": {
+    "color": "#EEEAE2",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "glass": {
+    "color": "#9EC9E8",
+    "alpha": 0.35,
+    "texture": null
+   },
+   "floor": {
+    "color": "#C9B79C",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "ceiling": {
+    "color": "#FAFAF7",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "ground": {
+    "color": "#4A7F24",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "boundary": {
+    "color": "#2580BB",
+    "alpha": 1.0,
+    "texture": "/map-end-background.jpg"
+   },
+   "sky": {
+    "color": "#5B93B5",
+    "alpha": 1.0,
+    "texture": "/sky.avif"
+   }
+  }
+ },
+ "fixture": {
+  "name": "furniture-library",
+  "warnings": [],
+  "stats": {},
+  "checks": []
+ }
+}

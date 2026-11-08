@@ -11,6 +11,7 @@ from typing import NoReturn
 from app.config import FOOT
 from app.schemas.building import Building, Opening, Wall
 from app.schemas.edits import (
+    AddOpening,
     AnyCommand,
     DeleteFurniture,
     DeleteOpening,
@@ -85,6 +86,8 @@ def apply_edit(building: Building, command: AnyCommand) -> EditResult:
             affected, summary = _delete_furniture(proposed, command)
         case RenameRoom():
             affected, summary = _rename_room(proposed, command)
+        case AddOpening():
+            affected, summary = _add_opening(proposed, command)
         case _:  # pragma: no cover - the discriminated union makes this unreachable
             _reject("unsupported_operation", f"Unsupported operation: {command!r}")
 
@@ -283,7 +286,7 @@ def _furniture_or_reject(b: Building, furniture_id: str):
 def _set_furniture_category(b: Building, cmd: SetFurnitureCategory) -> tuple[list[str], str]:
     item = _furniture_or_reject(b, cmd.target_id)
     category = cmd.parameters.category
-    model = choose_model(category, item.width, item.depth)
+    model = choose_model(category, item.width, item.depth, name=item.source_block or "")
     if model is None:
         _reject("no_model", f"No library model for category {category!r}.", item.id)
     old = item.category
@@ -306,6 +309,28 @@ def _rename_room(b: Building, cmd: RenameRoom) -> tuple[list[str], str]:
         _reject("empty_name", "Room names cannot be empty.", room.id)
     old, room.name = room.name, name
     return [room.id], f"Renamed {room.id} from {old!r} to {name!r}."
+
+
+def _add_opening(b: Building, cmd: AddOpening) -> tuple[list[str], str]:
+    wall = _wall_or_reject(b, cmd.target_id)
+    kind, params = cmd.parameters.type, cmd.parameters
+    taken = {o.id for w in b.walls for o in w.openings}
+    number = 1 + sum(1 for w in b.walls for o in w.openings if o.type == kind)
+    while f"{kind}_{number}" in taken:
+        number += 1
+    top = wall.height - MIN_HEADER
+    if kind == "door":
+        sill, height = 0.0, min(DOOR_HEIGHT, top)
+    else:
+        sill = min(WINDOW_SILL, top - 0.3)
+        height = min(WINDOW_HEIGHT, top - sill)
+    opening = Opening(
+        id=f"{kind}_{number}", type=kind, offset=round(params.offset, 4), width=round(params.width, 4),
+        height=round(height, 4), sill_height=round(sill, 4),
+    )  # fmt: skip
+    wall.openings.append(opening)
+    wall.openings.sort(key=lambda o: o.offset)
+    return [opening.id, wall.id], f"Added {kind} {opening.id} ({opening.width:.2f} m) to wall {wall.id}."
 
 
 # --- Helpers -------------------------------------------------------------------------

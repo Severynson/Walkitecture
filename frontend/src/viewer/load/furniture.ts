@@ -15,7 +15,11 @@ export class FurnitureLibrary {
   private container(url: string): Promise<AssetContainer> {
     let pending = this.containers.get(url);
     if (!pending) {
-      pending = LoadAssetContainerAsync(url, this.scene);
+      pending = LoadAssetContainerAsync(url, this.scene).then((container) => {
+        // Some library models have faces wound the wrong way (they render inside out): draw both sides.
+        for (const material of container.materials) material.backFaceCulling = false;
+        return container;
+      });
       this.containers.set(url, pending);
     }
     return pending;

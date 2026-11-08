@@ -8,7 +8,7 @@ from app.services.dxf_parser import ParseError
 from app.services.edits import EditRejected
 from app.services.geometry import Problem
 from app.services.llm import LLMUnavailable
-from app.services.plan_store import NothingToUndo, PlanNotFound, PlanNotParsed, VersionConflict
+from app.services.plan_store import NothingToUndo, PlanBusy, PlanNotFound, PlanNotParsed, VersionConflict
 
 
 class ApiError(Exception):
@@ -40,6 +40,7 @@ _SIMPLE_ERRORS: dict[type[Exception], tuple[int, str]] = {
     PlanNotParsed: (409, "plan_not_parsed"),
     VersionConflict: (409, "version_conflict"),
     NothingToUndo: (409, "nothing_to_undo"),
+    PlanBusy: (409, "plan_processing"),
     ParseError: (422, "parse_failed"),
     ConversionError: (422, "dwg_conversion_failed"),
     LLMUnavailable: (503, "llm_unavailable"),

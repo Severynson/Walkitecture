@@ -985,7 +985,8 @@
     ],
     "width": 1.5979,
     "depth": 0.6848,
-    "height": 0.75
+    "height": 0.75,
+    "drawn": null
    },
    {
     "id": "furniture_2",
@@ -1003,7 +1004,8 @@
     ],
     "width": 1.5979,
     "depth": 0.6848,
-    "height": 0.75
+    "height": 0.75,
+    "drawn": null
    },
    {
     "id": "furniture_3",
@@ -1021,7 +1023,8 @@
     ],
     "width": 1.5979,
     "depth": 0.6848,
-    "height": 0.75
+    "height": 0.75,
+    "drawn": null
    },
    {
     "id": "furniture_4",
@@ -1037,9 +1040,10 @@
      0.0,
      1.0
     ],
-    "width": 3.0074,
-    "depth": 1.9659,
-    "height": 0.75
+    "width": 3.0164,
+    "depth": 1.9749,
+    "height": 0.75,
+    "drawn": null
    },
    {
     "id": "furniture_5",
@@ -1057,12 +1061,13 @@
     ],
     "width": 1.5979,
     "depth": 0.6848,
-    "height": 0.75
+    "height": 0.75,
+    "drawn": null
    },
    {
     "id": "furniture_6",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18360154",
     "matchedBy": "size",
     "position": [
@@ -1075,17 +1080,18 @@
     ],
     "width": 0.5793,
     "depth": 0.5368,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_7",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
-     14.8317,
-     5.2014
+     14.9076,
+     4.916
     ],
     "facing": [
      0.9146,
@@ -1093,12 +1099,20 @@
     ],
     "width": 0.7627,
     "depth": 0.7672,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": {
+     "position": [
+      14.8317,
+      5.2014
+     ],
+     "width": 0.7627,
+     "depth": 0.7672
+    }
    },
    {
     "id": "furniture_8",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
@@ -1111,12 +1125,13 @@
     ],
     "width": 0.7827,
     "depth": 0.7863,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_9",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18360154",
     "matchedBy": "size",
     "position": [
@@ -1128,18 +1143,19 @@
      0.1006
     ],
     "width": 0.5764,
-    "depth": 0.5692,
-    "height": 0.9
+    "depth": 0.5697,
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_10",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
-     4.6831,
-     9.4153
+     4.6072,
+     9.7007
     ],
     "facing": [
      -0.9146,
@@ -1147,12 +1163,20 @@
     ],
     "width": 0.7627,
     "depth": 0.7672,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": {
+     "position": [
+      4.6831,
+      9.4153
+     ],
+     "width": 0.7627,
+     "depth": 0.7672
+    }
    },
    {
     "id": "furniture_11",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
@@ -1165,16 +1189,17 @@
     ],
     "width": 0.7827,
     "depth": 0.7863,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_12",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18360154",
     "matchedBy": "size",
     "position": [
-     7.7425,
+     7.7426,
      9.0297
     ],
     "facing": [
@@ -1182,18 +1207,19 @@
      0.1006
     ],
     "width": 0.5764,
-    "depth": 0.5692,
-    "height": 0.9
+    "depth": 0.5697,
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_13",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
-     9.1384,
-     9.4153
+     9.0624,
+     9.7006
     ],
     "facing": [
      -0.9146,
@@ -1201,12 +1227,20 @@
     ],
     "width": 0.7627,
     "depth": 0.7672,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": {
+     "position": [
+      9.1384,
+      9.4153
+     ],
+     "width": 0.7627,
+     "depth": 0.7672
+    }
    },
    {
     "id": "furniture_14",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18140101",
     "matchedBy": "size",
     "position": [
@@ -1219,7 +1253,8 @@
     ],
     "width": 0.7826,
     "depth": 0.7863,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": null
    },
    {
     "id": "furniture_15",
@@ -1237,7 +1272,8 @@
     ],
     "width": 0.639,
     "depth": 0.5756,
-    "height": 0.9
+    "height": 0.9,
+    "drawn": null
    },
    {
     "id": "furniture_16",
@@ -1255,7 +1291,8 @@
     ],
     "width": 0.639,
     "depth": 0.5756,
-    "height": 0.9
+    "height": 0.9,
+    "drawn": null
    },
    {
     "id": "furniture_17",
@@ -1273,7 +1310,8 @@
     ],
     "width": 0.639,
     "depth": 0.5756,
-    "height": 0.9
+    "height": 0.9,
+    "drawn": null
    },
    {
     "id": "furniture_18",
@@ -1291,7 +1329,8 @@
     ],
     "width": 0.639,
     "depth": 0.5756,
-    "height": 0.9
+    "height": 0.9,
+    "drawn": null
    },
    {
     "id": "furniture_19",
@@ -1309,12 +1348,13 @@
     ],
     "width": 0.639,
     "depth": 0.5756,
-    "height": 0.9
+    "height": 0.9,
+    "drawn": null
    },
    {
     "id": "furniture_20",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
     "sourceBlock": "18360154",
     "matchedBy": "size",
     "position": [
@@ -1327,7 +1367,8 @@
     ],
     "width": 0.5793,
     "depth": 0.5368,
-    "height": 0.9
+    "height": 1.0,
+    "drawn": null
    }
   ]
  },
@@ -1346,6 +1387,18 @@
     19.2145,
     3.048,
     10.85
+   ]
+  },
+  "mapBounds": {
+   "min": [
+    -6.0,
+    -0.01,
+    -6.15
+   ],
+   "max": [
+    25.2145,
+    10.0,
+    16.85
    ]
   },
   "meshes": [
@@ -3422,6 +3475,108 @@
      11.0
     ],
     "rotationY": 0.0
+   },
+   {
+    "id": "map:ground",
+    "kind": "ground",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     9.6073,
+     -0.11,
+     5.35
+    ],
+    "size": [
+     32.2145,
+     0.2,
+     24.0
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:south",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     9.6073,
+     5.0,
+     -6.4
+    ],
+    "size": [
+     32.2145,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:north",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     9.6073,
+     5.0,
+     17.1
+    ],
+    "size": [
+     32.2145,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:west",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     -6.25,
+     5.0,
+     5.35
+    ],
+    "size": [
+     24.0,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:boundary:east",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     25.4645,
+     5.0,
+     5.35
+    ],
+    "size": [
+     24.0,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:sky",
+    "kind": "sky",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     9.6073,
+     10.1,
+     5.35
+    ],
+    "size": [
+     32.2145,
+     0.2,
+     24.0
+    ],
+    "rotationY": 0.0
    }
   ],
   "openings": [
@@ -3437,7 +3592,33 @@
     "width": 0.6877,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      15.7886,
+      0.0,
+      1.4939
+     ],
+     "rotationY": 0.0,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.5088,
+      1.2179,
+      0.0015
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.7395,
+      1.1113,
+      0.7395
+     ],
+     "size": [
+      0.6877,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "window_1",
@@ -3451,7 +3632,8 @@
     "width": 1.1932,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_2",
@@ -3465,7 +3647,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_3",
@@ -3479,7 +3662,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "door_2",
@@ -3493,7 +3677,33 @@
     "width": 0.7973,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      5.7827,
+      0.0,
+      3.6
+     ],
+     "rotationY": 0.0,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5898,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8573,
+      1.1113,
+      0.8573
+     ],
+     "size": [
+      0.7973,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_3",
@@ -3507,7 +3717,33 @@
     "width": 0.7819,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      6.7826,
+      0.0,
+      3.6
+     ],
+     "rotationY": 0.0,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5784,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8408,
+      1.1113,
+      0.8408
+     ],
+     "size": [
+      0.7819,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "window_4",
@@ -3521,7 +3757,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_5",
@@ -3535,7 +3772,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_6",
@@ -3549,7 +3787,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_7",
@@ -3563,7 +3802,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_8",
@@ -3577,7 +3817,8 @@
     "width": 1.1932,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "door_4",
@@ -3591,7 +3832,8 @@
     "width": 0.2007,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": null
    },
    {
     "id": "door_5",
@@ -3605,7 +3847,8 @@
     "width": 1.7164,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": null
    },
    {
     "id": "door_6",
@@ -3619,7 +3862,33 @@
     "width": 0.7968,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      16.6645,
+      0.0,
+      2.2
+     ],
+     "rotationY": -1.5708,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5895,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8568,
+      1.1113,
+      0.8568
+     ],
+     "size": [
+      0.7968,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_7",
@@ -3633,7 +3902,33 @@
     "width": 0.8921,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      16.6645,
+      0.0,
+      3.2079
+     ],
+     "rotationY": -1.5708,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.66,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9592,
+      1.1113,
+      0.9592
+     ],
+     "size": [
+      0.8921,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "window_9",
@@ -3647,7 +3942,8 @@
     "width": 0.5935,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": null
    },
    {
     "id": "door_8",
@@ -3661,7 +3957,33 @@
     "width": 0.7931,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      16.6645,
+      0.0,
+      8.1
+     ],
+     "rotationY": 1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.5867,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8528,
+      1.1113,
+      0.8528
+     ],
+     "size": [
+      0.7931,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_9",
@@ -3675,7 +3997,33 @@
     "width": 0.8988,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      7.6645,
+      0.0,
+      7.0988
+     ],
+     "rotationY": 1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6649,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9665,
+      1.1113,
+      0.9665
+     ],
+     "size": [
+      0.8988,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_10",
@@ -3689,7 +4037,33 @@
     "width": 0.7978,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      13.8645,
+      0.0,
+      2.55
+     ],
+     "rotationY": 1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.5902,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8578,
+      1.1113,
+      0.8578
+     ],
+     "size": [
+      0.7978,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_11",
@@ -3703,7 +4077,33 @@
     "width": 0.8988,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      13.6645,
+      0.0,
+      7.0988
+     ],
+     "rotationY": 1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6649,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9665,
+      1.1113,
+      0.9665
+     ],
+     "size": [
+      0.8988,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_12",
@@ -3717,7 +4117,8 @@
     "width": 0.3423,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": null
    },
    {
     "id": "door_13",
@@ -3731,7 +4132,33 @@
     "width": 0.7968,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      12.342,
+      0.0,
+      7.2
+     ],
+     "rotationY": -3.1416,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5895,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8568,
+      1.1113,
+      0.8568
+     ],
+     "size": [
+      0.7968,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_14",
@@ -3745,7 +4172,33 @@
     "width": 0.7819,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      11.342,
+      0.0,
+      7.2
+     ],
+     "rotationY": -3.1416,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5784,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8408,
+      1.1113,
+      0.8408
+     ],
+     "size": [
+      0.7819,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_15",
@@ -3759,7 +4212,33 @@
     "width": 0.7819,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      4.8053,
+      0.0,
+      7.2
+     ],
+     "rotationY": 0.0,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.5784,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8408,
+      1.1113,
+      0.8408
+     ],
+     "size": [
+      0.7819,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_16",
@@ -3773,7 +4252,33 @@
     "width": 0.8981,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 1.570512
+    "rotationY": 1.570512,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      0.5986,
+      0.0,
+      4.9224
+     ],
+     "rotationY": 1.5705,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.6644,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9657,
+      1.1113,
+      0.9657
+     ],
+     "size": [
+      0.8981,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_17",
@@ -3787,7 +4292,33 @@
     "width": 0.7968,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      14.5645,
+      0.0,
+      4.2
+     ],
+     "rotationY": 3.1416,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.5895,
+      1.2179,
+      0.0017
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.8568,
+      1.1113,
+      0.8568
+     ],
+     "size": [
+      0.7968,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "window_10",
@@ -3801,7 +4332,8 @@
     "width": 0.62,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": 1.570796
+    "rotationY": 1.570796,
+    "leaf": null
    },
    {
     "id": "window_11",
@@ -3815,7 +4347,8 @@
     "width": 0.779,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": null
    }
   ],
   "furniture": [
@@ -3921,9 +4454,9 @@
     ],
     "rotationY": 0.0,
     "scaling": [
-     1.1123,
+     1.1114,
      0.6793,
-     1.8908
+     1.8923
     ],
     "footprintCenter": [
      4.8146,
@@ -3931,8 +4464,8 @@
      1.8448
     ],
     "footprint": [
-     2.3747,
-     1.5523
+     2.3729,
+     1.5536
     ],
     "facing": [
      0.0,
@@ -3972,18 +4505,18 @@
    {
     "id": "furniture_6",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     16.21,
-     0.0015,
+     16.2055,
+     0.0,
      5.5192
     ],
     "rotationY": -1.576696,
     "scaling": [
-     0.7602,
-     0.509,
-     0.6507
+     0.8024,
+     0.8865,
+     0.6652
     ],
     "footprintCenter": [
      16.2308,
@@ -4002,23 +4535,23 @@
    {
     "id": "furniture_7",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     14.8589,
-     0.0015,
-     5.2134
+     14.9406,
+     0.0,
+     4.9306
     ],
     "rotationY": 1.154572,
     "scaling": [
-     1.0009,
-     0.509,
-     0.9299
+     1.0564,
+     0.8865,
+     0.9507
     ],
     "footprintCenter": [
-     14.8317,
+     14.9076,
      0.0,
-     5.2014
+     4.916
     ],
     "footprint": [
      0.7627,
@@ -4032,18 +4565,18 @@
    {
     "id": "furniture_8",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     14.8586,
-     0.0015,
-     5.8786
+     14.8644,
+     0.0,
+     5.8755
     ],
     "rotationY": 2.059983,
     "scaling": [
-     1.0272,
-     0.509,
-     0.9531
+     1.0841,
+     0.8865,
+     0.9743
     ],
     "footprintCenter": [
      14.8317,
@@ -4062,18 +4595,18 @@
    {
     "id": "furniture_9",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     3.3093,
-     0.0015,
-     9.0319
+     3.314,
+     0.0,
+     9.0324
     ],
     "rotationY": 1.470023,
     "scaling": [
-     0.7564,
-     0.509,
-     0.6899
+     0.7983,
+     0.8865,
+     0.7059
     ],
     "footprintCenter": [
      3.2873,
@@ -4082,7 +4615,7 @@
     ],
     "footprint": [
      0.5764,
-     0.5692
+     0.5697
     ],
     "facing": [
      0.9949,
@@ -4092,23 +4625,23 @@
    {
     "id": "furniture_10",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     4.6559,
-     0.0015,
-     9.4033
+     4.5742,
+     0.0,
+     9.6861
     ],
     "rotationY": -1.98702,
     "scaling": [
-     1.0009,
-     0.509,
-     0.9299
+     1.0564,
+     0.8865,
+     0.9507
     ],
     "footprintCenter": [
-     4.6831,
+     4.6072,
      0.0,
-     9.4153
+     9.7007
     ],
     "footprint": [
      0.7627,
@@ -4122,18 +4655,18 @@
    {
     "id": "furniture_11",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     4.6562,
-     0.0015,
-     8.7381
+     4.6504,
+     0.0,
+     8.7412
     ],
     "rotationY": -1.08161,
     "scaling": [
-     1.0272,
-     0.509,
-     0.9531
+     1.0841,
+     0.8865,
+     0.9743
     ],
     "footprintCenter": [
      4.6831,
@@ -4152,27 +4685,27 @@
    {
     "id": "furniture_12",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     7.7645,
-     0.0015,
-     9.0319
+     7.7693,
+     0.0,
+     9.0324
     ],
     "rotationY": 1.470023,
     "scaling": [
-     0.7564,
-     0.509,
-     0.6899
+     0.7983,
+     0.8865,
+     0.7059
     ],
     "footprintCenter": [
-     7.7425,
+     7.7426,
      0.0,
      9.0297
     ],
     "footprint": [
      0.5764,
-     0.5692
+     0.5697
     ],
     "facing": [
      0.9949,
@@ -4182,23 +4715,23 @@
    {
     "id": "furniture_13",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     9.1112,
-     0.0015,
-     9.4033
+     9.0294,
+     0.0,
+     9.686
     ],
     "rotationY": -1.98702,
     "scaling": [
-     1.0009,
-     0.509,
-     0.9299
+     1.0564,
+     0.8865,
+     0.9507
     ],
     "footprintCenter": [
-     9.1384,
+     9.0624,
      0.0,
-     9.4153
+     9.7006
     ],
     "footprint": [
      0.7627,
@@ -4212,18 +4745,18 @@
    {
     "id": "furniture_14",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
-     9.1115,
-     0.0015,
-     8.7381
+     9.1057,
+     0.0,
+     8.7412
     ],
     "rotationY": -1.08161,
     "scaling": [
-     1.027,
-     0.509,
-     0.9531
+     1.0839,
+     0.8865,
+     0.9743
     ],
     "footprintCenter": [
      9.1384,
@@ -4392,18 +4925,18 @@
    {
     "id": "furniture_20",
     "category": "chair",
-    "model": "chair_by_quaternius.glb",
-    "url": "/furniture/chair_by_quaternius.glb",
+    "model": "office_chair_quaternius.glb",
+    "url": "/furniture/office_chair_quaternius.glb",
     "position": [
      1.9014,
-     0.0015,
-     1.2119
+     0.0,
+     1.2164
     ],
     "rotationY": -0.0059,
     "scaling": [
-     0.7602,
-     0.509,
-     0.6507
+     0.8024,
+     0.8865,
+     0.6652
     ],
     "footprintCenter": [
      1.9015,
@@ -4556,27 +5089,48 @@
   "materials": {
    "wall": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "header": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "sill": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "glass": {
     "color": "#9EC9E8",
-    "alpha": 0.35
+    "alpha": 0.35,
+    "texture": null
    },
    "floor": {
     "color": "#C9B79C",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "ceiling": {
     "color": "#FAFAF7",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
+   },
+   "ground": {
+    "color": "#4A7F24",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "boundary": {
+    "color": "#2580BB",
+    "alpha": 1.0,
+    "texture": "/map-end-background.jpg"
+   },
+   "sky": {
+    "color": "#5B93B5",
+    "alpha": 1.0,
+    "texture": "/sky.avif"
    }
   }
  },
@@ -4616,6 +5170,15 @@
     "Muebles": 421,
     "VENTANAS": 11
    }
-  }
+  },
+  "checks": [
+   "F1 interior_window: Window window_9 (0.59 m) on wall_14 is between two indoor spaces: offices and an unnamed 67.7 m² space. -> keep",
+   "F2 furniture_conflict: chair furniture_7 (block '18140101', drawn 0.76 x 0.77 m at (14.8317, 5.2014)) cuts into furniture_8. -> accept",
+   "F3 furniture_conflict: chair furniture_10 (block '18140101', drawn 0.76 x 0.77 m at (4.6831, 9.4153)) cuts into furniture_11. -> accept",
+   "F4 furniture_conflict: chair furniture_13 (block '18140101', drawn 0.76 x 0.77 m at (9.1384, 9.4153)) cuts into furniture_14. -> accept",
+   "Moved chair furniture_7 0.30 m to clear furniture_8.",
+   "Moved chair furniture_10 0.30 m to clear furniture_11.",
+   "Moved chair furniture_13 0.30 m to clear furniture_14."
+  ]
  }
 }

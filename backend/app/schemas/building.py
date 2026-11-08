@@ -53,11 +53,17 @@ class Room(CamelModel):
     label_position: Point2 | None = None
 
 
+class Footprint(CamelModel):
+    position: Point2
+    width: float
+    depth: float
+
+
 class FurnitureItem(CamelModel):
     """A piece of furniture matched to a GLB model from the frontend furniture library."""
 
     id: str
-    category: str = Field(description="bed, chair, sofa, desk, table, closet, toilet")
+    category: str = Field(description="A library category (schemas/parse.py FURNITURE_CATEGORIES): bed, chair, ...")
     model: str = Field(description="GLB file name in frontend/public/furniture")
     source_block: str | None = Field(default=None, description="DWG block (INSERT) this came from")
     matched_by: Literal["block_name", "layer", "size", "llm", "manual"] = "block_name"
@@ -66,6 +72,11 @@ class FurnitureItem(CamelModel):
     width: float = Field(gt=0, description="Footprint extent across the facing direction (m)")
     depth: float = Field(gt=0, description="Footprint extent along the facing direction (m)")
     height: float = Field(gt=0)
+    drawn: Footprint | None = Field(
+        default=None,
+        description="The block's footprint as drawn in the plan, kept when the guardrails moved or resized the "
+        "item (position/width/depth then hold the corrected footprint)",
+    )
 
 
 class Building(CamelModel):

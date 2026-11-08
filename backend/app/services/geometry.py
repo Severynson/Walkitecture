@@ -1,7 +1,8 @@
 """Deterministic 2D geometry helpers and building validation rules (all values in meters)."""
 
 import math
-from collections import Counter
+from collections import Counter, defaultdict
+from collections.abc import Iterator
 
 from app.schemas.base import CamelModel
 from app.schemas.building import Building, Point2, Wall
@@ -93,6 +94,46 @@ def segment_distance(a: Point2, b: Point2, c: Point2, d: Point2) -> float:
         point_segment_distance(c, a, b),
         point_segment_distance(d, a, b),
     )
+
+
+class SegmentGrid:
+    """Uniform grid over segment bounding boxes: "which segments can be near this area?" in ~O(1).
+
+    `near()` returns a superset of the segments whose bounding box comes within `margin` of the query
+    box, as indices in ascending order (so callers keep their original iteration order and tie-breaks).
+    Segments spanning a huge number of cells are kept in a small always-returned list instead.
+    """
+
+    MAX_CELLS_PER_SEGMENT = 4096
+
+    def __init__(self, segments: list[tuple[Point2, Point2]], cell: float):
+        self.cell = cell
+        self.cells: dict[tuple[int, int], list[int]] = defaultdict(list)
+        self.oversize: list[int] = []
+        for index, (a, b) in enumerate(segments):
+            box = (min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1]))
+            if self._count(*box) > self.MAX_CELLS_PER_SEGMENT:
+                self.oversize.append(index)
+                continue
+            for key in self._keys(*box):
+                self.cells[key].append(index)
+
+    def _range(self, lo: float, hi: float) -> range:
+        return range(math.floor(lo / self.cell), math.floor(hi / self.cell) + 1)
+
+    def _count(self, x0: float, y0: float, x1: float, y1: float) -> int:
+        return len(self._range(x0, x1)) * len(self._range(y0, y1))
+
+    def _keys(self, x0: float, y0: float, x1: float, y1: float) -> Iterator[tuple[int, int]]:
+        for gx in self._range(x0, x1):
+            for gy in self._range(y0, y1):
+                yield (gx, gy)
+
+    def near(self, x0: float, y0: float, x1: float, y1: float, margin: float) -> list[int]:
+        found = set(self.oversize)
+        for key in self._keys(x0 - margin, y0 - margin, x1 + margin, y1 + margin):
+            found.update(self.cells.get(key, ()))
+        return sorted(found)
 
 
 def line_intersection(a: Point2, b: Point2, c: Point2, d: Point2) -> Point2 | None:

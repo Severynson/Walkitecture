@@ -9,7 +9,8 @@ from fastapi.responses import RedirectResponse
 from app.api import ai, auth, edits, health, interpret, plans
 from app.api.errors import register_error_handlers
 from app.config import Settings, get_settings
-from app.db import engine
+from app.db import SessionLocal, engine
+from app.services import jobs, workers
 from app.spa import mount_spa, spa_available
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,14 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    try:
+        if interrupted := await jobs.fail_interrupted(SessionLocal):
+            logger.warning("%d plan(s) were left processing by a previous run; marked failed.", interrupted)
+    except Exception:  # the database may not be up yet; the health check reports it
+        logger.exception("Could not check for interrupted processing jobs")
     yield
+    await jobs.shutdown()
+    workers.shutdown()
     await engine.dispose()
 
 

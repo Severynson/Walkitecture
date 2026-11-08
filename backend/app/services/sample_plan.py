@@ -98,3 +98,41 @@ def build_orientation_dxf() -> bytes:
     stream = io.StringIO()
     doc.write(stream)
     return stream.getvalue().encode("utf-8")
+
+
+SHOWROOM_COLUMNS = 6
+SHOWROOM_GAP = 0.9  # m between pieces
+
+
+def furniture_showroom():
+    """One room with every model of the furniture library, in rows facing the visitor (the
+    `furniture-library` fixture: a visual catalog, and a browser test that every GLB loads)."""
+    from app.schemas.building import Building, FurnitureItem, Opening, Room, Wall
+    from app.services.furniture_catalog import CATALOG
+
+    height = 10 * 0.3048
+    cell_w = max(m.real_size[0] for m in CATALOG) + SHOWROOM_GAP
+    cell_d = max(m.real_size[2] for m in CATALOG) + SHOWROOM_GAP
+    rows = -(-len(CATALOG) // SHOWROOM_COLUMNS)
+    width, depth = SHOWROOM_COLUMNS * cell_w + 1.0, rows * cell_d + 4.0  # 3 m walkway in front of the rows
+    furniture = []
+    for index, model in enumerate(CATALOG):
+        row, col = divmod(index, SHOWROOM_COLUMNS)
+        w, h, d = model.real_size
+        x, y = 0.5 + (col + 0.5) * cell_w, depth - 0.5 - (row + 0.5) * cell_d
+        furniture.append(
+            FurnitureItem(
+                id=f"furniture_{index + 1}", category=model.category, model=model.file, source_block=model.file,
+                matched_by="manual", position=(round(x, 4), round(y, 4)),
+                facing=(0.0, -1.0), width=w, depth=d, height=h,
+            )
+        )  # fmt: skip
+    door = Opening(id="door_1", type="door", offset=width / 2 - 0.45, width=0.9, height=7 * 0.3048)
+    corners = [(0.0, 0.0), (width, 0.0), (width, depth), (0.0, depth)]
+    walls = [
+        Wall(id=f"wall_{i + 1}", start=corners[i], end=corners[(i + 1) % 4], thickness=0.2, height=height,
+             openings=[door] if i == 0 else [])
+        for i in range(4)
+    ]  # fmt: skip
+    room = Room(id="room_1", name="Furniture library", label_position=(width / 2, 1.5))
+    return Building(ceiling_height=height, walls=walls, rooms=[room], furniture=furniture)

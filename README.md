@@ -23,13 +23,18 @@ to walk around the proposal.
 1. **DWG ingestion:** Read the shapes in a DWG (lines, polylines, arcs, circles, block inserts, text) into a
    descriptive JSON dump.
 2. **Semantic classification:** Decide which layers and blocks are walls, windows, doors, rooms, and furniture—with
-   rules first and an LLM for unfamiliar names.
-3. **Procedural 3D generation:** The backend turns the building JSON into a render-ready Babylon.js scene spec—walls
-   with real openings, floors, and furniture placements at real-world scale—and one generic browser loader draws it.
-4. **Browser walkthrough:** Explore with WASD + mouse; switch to an overhead view to see the whole layout.
-5. **Live editing:** Change a supported property while walking; only the affected meshes are rebuilt—**no reload, no
+   rules first, then an LLM pass over every fresh upload.
+3. **Checks before 3D:** Nothing impossible reaches the scene. Furniture never cuts into walls or other furniture (it is
+   nudged, shrunk a little, or removed), windows between two rooms and rooms without an entrance are caught, and
+   stray symbols outside the building are dropped. Code finds each problem and the safe fixes; the AI picks the fix.
+4. **Procedural 3D generation:** The backend turns the building JSON into a render-ready Babylon.js scene spec—walls
+   with real openings, doors that open, floors, and furniture placements at real-world scale, inside a landscape
+   with a sky—and one generic browser loader draws it.
+5. **Browser walkthrough:** Explore with WASD + mouse, press E to open doors, step outside; switch to an overhead
+   view to see the whole layout.
+6. **Live editing:** Change a supported property while walking; only the affected meshes are rebuilt—**no reload, no
    camera reset**.
-6. **Natural-language edits:** An LLM turns a request into a **predefined, validated edit operation**—never into
+7. **Natural-language edits:** An LLM turns a request into a **predefined, validated edit operation**—never into
    arbitrary 3D-engine code.
 
 The goal is **spatial understanding and rapid design iteration**, not photorealism or construction-ready BIM.
@@ -76,6 +81,10 @@ The goal is **spatial understanding and rapid design iteration**, not photoreali
 - [x] Click-to-select a wall, window, or furniture item; highlight the selection.
 - [x] Natural-language editing mapped to a small allowlist of operations; Undo.
 - [x] LLM classification of unknown layers/blocks and an LLM review pass that proposes validated fixes.
+- [x] Both run automatically on every upload (background processing with live progress), together with the
+      guardrails: no furniture in walls or other furniture, no windows between rooms, no rooms without an entrance.
+- [x] 23 furniture models (bedroom, living, kitchen, bathroom, office) and interactive single doors (E to open/close).
+- [x] The map ends in a landscape backdrop and sky; nobody falls off the world.
 
 ### P2 — Stretch goals
 
@@ -110,9 +119,10 @@ flowchart TD
     B --> C[Raw entity JSON]
     C --> K[Classifier: rules + LLM]
     K --> D[Semantic building JSON]
-    D -. optional .-> RV[LLM review → validated patches]
-    RV -.-> D
-    D --> P[(PostgreSQL)]
+    D --> GR[Guardrail checks → findings with safe fixes]
+    GR --> RV[LLM review: patches + one decision per finding]
+    RV --> EN[Apply + enforce: no furniture in walls or furniture]
+    EN --> P[(PostgreSQL)]
     P --> E[React + Babylon.js renderer]
     E --> F[First-person walkthrough]
 
@@ -202,7 +212,7 @@ behind Traefik: see [`ARCHITECTURE.md` §9](ARCHITECTURE.md#9-deployment).
 | Messy or unfamiliar DWG conventions | Raw JSON dump for inspection, LLM layer/block classification, manual override |
 | LibreDWG misreads a DWG version | Both examples parse today; ODA File Converter remains a possible fallback |
 | Missing or wrong scale | `$INSUNITS`, size-based guess with a warning, manual units/scale override |
-| AI invents geometry | LLM outputs classifications and allowlisted commands only; validation is authoritative |
+| AI invents geometry | LLM outputs classifications, allowlisted commands, and choices among precomputed fixes only; validation and the furniture rule are enforced by code afterwards |
 | Furniture faces the wrong way | Back-to-the-wall rule aligned to the block's own axes; chairs face tables; measured per-model sizes |
 | Stale collisions after an edit | Rebuild colliders for affected objects; push the camera out if trapped |
 | AI endpoint slow or down | Sliders and the rule-based interpreter use the same edit operations |

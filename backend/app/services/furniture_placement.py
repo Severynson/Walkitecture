@@ -4,7 +4,8 @@ Rules:
 * The model's front faces away from the wall it stands against ("furniture is always directed away
   from the wall by its front side"): of the block's four sides (from the INSERT rotation), the one
   closest to a wall running along it is the back. Free-standing items face away from the nearest wall.
-* Exception: a chair standing within reach of a table or desk faces that table/desk instead.
+* Exception: a chair standing within reach of a table or desk faces that table/desk instead (and is an
+  office chair at a desk).
 * The footprint (width across the facing direction, depth along it) comes from the block's actual
   geometry in the drawing; height comes from the library model's typical real-world size.
 """
@@ -138,12 +139,15 @@ def _footprint(points: list[Point2], facing: Point2) -> tuple[Point2, float, flo
     return center, max(ts) - min(ts), max(fs) - min(fs)
 
 
-def _item(candidate: FurnitureCandidate, facing: Point2, index: int, warnings: list[str]) -> FurnitureItem | None:
+def _item(
+    candidate: FurnitureCandidate, facing: Point2, index: int, warnings: list[str], hint: str = ""
+) -> FurnitureItem | None:
     center, width, depth = _footprint(candidate.points, facing)
     if max(width, depth) > MAX_FOOTPRINT:
         warnings.append(f"Block {candidate.block!r} ({width:.1f} x {depth:.1f} m) is too large for furniture; skipped.")
         return None
-    model = choose_model(candidate.category or "", width, depth, candidate.round_shape)
+    name = f"{candidate.block} {hint}".strip()
+    model = choose_model(candidate.category or "", width, depth, candidate.round_shape, name)
     if model is None:
         return None
     if width < MIN_FOOTPRINT or depth < MIN_FOOTPRINT:
@@ -180,9 +184,11 @@ def place_furniture(
         facing = facing_from_back_wall(
             candidate.points, candidate.rotation, walls, candidate.category
         ) or _free_standing_facing(candidate, walls)
-        if candidate.category == "chair":
-            facing = _toward_nearest_table(candidate.center, items) or facing
-        item = _item(candidate, facing, index, warnings)
+        hint = ""
+        if candidate.category == "chair" and (table := _nearest_table(candidate.center, items)):
+            facing = unit(sub(table.position, candidate.center)) if table.position != candidate.center else facing
+            hint = "desk" if table.category == "desk" else ""  # a chair at a desk is an office chair
+        item = _item(candidate, facing, index, warnings, hint)
         if item:
             items.append(item)
             index += 1
@@ -204,7 +210,8 @@ def _free_standing_facing(candidate: FurnitureCandidate, walls: list[Wall]) -> P
     return axis if dot(axis, away) >= 0 else (-axis[0] + 0.0, -axis[1] + 0.0)
 
 
-def _toward_nearest_table(center: Point2, placed: list[FurnitureItem]) -> Point2 | None:
+def _nearest_table(center: Point2, placed: list[FurnitureItem]) -> FurnitureItem | None:
+    """The table or desk a chair at `center` belongs to (within CHAIR_TO_TABLE_REACH of its edge), if any."""
     best: tuple[float, FurnitureItem] | None = None
     for item in placed:
         if item.category not in ("table", "desk"):
@@ -212,7 +219,4 @@ def _toward_nearest_table(center: Point2, placed: list[FurnitureItem]) -> Point2
         edge_distance = math.dist(center, item.position) - min(item.width, item.depth) / 2
         if edge_distance <= CHAIR_TO_TABLE_REACH and (best is None or edge_distance < best[0]):
             best = (edge_distance, item)
-    if best is None:
-        return None
-    direction = unit(sub(best[1].position, center))
-    return direction if direction != (0.0, 0.0) else None
+    return best[1] if best else None

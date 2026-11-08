@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 
 from app.schemas.building import Wall
-from app.services.furniture_catalog import CATALOG, category_for, category_from_size, choose_model
+from app.schemas.parse import FURNITURE_CATEGORIES
+from app.services.babylon_scene import FRONT_ANGLE
+from app.services.furniture_catalog import CATALOG, DOOR_LEAF, category_for, category_from_size, choose_model
 from app.services.furniture_placement import FurnitureCandidate, place_furniture
 from app.services.glb_bounds import glb_bounds
 
@@ -15,8 +17,8 @@ FURNITURE_DIR = Path(__file__).resolve().parents[2] / "frontend" / "public" / "f
 @pytest.mark.skipif(not FURNITURE_DIR.is_dir(), reason="frontend/public/furniture not present")
 def test_catalog_matches_the_glb_library():
     files = {p.name for p in FURNITURE_DIR.glob("*.glb")}
-    assert {m.file for m in CATALOG} == files
-    for model in CATALOG:
+    assert {m.file for m in CATALOG} | {DOOR_LEAF.file} == files
+    for model in (*CATALOG, DOOR_LEAF):
         size, center = glb_bounds(FURNITURE_DIR / model.file)
         assert size == pytest.approx(model.native_size, abs=0.002), model.file
         assert center == pytest.approx(model.native_center, abs=0.002), model.file
@@ -25,14 +27,60 @@ def test_catalog_matches_the_glb_library():
 @pytest.mark.parametrize(
     ("name", "category"),
     [
-        ("CAMA180 90", "bed"), ("camamatrimnueva", "bed"), ("SILL-01Z", "chair"), ("SILLONCONPERSONA", "chair"),
+        ("CAMA180 90", "bed"), ("camamatrimnueva", "bed"), ("SILL-01Z", "chair"), ("SILLONCONPERSONA", "sofa"),
         ("ESCRITORIO JUVENIL", "desk"), ("nueva mesa comedor", "table"), ("mesareunion", "table"),
         ("SOFA CON HOMBRE", "sofa"), ("WC1", "toilet"), ("MUEBLE COMODIN", "closet"), ("Office Chair", "chair"),
-        ("King Bed", "bed"), ("LAVABO1", None), ("NEVERA", None), ("18140101", None),
+        ("King Bed", "bed"), ("LAVABO1", None), ("18140101", None), ("Armchair", "sofa"),
+        ("BAÑERA 170", "bathtub"), ("Bathtub", "bathtub"), ("PLATO DUCHA 90", "shower"), ("Shower", "shower"),
+        ("FREGADERO 2 SENOS", "sink"), ("Kitchen Sink", "sink"), ("NEVERA", "fridge"), ("Refrigerator", "fridge"),
+        ("MESITA DE NOCHE", "nightstand"), ("Bedside table", "nightstand"), ("MUEBLE COCINA", "kitchen"),
+        ("Kitchen Cabinet", "kitchen"), ("CÓMODA", "dresser"), ("Chest of drawers", "dresser"),
+        ("ESTANTERIA", "bookshelf"), ("Bookcase", "bookshelf"), ("FILE CABINET", "cabinet"), ("APARADOR", "cabinet"),
+        ("Wardrobe", "closet"), ("mesita rincon con lampara", "table"),
     ],
 )  # fmt: skip
 def test_block_names_map_to_categories(name, category):
     assert category_for(name) == category
+
+
+def test_every_category_has_a_model_and_every_model_a_category():
+    assert {m.category for m in CATALOG} == set(FURNITURE_CATEGORIES)
+    assert all(m.front in FRONT_ANGLE for m in CATALOG)
+    assert len({m.file for m in CATALOG}) == len(CATALOG)
+
+
+@pytest.mark.parametrize(
+    ("category", "size", "name", "file"),
+    [
+        ("sofa", (0.9, 0.85), "SILLON", "couch_small_quarternius.glb"),
+        ("sofa", (2.0, 0.9), "SOFA", "couch_medium_by_quaternius.glb"),
+        ("chair", (0.6, 0.6), "SILLA OFICINA", "office_chair_quaternius.glb"),
+        ("chair", (0.5, 0.55), "SILLA", "chair_by_quaternius.glb"),
+        ("kitchen", (0.6, 0.6), "MUEBLE COCINA", "kitchen_cabinet_by_kenney.glb"),
+        ("kitchen", (1.2, 0.35), "BARRA", "kitchen_bar_by_kenney.glb"),
+        ("cabinet", (0.45, 0.6), "ARCHIVADOR", "file_cabinet_j-toastie.glb"),
+        ("cabinet", (0.9, 0.45), "APARADOR", "cabinet_by_creativetrio.glb"),
+    ],
+)  # fmt: skip
+def test_variants_follow_size_and_name(category, size, name, file):
+    assert choose_model(category, *size, name=name).file == file
+
+
+def test_a_chair_at_a_desk_is_an_office_chair():
+    desk = FurnitureCandidate("ESCRITORIO", "MUEBLES", "desk", "block_name", square((2, 2), 1.4, 0.7))
+    at_desk = FurnitureCandidate("SILLA", "MUEBLES", "chair", "block_name", square((2, 1.2), 0.5, 0.5))
+    at_table = FurnitureCandidate("SILLA", "MUEBLES", "chair", "block_name", square((8, 1.2), 0.5, 0.5))
+    table = FurnitureCandidate("MESA", "MUEBLES", "table", "block_name", square((8, 2), 1.6, 0.9))
+    placed = {
+        i.source_block + str(i.position[0] > 5): i for i in place_furniture([desk, at_desk, table, at_table], [], [])
+    }
+    assert placed["SILLAFalse"].model == "office_chair_quaternius.glb"
+    assert placed["SILLATrue"].model == "chair_by_quaternius.glb"
+
+
+def square(center, width, depth):
+    (cx, cy), w, d = center, width / 2, depth / 2
+    return [(cx - w, cy - d), (cx + w, cy - d), (cx + w, cy + d), (cx - w, cy + d)]
 
 
 def test_size_guess_is_limited_to_generic_furniture_layers():

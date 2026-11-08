@@ -5,7 +5,8 @@ import math
 import pytest
 
 from app.schemas.building import Building, FurnitureItem, Opening, Wall
-from app.services.babylon_scene import build_scene
+from app.services.babylon_scene import FRONT_ANGLE, build_scene
+from app.services.furniture_catalog import CATALOG
 
 FT = 0.3048
 
@@ -177,3 +178,35 @@ def test_jogged_continuation_is_bridged():
     b = Wall(id="b", start=(3.43, 0.19), end=(6, 0.19), thickness=0.22, height=3)
     scene = build_scene(Building(ceiling_height=3, walls=[a, b]))
     assert _wall_extent(scene, "a")[1] == pytest.approx(3.43, abs=1e-3)
+
+
+def _placed_box(model, spec):
+    """World-space footprint (x/z extents) and front direction of a catalog model placed by `spec`."""
+    nx, ny, nz = model.native_size
+    cx, cy, cz = model.native_center
+    sx, sy, sz = spec.scaling
+    a = spec.rotation_y
+    xs, zs = [], []
+    for ux in (-0.5, 0.5):
+        for uz in (-0.5, 0.5):
+            # glTF -> Babylon (the loader mirrors x), then the spec's scale, rotation and position.
+            lx, lz = -(cx + ux * nx) * sx, (cz + uz * nz) * sz
+            xs.append(spec.position[0] + lx * math.cos(a) + lz * math.sin(a))
+            zs.append(spec.position[2] - lx * math.sin(a) + lz * math.cos(a))
+    phi = FRONT_ANGLE[model.front] + a  # the model's front, turned by RotationY
+    return (min(xs), max(xs), min(zs), max(zs)), (math.sin(phi), math.cos(phi))
+
+
+@pytest.mark.parametrize("model", CATALOG, ids=[m.file for m in CATALOG])
+@pytest.mark.parametrize("facing", [(0.0, 1.0), (1.0, 0.0), (0.0, -1.0), (-1.0, 0.0)])
+def test_every_library_model_fills_its_footprint_and_faces_forward(model, facing):
+    """Whatever its native scale, origin, or front side, a model lands on its footprint, front first."""
+    width, _, depth = model.real_size
+    item = FurnitureItem(id="f", category=model.category, model=model.file, position=(3.0, 2.0), facing=facing,
+                         width=width, depth=depth, height=model.real_size[1])  # fmt: skip
+    spec = build_scene(Building(ceiling_height=3.048, furniture=[item])).furniture[0]
+    (x0, x1, z0, z1), front = _placed_box(model, spec)
+    across, along = (width, depth) if facing[1] else (depth, width)  # world x / z extents
+    assert (x1 - x0, z1 - z0) == pytest.approx((across, along), abs=1e-3)
+    assert ((x0 + x1) / 2, (z0 + z1) / 2) == pytest.approx((3.0, 2.0), abs=1e-3)
+    assert front == pytest.approx(facing, abs=1e-6)

@@ -104,10 +104,32 @@ export interface paths {
         put?: never;
         /**
          * Upload Plan
-         * @description Upload a DWG/DXF. By default this runs the whole pipeline: DWG -> DXF -> descriptive drawing JSON ->
-         *     building model -> Babylon.js scene, all stored for this plan. Parse failures are recorded on the plan.
+         * @description Upload a DWG/DXF. By default the drawing is processed in the background: DWG -> DXF -> descriptive
+         *     drawing JSON -> AI layer classification -> building model -> automatic checks (AI review + guardrails)
+         *     -> Babylon.js scene. The plan comes back with status "processing"; poll GET /plans/{id} (its `stage`
+         *     shows progress) until it is "parsed" or "failed" (with `error`).
          */
         post: operations["upload_plan_api_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{plan_id}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Process Plan
+         * @description Process the drawing again from scratch, like a fresh upload (Retry after a failure). Clears edit history.
+         */
+        post: operations["process_plan_api_plans__plan_id__process_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -163,7 +185,8 @@ export interface paths {
         put?: never;
         /**
          * Parse Plan
-         * @description (Re)run the pipeline with custom options (units, wall style, layer names...). Clears edit history.
+         * @description (Re)run the pipeline now with custom options (units, wall style, layer names...): the rule-based
+         *     steps and guardrails, without the AI steps. Clears edit history.
          */
         post: operations["parse_plan_api_plans__plan_id__parse_post"];
         delete?: never;
@@ -362,7 +385,10 @@ export interface components {
             coordinateSystem: string;
             /** Wallheight */
             wallHeight: number;
+            /** @description The building (walls) */
             bounds: components["schemas"]["Bounds"];
+            /** @description The walkable map: the building plus open ground, ringed by boundary walls */
+            mapBounds: components["schemas"]["Bounds"];
             /** Meshes */
             meshes: components["schemas"]["BoxMesh"][];
             /** Openings */
@@ -385,7 +411,7 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "ignore";
+            role: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "bathtub" | "shower" | "sink" | "kitchen" | "fridge" | "cabinet" | "dresser" | "nightstand" | "bookshelf" | "ignore";
             /** Confidence */
             confidence: number;
             /**
@@ -447,9 +473,10 @@ export interface components {
             id: string;
             /**
              * Kind
+             * @description ground / boundary / sky: the open ground around the building, the backdrop walls at the map's end, and the sky canopy resting on them (first-person scenery, not part of the building)
              * @enum {string}
              */
-            kind: "wall" | "header" | "sill" | "glass" | "floor" | "ceiling";
+            kind: "wall" | "header" | "sill" | "glass" | "floor" | "ceiling" | "ground" | "boundary" | "sky";
             /** Wallid */
             wallId?: string | null;
             /** Openingid */
@@ -538,6 +565,79 @@ export interface components {
              */
             height: number;
         };
+        /** CheckChange */
+        CheckChange: {
+            /** Targetids */
+            targetIds: string[];
+            /** Summary */
+            summary: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "guardrails" | "ai";
+        };
+        /** CheckFinding */
+        CheckFinding: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "furniture_conflict" | "furniture_outside" | "interior_window" | "enclosed_space" | "no_exterior_door";
+            /** Targetids */
+            targetIds: string[];
+            /** Detail */
+            detail: string;
+            /** Options */
+            options: components["schemas"]["CheckOption"][];
+            /**
+             * Default
+             * @description Option used when the AI is unavailable or gives no valid answer
+             */
+            default: string;
+            /** Decision */
+            decision?: string | null;
+            /** Decidedby */
+            decidedBy?: ("ai" | "default") | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** CheckOption */
+        CheckOption: {
+            /** Id */
+            id: string;
+            /** Description */
+            description: string;
+            /**
+             * Commands
+             * @description Edit commands this option applies
+             */
+            commands?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Removefurniture
+             * @description Furniture this option removes
+             */
+            removeFurniture?: string[];
+        };
+        /** CheckReport */
+        CheckReport: {
+            /**
+             * Ai
+             * @enum {string}
+             */
+            ai: "used" | "unavailable" | "off";
+            classification?: components["schemas"]["ClassificationSummary"] | null;
+            /** Findings */
+            findings?: components["schemas"]["CheckFinding"][];
+            /** Changes */
+            changes?: components["schemas"]["CheckChange"][];
+            /** Notes */
+            notes?: string[];
+        };
         /** ClassificationProposal */
         ClassificationProposal: {
             /** Layers */
@@ -553,6 +653,20 @@ export interface components {
             dropped: string[];
             /** @description Ready for POST /parse (or ?apply=true) */
             parseOptions: components["schemas"]["ParseOptions"];
+        };
+        /** ClassificationSummary */
+        ClassificationSummary: {
+            /**
+             * Applied
+             * @description Whether the AI's layer/block roles were used to build the model
+             */
+            applied: boolean;
+            /** Layers */
+            layers: number;
+            /** Blocks */
+            blocks: number;
+            /** Notes */
+            notes: string;
         };
         /** ClassifyRequest */
         ClassifyRequest: {
@@ -577,6 +691,69 @@ export interface components {
             username: string;
             /** Password */
             password: string;
+        };
+        /**
+         * DoorLeafSpec
+         * @description A hinged door leaf (single doors). The frontend puts a pivot node at `hinge` with `rotationY` (closed)
+         *     and adds `swing` to open it. In pivot space, x runs along the closed leaf from the hinge to the latch, y up.
+         */
+        DoorLeafSpec: {
+            /**
+             * Url
+             * @description GLB of the leaf
+             */
+            url: string;
+            /**
+             * Hinge
+             * @description Hinge axis at floor level, on the wall's centerline
+             */
+            hinge: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Rotationy
+             * @description Pivot rotation when closed (radians)
+             */
+            rotationY: number;
+            /**
+             * Swing
+             * @description Radians added to rotationY to open the door (sign = which side it opens to)
+             */
+            swing: number;
+            /**
+             * Modelposition
+             * @description Model root position in pivot space
+             */
+            modelPosition: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Modelrotationy
+             * @description Model root rotation in pivot space
+             */
+            modelRotationY: number;
+            /**
+             * Scaling
+             * @description Model root scaling
+             */
+            scaling: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Size
+             * @description Leaf [width, height, thickness] (the collider, from the hinge along pivot x)
+             */
+            size: [
+                number,
+                number,
+                number
+            ];
         };
         /** EditHistoryItem */
         EditHistoryItem: {
@@ -649,6 +826,18 @@ export interface components {
              */
             factor: number;
         };
+        /** Footprint */
+        Footprint: {
+            /** Position */
+            position: [
+                number,
+                number
+            ];
+            /** Width */
+            width: number;
+            /** Depth */
+            depth: number;
+        };
         /**
          * FurnitureItem
          * @description A piece of furniture matched to a GLB model from the frontend furniture library.
@@ -658,7 +847,7 @@ export interface components {
             id: string;
             /**
              * Category
-             * @description bed, chair, sofa, desk, table, closet, toilet
+             * @description A library category (schemas/parse.py FURNITURE_CATEGORIES): bed, chair, ...
              */
             category: string;
             /**
@@ -705,6 +894,8 @@ export interface components {
             depth: number;
             /** Height */
             height: number;
+            /** @description The block's footprint as drawn in the plan, kept when the guardrails moved or resized the item (position/width/depth then hold the corrected footprint) */
+            drawn?: components["schemas"]["Footprint"] | null;
         };
         /** FurnitureSpec */
         FurnitureSpec: {
@@ -876,6 +1067,11 @@ export interface components {
              * @default 1
              */
             alpha: number;
+            /**
+             * Texture
+             * @description Image URL: the landscape backdrop (boundary walls, horizon at eye level) or the sky (canopy)
+             */
+            texture?: string | null;
         };
         /** MoveSelectedWall */
         MoveSelectedWall: {
@@ -948,6 +1144,8 @@ export interface components {
             sillHeight: number;
             /** Rotationy */
             rotationY: number;
+            /** @description Single doors: the interactive leaf */
+            leaf?: components["schemas"]["DoorLeafSpec"] | null;
         };
         /**
          * ParseOptions
@@ -1030,7 +1228,7 @@ export interface components {
              * @description Force a category for named blocks (case-insensitive), e.g. {'18140101': 'chair', 'PC40': 'door'}. 'ignore' drops the block entirely. Takes precedence over every other rule.
              */
             blockOverrides?: {
-                [key: string]: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "ignore";
+                [key: string]: "door" | "window" | "bed" | "chair" | "sofa" | "desk" | "table" | "closet" | "toilet" | "bathtub" | "shower" | "sink" | "kitchen" | "fridge" | "cabinet" | "dresser" | "nightstand" | "bookshelf" | "ignore";
             } | null;
         };
         /** ParseResponse */
@@ -1084,7 +1282,12 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "parsed" | "failed";
+            status: "uploaded" | "processing" | "parsed" | "failed";
+            /**
+             * Stage
+             * @description While processing: the pipeline step (reading, classifying, checking, reviewing...)
+             */
+            stage?: string | null;
             /** Modelversion */
             modelVersion: number;
             /** Hasmodel */
@@ -1107,6 +1310,8 @@ export interface components {
             parseStats: {
                 [key: string]: unknown;
             } | null;
+            /** @description What the automatic checks found and changed */
+            report?: components["schemas"]["CheckReport"] | null;
         };
         /** PlanSummary */
         PlanSummary: {
@@ -1128,7 +1333,12 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "uploaded" | "parsed" | "failed";
+            status: "uploaded" | "processing" | "parsed" | "failed";
+            /**
+             * Stage
+             * @description While processing: the pipeline step (reading, classifying, checking, reviewing...)
+             */
+            stage?: string | null;
             /** Modelversion */
             modelVersion: number;
             /** Hasmodel */
@@ -1283,7 +1493,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "short_wall" | "isolated_wall" | "unsnapped_openings" | "overlapping_furniture" | "furniture_outside_rooms" | "unlabelled_room" | "unresolved_furniture_blocks";
+            kind: "short_wall" | "isolated_wall" | "unsnapped_openings" | "furniture_outside_rooms" | "unlabelled_room" | "unresolved_furniture_blocks";
             /** Targetids */
             targetIds?: string[];
             /** Detail */
@@ -1534,7 +1744,7 @@ export interface operations {
     upload_plan_api_plans_post: {
         parameters: {
             query?: {
-                /** @description Run the full pipeline immediately (default). */
+                /** @description Process the drawing right away (default). */
                 parse?: boolean;
             };
             header?: never;
@@ -1549,6 +1759,37 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    process_plan_api_plans__plan_id__process_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

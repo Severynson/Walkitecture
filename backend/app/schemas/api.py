@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 from app.schemas.babylon import BabylonScene
 from app.schemas.base import CamelModel
 from app.schemas.building import Building, Point2
+from app.schemas.checks import CheckReport
 from app.schemas.edits import EditCommand
 from app.services.geometry import Problem
 from app.services.llm_classify import ClassificationProposal
@@ -49,7 +50,10 @@ class PlanSummary(CamelModel):
     filename: str
     source_format: Literal["dwg", "dxf"]
     file_size: int
-    status: Literal["uploaded", "parsed", "failed"]
+    status: Literal["uploaded", "processing", "parsed", "failed"]
+    stage: str | None = Field(
+        default=None, description="While processing: the pipeline step (reading, classifying, checking, reviewing...)"
+    )
     model_version: int
     has_model: bool
     error: str | None
@@ -60,6 +64,7 @@ class PlanSummary(CamelModel):
 class PlanDetail(PlanSummary):
     parse_warnings: list[str]
     parse_stats: dict[str, Any] | None
+    report: CheckReport | None = Field(default=None, description="What the automatic checks found and changed")
 
 
 class SceneResponse(CamelModel):

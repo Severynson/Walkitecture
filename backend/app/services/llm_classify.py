@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.config import Settings
 from app.schemas.base import CamelModel
-from app.schemas.parse import BlockRole, ParseOptions
+from app.schemas.parse import FURNITURE_CATEGORIES, BlockRole, ParseOptions
 from app.services.llm import structured
 
 LayerRole = Literal["wall", "window", "door", "opening", "room", "furniture", "ignore"]
@@ -64,15 +64,21 @@ class ClassificationProposal(CamelModel):
     parse_options: ParseOptions = Field(description="Ready for POST /parse (or ?apply=true)")
 
 
-PROMPT = """You classify the layers and blocks of an architectural floor-plan drawing (DWG/DXF, often
+PROMPT = (
+    """You classify the layers and blocks of an architectural floor-plan drawing (DWG/DXF, often
 non-English, e.g. Spanish MURO=wall, VENTANA=window, PUERTA=door, CARPINTERIA=doors+windows,
 MUEBLES=furniture, SUPERFICIE=room areas). For each layer choose its role:
 wall (wall outlines), window, door, opening (mixed doors and windows), room (room outlines or room name
 labels), furniture, or ignore (dimensions, hatching, text, electrical, axes, plaster/finish lines, other
-sheets). For each block choose: door, window, bed, chair, sofa, desk, table, closet, toilet, or ignore
-(sinks, showers, appliances, plants, symbols, arrows). Use names, entity types, counts, sizes (drawing
-units) and the categories the rules already assigned. Give a confidence from 0 to 1. Only list layers and
-blocks that appear in the input; include every layer that contains geometry."""
+sheets). For each block choose: door, window, """
+    + ", ".join(FURNITURE_CATEGORIES)
+    + """, or ignore
+(washbasins, bidets, stoves, washing machines, plants, symbols, arrows). "sink" is a kitchen sink counter,
+"kitchen" a kitchen counter/cabinet unit, "cabinet" a low or filing cabinet, "dresser" a chest of drawers.
+Use names, entity types, counts, sizes (drawing units) and the categories the rules already assigned.
+Give a confidence from 0 to 1. Only list layers and blocks that appear in the input; include every layer
+that contains geometry."""
+)
 
 
 def inventory(drawing: dict[str, Any]) -> dict[str, Any]:

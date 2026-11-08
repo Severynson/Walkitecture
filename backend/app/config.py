@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     # --- DWG -> DXF conversion (LibreDWG) ---------------------------------------------
     dwg2dxf_path: str = "dwg2dxf"
     dwg_convert_timeout_s: float = 90.0
+    # Reading/building a drawing runs in worker processes (app/services/workers.py), never in the event loop.
+    process_in_background: bool = True  # uploads return at once and are processed by a background job
+    parse_workers: int = 2
+    parse_timeout_s: float = 300.0
 
     # --- OpenAI edit interpretation ----------------------------------------------------
     openai_api_key: str | None = None

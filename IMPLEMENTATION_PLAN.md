@@ -24,7 +24,11 @@ because tracks only touch their own directories and talk to each other through *
 | LLM review (D2, §4.3) + AI panel (Review plan / Re-classify layers) | ✅ done (needs `OPENAI_API_KEY` on the server) |
 | Picking + highlight, partial rebuild by `affectedIds`, edit panel (window width, ceiling, all windows, move wall), chat, undo (B3, E3) | ✅ done |
 | Browser smoke test `frontend/e2e/smoke.mjs` (`npm run e2e -- <url> [dwg]`) | ✅ passes locally and on production |
-| Remaining polish (Phase 4): per-layer classification review screen (E4), CI (F3), spawn in the largest room, performance on large drawings | ⬜ optional |
+| Large drawings: grid-indexed parser (44k-entity flat in 5 s, was ~200 s), CPU work in worker processes with a time limit | ✅ done (the site no longer freezes on a big upload) |
+| Automatic checks before 3D (§4.4): AI classification + review on every upload, guardrails (furniture vs walls/furniture, interior windows, rooms without entrance, stray furniture), enforcement after every edit; background processing with stages + Retry; AI panel hidden | ✅ done |
+| Map end (D13): ground, backdrop walls, sky, respawn guard | ✅ done |
+| Furniture library: 23 models / 16 categories (kitchen, bathroom, storage, office chair, armchair…), per-model front; interactive single doors (E) | ✅ done |
+| Remaining polish (Phase 4): per-layer classification review screen (E4), CI (F3), double doors, closing open gaps in facades | ⬜ optional |
 
 ## Tracks and ownership
 

@@ -23,3 +23,4 @@ export type InterpretResponse = S["InterpretResponse"];
 export type ClassifyResponse = S["ClassifyResponse"];
 export type ReviewResult = S["ReviewResult"];
 export type Problem = S["Problem"];
+export type CheckReport = S["CheckReport"];

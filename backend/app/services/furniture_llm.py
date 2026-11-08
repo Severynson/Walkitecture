@@ -14,13 +14,14 @@ from pydantic import BaseModel, ValidationError
 
 from app.config import Settings
 from app.schemas.building import Room
+from app.schemas.parse import FURNITURE_CATEGORIES
 from app.services.furniture_placement import FurnitureCandidate
 from app.services.geometry import point_in_polygon
 from app.services.llm import completion_options, make_client
 
 logger = logging.getLogger(__name__)
 
-Category = Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet", "none"]
+Category = Literal[(*FURNITURE_CATEGORIES, "none")]  # type: ignore[valid-type]
 
 
 class _Item(BaseModel):
@@ -32,11 +33,12 @@ class _Answer(BaseModel):
     items: list[_Item]
 
 
-PROMPT = """You identify furniture in architectural CAD drawings. For each block below, choose the
-category of the 3D model that should represent it: bed, chair, sofa, desk, table, closet, toilet,
-or none (sinks, showers, bidets, appliances, plants, TVs, symbols, or anything not in the list).
-Block names may be Spanish, abbreviated, or catalog numbers; use the layer, footprint size (meters)
-and the room it stands in. Answer for every index."""
+PROMPT = f"""You identify furniture in architectural CAD drawings. For each block below, choose the
+category of the 3D model that should represent it: {", ".join(FURNITURE_CATEGORIES)}, or none
+(washbasins, bidets, stoves, washing machines, plants, TVs, symbols, or anything not in the list).
+"sink" is a kitchen sink counter, "kitchen" a kitchen counter or cabinet unit, "cabinet" a low cabinet or a
+filing cabinet, "dresser" a chest of drawers. Block names may be Spanish, abbreviated, or catalog numbers;
+use the layer, footprint size (meters) and the room it stands in. Answer for every index."""
 
 
 def _room_of(candidate: FurnitureCandidate, rooms: list[Room]) -> str | None:

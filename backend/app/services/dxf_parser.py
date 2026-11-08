@@ -35,6 +35,7 @@ from app.services.geometry import (
     MIN_HEADER,
     MIN_OPENING_WIDTH,
     MIN_WALL_LENGTH,
+    SegmentGrid,
     add,
     cross,
     dot,
@@ -325,12 +326,33 @@ def _segments(entity: DXFGraphic) -> tuple[list[tuple[Point2, Point2]], bool]:
     return list(zip(points, points[1:], strict=False)), entity.has_arc
 
 
+CURVES = {"ARC", "CIRCLE", "ELLIPSE"}
+CURVE_SAMPLES = 17  # points per arc/circle/ellipse: plenty for a footprint, and bounded
+
+
 def _entity_points(entity: DXFGraphic) -> list[Point2]:
+    """Points outlining an entity (for footprints). Curves are sampled at fixed angles: ezdxf's adaptive
+    flattening can stall on degenerate arcs inside furniture blocks (a sink with 127 tiny arcs did)."""
     parts = [e for e in recursive_decompose([entity]) if e.dxftype() not in SKIP_IN_POINTS]
     points: list[Point2] = []
-    for primitive in to_primitives(parts):
+    for curve in (e for e in parts if e.dxftype() in CURVES):
+        points.extend((v.x, v.y) for v in _curve_points(curve))
+    for primitive in to_primitives([e for e in parts if e.dxftype() not in CURVES]):
         points.extend((v.x, v.y) for v in primitive.vertices())
     return points
+
+
+def _curve_points(curve: DXFGraphic):
+    kind = curve.dxftype()
+    if kind == "ELLIPSE":
+        start, end = curve.dxf.start_param, curve.dxf.end_param
+        span = (end - start) % math.tau or math.tau
+        return curve.vertices(start + span * i / (CURVE_SAMPLES - 1) for i in range(CURVE_SAMPLES))
+    if kind == "CIRCLE":
+        return curve.vertices(360 * i / CURVE_SAMPLES for i in range(CURVE_SAMPLES))
+    start, end = curve.dxf.start_angle, curve.dxf.end_angle
+    span = (end - start) % 360 or 360
+    return curve.vertices(start + span * i / (CURVE_SAMPLES - 1) for i in range(CURVE_SAMPLES))
 
 
 def _has_circle(entity: DXFGraphic) -> bool:
@@ -400,9 +422,15 @@ def _pair_double_lines(
     dirs = [unit(sub(b, a)) for a, b in segments]
     neighbors: list[list[tuple[int, float]]] = [[] for _ in segments]  # (other, signed offset from i)
     candidates = []
+    # Partners lie within max_t of each other, so only nearby segments need the exact checks below
+    # (all-pairs was ~36M comparisons on a 44k-entity drawing).
+    grid = SegmentGrid(segments, cell=max(1.0, 2 * max_t))
     for i, (a, b) in enumerate(segments):
         di, li = dirs[i], math.dist(a, b)
-        for j in range(i + 1, len(segments)):
+        box = (min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1]))
+        for j in grid.near(*box, margin=max_t + 0.05):
+            if j <= i:
+                continue
             c, d = segments[j]
             if abs(cross(di, dirs[j])) > PARALLEL_SIN:
                 continue
@@ -467,11 +495,20 @@ def _extend_to_corners(centerlines: list[_Centerline]) -> None:
 
     Joins L-corners and T-junctions whose centerlines stop short (typical for double-line drawings).
     """
+    if not centerlines:
+        return
+    # A usable intersection needs the end within 2 x reach (<= 2 x max thickness) of the other wall,
+    # and ends already moved by at most one thickness: a 3 x max-thickness margin keeps this exact
+    # while skipping far-away walls (all-pairs was ~67M intersections on a 44k-entity drawing).
+    max_t = max(c.thickness for c in centerlines)
+    margin = 3 * max_t + 0.01
+    grid = SegmentGrid([(c.a, c.b) for c in centerlines], cell=max(1.0, margin))
     for wall in centerlines:
         for end in ("a", "b"):
             point = getattr(wall, end)
             best: tuple[float, Point2] | None = None
-            for other in centerlines:
+            for index in grid.near(point[0], point[1], point[0], point[1], margin=margin):
+                other = centerlines[index]
                 if other is wall:
                     continue
                 reach = max(wall.thickness, other.thickness)

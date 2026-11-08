@@ -7,15 +7,16 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Body, File, Query, Response, UploadFile, status
 from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.deps import CurrentUser, SessionDep, SettingsDep
 from app.api.errors import ApiError
+from app.config import Settings
 from app.models import Plan
 from app.schemas.api import ParseResponse, PlanDetail, PlanSummary, ReplaceSceneRequest, SceneResponse
 from app.schemas.parse import ParseOptions
-from app.services import plan_store
-from app.services.dwg_convert import ConversionError, detect_format
-from app.services.dxf_parser import ParseError
+from app.services import jobs, plan_store
+from app.services.dwg_convert import detect_format
 from app.services.geometry import validate_building
 from app.services.sample_plan import DEMO_FILENAME, build_demo_dxf
 
@@ -28,10 +29,12 @@ async def upload_plan(
     settings: SettingsDep,
     user: CurrentUser,
     file: Annotated[UploadFile, File(description="A .dwg or .dxf floor plan.")],
-    parse: Annotated[bool, Query(description="Run the full pipeline immediately (default).")] = True,
+    parse: Annotated[bool, Query(description="Process the drawing right away (default).")] = True,
 ) -> PlanDetail:
-    """Upload a DWG/DXF. By default this runs the whole pipeline: DWG -> DXF -> descriptive drawing JSON ->
-    building model -> Babylon.js scene, all stored for this plan. Parse failures are recorded on the plan."""
+    """Upload a DWG/DXF. By default the drawing is processed in the background: DWG -> DXF -> descriptive
+    drawing JSON -> AI layer classification -> building model -> automatic checks (AI review + guardrails)
+    -> Babylon.js scene. The plan comes back with status "processing"; poll GET /plans/{id} (its `stage`
+    shows progress) until it is "parsed" or "failed" (with `error`)."""
     data = await file.read(settings.max_upload_bytes + 1)
     if len(data) > settings.max_upload_bytes:
         raise ApiError(413, "file_too_large", f"Uploads are limited to {settings.max_upload_mb} MB.")
@@ -44,18 +47,36 @@ async def upload_plan(
 
     plan = Plan(
         owner_id=user.id, filename=filename, source_format=fmt, file_size=len(data), original_file=data,
-        parse_warnings=[],
+        parse_warnings=[], status="processing" if parse else "uploaded", stage="queued" if parse else None,
     )  # fmt: skip
     session.add(plan)
     await session.commit()
     await session.refresh(plan)
+    if parse:
+        await _process(session, plan, settings)
+    return plan_store.to_detail(plan)
 
-    if parse:  # DWG conversion happens here; failures are stored as status=failed + error (ARCHITECTURE.md §11)
-        plan = await plan_store.get_plan(session, plan.id, user.id, for_update=True, files=True)
-        try:
-            await plan_store.parse_plan(session, plan, ParseOptions(), settings)
-        except (ConversionError, ParseError):
-            await session.refresh(plan)
+
+async def _process(session: AsyncSession, plan: Plan, settings: Settings) -> None:
+    """Start the background job (or, with PROCESS_IN_BACKGROUND=false, run it before answering)."""
+    sessions = async_sessionmaker(session.bind, expire_on_commit=False)  # the request's database
+    if settings.process_in_background:
+        jobs.start(sessions, plan.id, settings)
+    else:
+        await jobs.process(sessions, plan.id, settings)
+        await session.refresh(plan)
+
+
+@router.post("/{plan_id}/process", response_model=PlanDetail, status_code=status.HTTP_202_ACCEPTED)
+async def process_plan(plan_id: uuid.UUID, session: SessionDep, settings: SettingsDep, user: CurrentUser) -> PlanDetail:
+    """Process the drawing again from scratch, like a fresh upload (Retry after a failure). Clears edit history."""
+    plan = await plan_store.get_plan(session, plan_id, user.id, for_update=True)
+    if plan.status == "processing":
+        raise ApiError(409, "plan_processing", "This drawing is already being processed.")
+    plan.status, plan.stage, plan.error = "processing", "queued", None
+    await session.commit()
+    await session.refresh(plan)
+    await _process(session, plan, settings)
     return plan_store.to_detail(plan)
 
 
@@ -103,8 +124,11 @@ async def parse_plan(
     user: CurrentUser,
     options: Annotated[ParseOptions | None, Body()] = None,
 ) -> ParseResponse:
-    """(Re)run the pipeline with custom options (units, wall style, layer names...). Clears edit history."""
+    """(Re)run the pipeline now with custom options (units, wall style, layer names...): the rule-based
+    steps and guardrails, without the AI steps. Clears edit history."""
     plan = await plan_store.get_plan(session, plan_id, user.id, for_update=True, files=True)
+    if plan.status == "processing":
+        raise ApiError(409, "plan_processing", "This drawing is already being processed.")
     await plan_store.parse_plan(session, plan, options or ParseOptions(), settings)
     return ParseResponse(plan=plan_store.to_detail(plan), scene=plan_store.to_scene(plan))
 

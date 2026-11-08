@@ -5,6 +5,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, TypeAdapter, model_validator
 
 from app.schemas.base import CamelModel
+from app.schemas.parse import FurnitureCategory
 
 
 class ResizeWindowParams(CamelModel):
@@ -90,11 +91,17 @@ class OpeningTypeParams(CamelModel):
 
 
 class FurnitureCategoryParams(CamelModel):
-    category: Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet"]
+    category: FurnitureCategory
 
 
 class RoomNameParams(CamelModel):
     name: str = Field(min_length=1, max_length=80)
+
+
+class AddOpeningParams(CamelModel):
+    type: Literal["door", "window"]
+    offset: float = Field(ge=0, description="Distance (m) along the wall from its start to the opening's left edge.")
+    width: float = Field(gt=0)
 
 
 class DeleteWall(CamelModel):
@@ -139,6 +146,14 @@ class RenameRoom(CamelModel):
     parameters: RoomNameParams
 
 
+class AddOpening(CamelModel):
+    """Guardrails only (a door into a room that has no entrance); never proposed free-form by the LLM."""
+
+    operation: Literal["add_opening"]
+    target_id: str
+    parameters: AddOpeningParams
+
+
 ReviewCommand = Annotated[
     DeleteWall | MergeWalls | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom,
     Field(discriminator="operation"),
@@ -151,6 +166,7 @@ REVIEW_OPERATIONS = (
 
 AnyCommand = Annotated[
     ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | MergeWalls
-    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom,
+    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom | AddOpening,
     Field(discriminator="operation"),
 ]  # fmt: skip
+AnyCommandAdapter: TypeAdapter[AnyCommand] = TypeAdapter(AnyCommand)

@@ -16,12 +16,29 @@ Vec3 = tuple[float, float, float]
 
 class BoxMesh(CamelModel):
     id: str
-    kind: Literal["wall", "header", "sill", "glass", "floor", "ceiling"]
+    kind: Literal["wall", "header", "sill", "glass", "floor", "ceiling", "ground", "boundary", "sky"] = Field(
+        description="ground / boundary / sky: the open ground around the building, the backdrop walls at the map's "
+        "end, and the sky canopy resting on them (first-person scenery, not part of the building)"
+    )
     wall_id: str | None = None
     opening_id: str | None = None
     position: Vec3 = Field(description="Box center")
     size: Vec3 = Field(description="[width (local x, along the wall), height, depth (local z, wall thickness)]")
     rotation_y: float = Field(description="Radians; aligns local +x with the wall direction")
+
+
+class DoorLeafSpec(CamelModel):
+    """A hinged door leaf (single doors). The frontend puts a pivot node at `hinge` with `rotationY` (closed)
+    and adds `swing` to open it. In pivot space, x runs along the closed leaf from the hinge to the latch, y up."""
+
+    url: str = Field(description="GLB of the leaf")
+    hinge: Vec3 = Field(description="Hinge axis at floor level, on the wall's centerline")
+    rotation_y: float = Field(description="Pivot rotation when closed (radians)")
+    swing: float = Field(description="Radians added to rotationY to open the door (sign = which side it opens to)")
+    model_position: Vec3 = Field(description="Model root position in pivot space")
+    model_rotation_y: float = Field(description="Model root rotation in pivot space")
+    scaling: Vec3 = Field(description="Model root scaling")
+    size: Vec3 = Field(description="Leaf [width, height, thickness] (the collider, from the hinge along pivot x)")
 
 
 class OpeningSpec(CamelModel):
@@ -33,6 +50,7 @@ class OpeningSpec(CamelModel):
     height: float
     sill_height: float
     rotation_y: float
+    leaf: DoorLeafSpec | None = Field(default=None, description="Single doors: the interactive leaf")
 
 
 class FurnitureSpec(CamelModel):
@@ -57,6 +75,10 @@ class RoomLabel(CamelModel):
 class MaterialSpec(CamelModel):
     color: str
     alpha: float = 1.0
+    texture: str | None = Field(
+        default=None,
+        description="Image URL: the landscape backdrop (boundary walls, horizon at eye level) or the sky (canopy)",
+    )
 
 
 class CameraSpec(CamelModel):
@@ -76,7 +98,8 @@ class BabylonScene(CamelModel):
     units: Literal["meters"] = "meters"
     coordinate_system: str = "Babylon world space, y up; plan x -> x, plan y -> z"
     wall_height: float
-    bounds: Bounds
+    bounds: Bounds = Field(description="The building (walls)")
+    map_bounds: Bounds = Field(description="The walkable map: the building plus open ground, ringed by boundary walls")
     meshes: list[BoxMesh]
     openings: list[OpeningSpec]
     furniture: list[FurnitureSpec]

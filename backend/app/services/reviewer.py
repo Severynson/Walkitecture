@@ -1,11 +1,13 @@
-"""LLM review pass (ARCHITECTURE.md §4.3).
+"""LLM review pass (ARCHITECTURE.md §4.3, §4.4).
 
-1. A deterministic *suspects list* (short/isolated walls, unsnapped openings, overlapping or homeless
-   furniture, unnamed rooms, unidentified furniture blocks).
-2. Suspects + warnings + stats (not the whole model) go to the LLM.
-3. The LLM answers with patches from the review allowlist only.
-4. Every patch runs through the edit engine: validated, applied one by one (each undoable, recorded
-   with source="review"), or rejected with the engine's reasons.
+1. A deterministic *suspects list* (short/isolated walls, unsnapped openings, homeless furniture,
+   unnamed rooms, unidentified furniture blocks), plus the guardrails' *findings* (furniture conflicts,
+   interior windows, spaces without an entrance...), each with precomputed options.
+2. Suspects, findings, warnings and stats (not the whole model) go to the LLM.
+3. The LLM answers with patches from the review allowlist and one decision (an option id) per finding.
+4. Every patch runs through the edit engine: validated, applied one by one, or rejected with the
+   engine's reasons. During upload this happens before the model is stored (pipeline.py); the
+   POST /review endpoint applies patches to a stored plan, each undoable.
 """
 
 import json
@@ -20,22 +22,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.schemas.base import CamelModel
 from app.schemas.building import Building, FurnitureItem
+from app.schemas.checks import CheckFinding
 from app.schemas.edits import REVIEW_OPERATIONS, ReviewCommand, ReviewCommandAdapter
-from app.services import plan_store
+from app.schemas.parse import FurnitureCategory
 from app.services.edits import EditRejected, apply_edit
 from app.services.geometry import Problem, point_in_polygon, wall_connections
 from app.services.llm import structured
 
 SHORT_WALL = 0.3  # m
-OVERLAP_SHARE = 0.3  # of the smaller footprint
 MAX_SUSPECTS = 60
 UNNAMED_ROOM = re.compile(r"^Room \d+$")
 
 
 class Suspect(CamelModel):
     kind: Literal[
-        "short_wall", "isolated_wall", "unsnapped_openings", "overlapping_furniture", "furniture_outside_rooms",
-        "unlabelled_room", "unresolved_furniture_blocks",
+        "short_wall", "isolated_wall", "unsnapped_openings", "furniture_outside_rooms", "unlabelled_room",
+        "unresolved_furniture_blocks",
     ]  # fmt: skip
     target_ids: list[str] = Field(default_factory=list)
     detail: str
@@ -87,19 +89,6 @@ def find_suspects(building: Building, warnings: list[str], stats: dict[str, Any]
             suspects.append(Suspect(kind="unsnapped_openings", detail=warning))
 
     items = building.furniture
-    for i, a in enumerate(items):
-        ax0, ay0, ax1, ay1 = _aabb(a)
-        for b in items[i + 1 :]:
-            bx0, by0, bx1, by1 = _aabb(b)
-            overlap = max(0.0, min(ax1, bx1) - max(ax0, bx0)) * max(0.0, min(ay1, by1) - max(ay0, by0))
-            smaller = min(a.width * a.depth, b.width * b.depth)
-            if smaller and overlap / smaller > OVERLAP_SHARE:
-                suspects.append(
-                    Suspect(
-                        kind="overlapping_furniture", target_ids=[a.id, b.id],
-                        detail=f"{a.category} and {b.category} overlap {overlap / smaller:.0%}",
-                    )
-                )  # fmt: skip
     polygons = [r.polygon for r in building.rooms if r.polygon]
     if polygons:
         for item in items:
@@ -162,26 +151,61 @@ class _Patch(BaseModel):
     target_id: str | None
     wall_ids: list[str] | None
     opening_type: Literal["door", "window"] | None
-    category: Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet"] | None
+    category: FurnitureCategory | None
     name: str | None
+    reason: str
+
+
+class _Decision(BaseModel):
+    finding_id: str
+    option_id: str
     reason: str
 
 
 class _Answer(BaseModel):
     patches: list[_Patch]
+    decisions: list[_Decision]
     notes: str
 
 
-PROMPT = f"""You review a building model reconstructed from an architectural CAD drawing. You get a list of
-deterministic *suspects* plus parser warnings and stats. Propose fixes ONLY with these operations:
-{", ".join(REVIEW_OPERATIONS)}.
+class AiReview(BaseModel):
+    """What the reviewer decided: typed patches (invalid ones dropped) and option ids per finding."""
+
+    patches: list[ReviewCommand]
+    decisions: dict[str, tuple[str, str]]  # finding id -> (option id, reason)
+    rejected: list[str]
+    notes: str
+
+
+PROMPT = f"""You review a building model reconstructed from an architectural CAD drawing, before it is
+shown as a walkable 3D scene. You get deterministic *suspects* and *findings*, parser warnings and stats.
+
+1. Patches. Propose fixes for suspects ONLY with these operations: {", ".join(REVIEW_OPERATIONS)}.
 - delete_wall(target_id): stray fragments (e.g. very short isolated walls that are drawing artefacts).
 - merge_walls(wall_ids): collinear pieces of one wall.
 - set_opening_type(target_id, opening_type), delete_opening(target_id).
-- set_furniture_category(target_id, category), delete_furniture(target_id): duplicates or misidentified items.
+- set_furniture_category(target_id, category), delete_furniture(target_id): duplicates or misidentified items
+  (e.g. a symbol that is not furniture, an item whose category contradicts its block name or room).
 - rename_room(target_id, name): unnamed rooms, using nearby labels or what the room contains.
-Be conservative: propose a patch only when the evidence is clear, never invent IDs, and give a one-line
-reason. An empty list is a fine answer."""
+Be conservative: propose a patch only when the evidence is clear, never invent IDs, one-line reason.
+
+2. Decisions. Each finding breaks a rule the 3D scene must respect and lists precomputed options (all
+geometrically valid) plus a default. Give exactly one decision per finding: its id and the id of the
+option you choose, with a one-line reason. Think about where the mistake in the drawing or its
+interpretation most likely is:
+- furniture_conflict: furniture may never cut into walls or other furniture. The options differ in which
+  piece moves/shrinks slightly or is removed. Keep the piece the drawing and room make plausible (a bed in a
+  bedroom over an overlapping chair; one of two duplicate blocks); "accept" keeps the gentle fix.
+- interior_window: a window between two indoor spaces is almost always a mistake: usually a door drawn or
+  classified as a window (convert it, especially when a room behind it has no other entrance), sometimes a
+  misread wall (remove it). Keep it only for a plausible glazed partition (offices) or a borrowed light.
+- enclosed_space / no_exterior_door: a room nobody can enter is almost always a mistake: a door drawn as a
+  window, a door leaf or threshold drawn on the wall layer closing the doorway, or a missing door. Choose the
+  option that fixes the likely mistake; keep it only for shafts, ducts, light wells, or storage voids, or
+  when the entrance is plausibly outside the drawing.
+- furniture_outside: usually a drawing artefact (legend, symbol library, another sheet): remove it unless it
+  plausibly stands on a balcony, terrace or garden.
+Return empty lists when there is nothing to do."""
 
 
 def to_command(patch: _Patch) -> ReviewCommand:
@@ -200,6 +224,54 @@ def to_command(patch: _Patch) -> ReviewCommand:
 # --- 4. Run ---------------------------------------------------------------------------------
 
 
+def _finding_view(finding: CheckFinding) -> dict[str, Any]:
+    return {
+        "id": finding.id, "kind": finding.kind, "detail": finding.detail, "targetIds": finding.target_ids,
+        "options": [{"id": o.id, "description": o.description} for o in finding.options], "default": finding.default,
+    }  # fmt: skip
+
+
+async def ai_review(
+    building: Building,
+    warnings: list[str],
+    stats: dict[str, Any] | None,
+    findings: list[CheckFinding],
+    settings: Settings,
+    *,
+    suspects: list[Suspect] | None = None,
+    client: AsyncOpenAI | None = None,
+) -> AiReview:
+    """One LLM call for suspects and findings. Raises LLMUnavailable (callers fall back to defaults)."""
+    stats = dict(stats or {})
+    stats.pop("layers", None)
+    suspects = find_suspects(building, warnings, stats) if suspects is None else suspects
+    if not suspects and not findings:
+        return AiReview(patches=[], decisions={}, rejected=[], notes="Nothing to review.")
+    payload = {
+        "suspects": [s.model_dump(by_alias=True) for s in suspects],
+        "findings": [_finding_view(f) for f in findings],
+        "objects": _object_summaries(building, suspects),
+        "warnings": warnings,
+        "stats": stats,
+    }
+    answer = await structured(settings, PROMPT, json.dumps(payload, ensure_ascii=False), _Answer, client)
+    patches: list[ReviewCommand] = []
+    rejected: list[str] = []
+    for patch in answer.patches:
+        try:
+            patches.append(to_command(patch))
+        except ValidationError as exc:
+            rejected.append(f"{patch.operation} {patch.target_id}: {exc.errors()[0]['msg']}")
+    options = {f.id: {o.id for o in f.options} for f in findings}
+    decisions: dict[str, tuple[str, str]] = {}
+    for decision in answer.decisions:
+        if decision.option_id in options.get(decision.finding_id, ()):
+            decisions[decision.finding_id] = (decision.option_id, decision.reason)
+        else:
+            rejected.append(f"decision {decision.finding_id} -> {decision.option_id}: not one of its options")
+    return AiReview(patches=patches, decisions=decisions, rejected=rejected, notes=answer.notes)
+
+
 async def review_plan(
     session: AsyncSession,
     plan_id: uuid.UUID,
@@ -209,6 +281,9 @@ async def review_plan(
     apply: bool,
     client: AsyncOpenAI | None = None,
 ) -> ReviewResult:
+    """POST /review on a stored plan: suspects only (findings are settled during upload)."""
+    from app.services import plan_store  # plan_store -> pipeline -> reviewer: import at call time
+
     plan = await plan_store.get_plan(session, plan_id, owner_id)
     building = plan_store.building_of(plan)
     warnings, stats, version = list(plan.parse_warnings or []), dict(plan.parse_stats or {}), plan.model_version
@@ -221,6 +296,7 @@ async def review_plan(
 
     payload = {
         "suspects": [s.model_dump(by_alias=True) for s in suspects],
+        "findings": [],
         "objects": _object_summaries(building, suspects),
         "warnings": warnings,
         "stats": stats,

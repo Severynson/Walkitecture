@@ -2,13 +2,36 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError, errorMessage } from "../api/client";
 import * as endpoints from "../api/endpoints";
-import type { EditCommand, EditResponse, PlanDetail, SceneResponse } from "../api/schema";
+import type { CheckReport, EditCommand, EditResponse, PlanDetail, SceneResponse } from "../api/schema";
 import AiPanel from "../edit/AiPanel";
 import ChatBox, { type ChatMessage } from "../edit/ChatBox";
 import EditPanel from "../edit/EditPanel";
 import { describe, titleCase } from "../edit/selection";
 import type { Viewer } from "../viewer/engine";
 import ViewerPage from "../viewer/ViewerPage";
+import Processing from "./Processing";
+
+const POLL_MS = 2000;
+/**
+ * The AI clean-up buttons (review, re-classify) are no longer shown: every upload is classified,
+ * reviewed and checked automatically before its 3D model is built. Kept for a future "advanced" mode.
+ */
+const SHOW_AI_TOOLS = false;
+
+/** What the automatic checks did, for the activity log. */
+function checkSummary(report: CheckReport | null | undefined): string | null {
+  if (!report) return null;
+  const changes = report.changes ?? [];
+  const kept = (report.findings ?? []).filter((f) => f.decision === "keep" || f.decision === "accept");
+  if (!changes.length && !(report.findings ?? []).length) return null;
+  const who = report.ai === "used" ? "AI-reviewed checks" : "Automatic checks";
+  const lines = [
+    `${who} before building the 3D model: ${changes.length} fix${changes.length === 1 ? "" : "es"}${kept.length ? `, ${kept.length} item${kept.length === 1 ? "" : "s"} kept as drawn` : ""}.`,
+    ...changes.slice(0, 10).map((c) => `• ${c.summary}`),
+  ];
+  if (changes.length > 10) lines.push(`• …and ${changes.length - 10} more.`);
+  return lines.join("\n");
+}
 
 /** `/plans/:id`: walk a plan and change it (sliders, chat, AI clean-up), with undo. */
 export default function PlanPage() {
@@ -28,19 +51,45 @@ export default function PlanPage() {
     setMessages((list) => [...list.slice(-49), { id: nextMessageId.current++, role, text }]);
   }, []);
 
+  const [retrying, setRetrying] = useState(false);
+
   useEffect(() => {
+    setPlan(null);
     setScene(null);
     setLoadError(null);
     setSelectedId(null);
-    Promise.all([endpoints.getPlan(id), endpoints.getScene(id)]).then(
-      ([p, s]) => {
-        setPlan(p);
-        setScene(s);
-      },
-      (e) => setLoadError(errorMessage(e)),
-    );
+    endpoints.getPlan(id).then(setPlan, (e) => setLoadError(errorMessage(e)));
     endpoints.health().then((h) => setAiMode(h.interpreter), () => setAiMode(null));
   }, [id]);
+
+  // While the drawing is processed in the background, poll until it is parsed (or failed).
+  useEffect(() => {
+    if (plan?.status !== "processing") return;
+    const timer = window.setTimeout(() => {
+      endpoints.getPlan(id).then(setPlan, (e) => setLoadError(errorMessage(e)));
+    }, POLL_MS);
+    return () => window.clearTimeout(timer);
+  }, [id, plan]);
+
+  const ready = plan?.status === "parsed" && plan.hasModel;
+  useEffect(() => {
+    if (!ready) return;
+    endpoints.getScene(id).then(setScene, (e) => setLoadError(errorMessage(e)));
+    const summary = checkSummary(plan?.report);
+    if (summary) say("assistant", summary);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per plan, when it becomes ready
+  }, [id, ready]);
+
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      setPlan(await endpoints.processPlan(id));
+    } catch (e) {
+      setLoadError(errorMessage(e));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const selection = useMemo(() => (scene ? describe(scene.model, selectedId) : null), [scene, selectedId]);
 
@@ -184,6 +233,9 @@ export default function PlanPage() {
       </main>
     );
   }
+  if (plan && (plan.status === "processing" || (plan.status === "failed" && !scene))) {
+    return <Processing plan={plan} onRetry={retry} retrying={retrying} />;
+  }
 
   return (
     <ViewerPage
@@ -218,13 +270,15 @@ export default function PlanPage() {
             aiMode={aiMode}
             onSend={chat}
           />
-          <AiPanel
-            busy={busy}
-            aiAvailable={aiMode === "openai"}
-            warnings={plan?.parseWarnings ?? []}
-            onClassify={classifyPlan}
-            onReview={reviewPlan}
-          />
+          <div hidden={!SHOW_AI_TOOLS}>
+            <AiPanel
+              busy={busy}
+              aiAvailable={aiMode === "openai"}
+              warnings={plan?.parseWarnings ?? []}
+              onClassify={classifyPlan}
+              onReview={reviewPlan}
+            />
+          </div>
         </>
       )}
     </ViewerPage>

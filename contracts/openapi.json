@@ -183,7 +183,7 @@
           "plans"
         ],
         "summary": "Upload Plan",
-        "description": "Upload a DWG/DXF. By default this runs the whole pipeline: DWG -> DXF -> descriptive drawing JSON ->\nbuilding model -> Babylon.js scene, all stored for this plan. Parse failures are recorded on the plan.",
+        "description": "Upload a DWG/DXF. By default the drawing is processed in the background: DWG -> DXF -> descriptive\ndrawing JSON -> AI layer classification -> building model -> automatic checks (AI review + guardrails)\n-> Babylon.js scene. The plan comes back with status \"processing\"; poll GET /plans/{id} (its `stage`\nshows progress) until it is \"parsed\" or \"failed\" (with `error`).",
         "operationId": "upload_plan_api_plans_post",
         "security": [
           {
@@ -197,11 +197,11 @@
             "required": false,
             "schema": {
               "type": "boolean",
-              "description": "Run the full pipeline immediately (default).",
+              "description": "Process the drawing right away (default).",
               "default": true,
               "title": "Parse"
             },
-            "description": "Run the full pipeline immediately (default)."
+            "description": "Process the drawing right away (default)."
           }
         ],
         "requestBody": {
@@ -273,6 +273,55 @@
                     "$ref": "#/components/schemas/PlanSummary"
                   },
                   "title": "Response List Plans Api Plans Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/plans/{plan_id}/process": {
+      "post": {
+        "tags": [
+          "plans"
+        ],
+        "summary": "Process Plan",
+        "description": "Process the drawing again from scratch, like a fresh upload (Retry after a failure). Clears edit history.",
+        "operationId": "process_plan_api_plans__plan_id__process_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDetail"
                 }
               }
             }
@@ -410,7 +459,7 @@
           "plans"
         ],
         "summary": "Parse Plan",
-        "description": "(Re)run the pipeline with custom options (units, wall style, layer names...). Clears edit history.",
+        "description": "(Re)run the pipeline now with custom options (units, wall style, layer names...): the rule-based\nsteps and guardrails, without the AI steps. Clears edit history.",
         "operationId": "parse_plan_api_plans__plan_id__parse_post",
         "security": [
           {
@@ -1085,7 +1134,12 @@
             "title": "Wallheight"
           },
           "bounds": {
-            "$ref": "#/components/schemas/Bounds"
+            "$ref": "#/components/schemas/Bounds",
+            "description": "The building (walls)"
+          },
+          "mapBounds": {
+            "$ref": "#/components/schemas/Bounds",
+            "description": "The walkable map: the building plus open ground, ringed by boundary walls"
           },
           "meshes": {
             "items": {
@@ -1130,6 +1184,7 @@
         "required": [
           "wallHeight",
           "bounds",
+          "mapBounds",
           "meshes",
           "openings",
           "furniture",
@@ -1157,6 +1212,15 @@
               "table",
               "closet",
               "toilet",
+              "bathtub",
+              "shower",
+              "sink",
+              "kitchen",
+              "fridge",
+              "cabinet",
+              "dresser",
+              "nightstand",
+              "bookshelf",
               "ignore"
             ],
             "title": "Role"
@@ -1312,9 +1376,13 @@
               "sill",
               "glass",
               "floor",
-              "ceiling"
+              "ceiling",
+              "ground",
+              "boundary",
+              "sky"
             ],
-            "title": "Kind"
+            "title": "Kind",
+            "description": "ground / boundary / sky: the open ground around the building, the backdrop walls at the map's end, and the sky canopy resting on them (first-person scenery, not part of the building)"
           },
           "wallId": {
             "anyOf": [
@@ -1509,6 +1577,209 @@
         ],
         "title": "CeilingParams"
       },
+      "CheckChange": {
+        "properties": {
+          "targetIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Targetids"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "guardrails",
+              "ai"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "targetIds",
+          "summary",
+          "source"
+        ],
+        "title": "CheckChange"
+      },
+      "CheckFinding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "furniture_conflict",
+              "furniture_outside",
+              "interior_window",
+              "enclosed_space",
+              "no_exterior_door"
+            ],
+            "title": "Kind"
+          },
+          "targetIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Targetids"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/CheckOption"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "default": {
+            "type": "string",
+            "title": "Default",
+            "description": "Option used when the AI is unavailable or gives no valid answer"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ai",
+                  "default"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidedby"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "targetIds",
+          "detail",
+          "options",
+          "default"
+        ],
+        "title": "CheckFinding"
+      },
+      "CheckOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "commands": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Commands",
+            "description": "Edit commands this option applies"
+          },
+          "removeFurniture": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removefurniture",
+            "description": "Furniture this option removes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "description"
+        ],
+        "title": "CheckOption"
+      },
+      "CheckReport": {
+        "properties": {
+          "ai": {
+            "type": "string",
+            "enum": [
+              "used",
+              "unavailable",
+              "off"
+            ],
+            "title": "Ai"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClassificationSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/CheckFinding"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/CheckChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ai"
+        ],
+        "title": "CheckReport"
+      },
       "ClassificationProposal": {
         "properties": {
           "layers": {
@@ -1551,6 +1822,35 @@
           "parseOptions"
         ],
         "title": "ClassificationProposal"
+      },
+      "ClassificationSummary": {
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "title": "Applied",
+            "description": "Whether the AI's layer/block roles were used to build the model"
+          },
+          "layers": {
+            "type": "integer",
+            "title": "Layers"
+          },
+          "blocks": {
+            "type": "integer",
+            "title": "Blocks"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "layers",
+          "blocks",
+          "notes"
+        ],
+        "title": "ClassificationSummary"
       },
       "ClassifyRequest": {
         "properties": {
@@ -1616,6 +1916,115 @@
           "password"
         ],
         "title": "Credentials"
+      },
+      "DoorLeafSpec": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "GLB of the leaf"
+          },
+          "hinge": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Hinge",
+            "description": "Hinge axis at floor level, on the wall's centerline"
+          },
+          "rotationY": {
+            "type": "number",
+            "title": "Rotationy",
+            "description": "Pivot rotation when closed (radians)"
+          },
+          "swing": {
+            "type": "number",
+            "title": "Swing",
+            "description": "Radians added to rotationY to open the door (sign = which side it opens to)"
+          },
+          "modelPosition": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Modelposition",
+            "description": "Model root position in pivot space"
+          },
+          "modelRotationY": {
+            "type": "number",
+            "title": "Modelrotationy",
+            "description": "Model root rotation in pivot space"
+          },
+          "scaling": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Scaling",
+            "description": "Model root scaling"
+          },
+          "size": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Size",
+            "description": "Leaf [width, height, thickness] (the collider, from the hinge along pivot x)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "hinge",
+          "rotationY",
+          "swing",
+          "modelPosition",
+          "modelRotationY",
+          "scaling",
+          "size"
+        ],
+        "title": "DoorLeafSpec",
+        "description": "A hinged door leaf (single doors). The frontend puts a pivot node at `hinge` with `rotationY` (closed)\nand adds `swing` to open it. In pivot space, x runs along the closed leaf from the hinge to the latch, y up."
       },
       "EditHistoryItem": {
         "properties": {
@@ -1804,6 +2213,39 @@
         ],
         "title": "FactorParams"
       },
+      "Footprint": {
+        "properties": {
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Position"
+          },
+          "width": {
+            "type": "number",
+            "title": "Width"
+          },
+          "depth": {
+            "type": "number",
+            "title": "Depth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "width",
+          "depth"
+        ],
+        "title": "Footprint"
+      },
       "FurnitureItem": {
         "properties": {
           "id": {
@@ -1813,7 +2255,7 @@
           "category": {
             "type": "string",
             "title": "Category",
-            "description": "bed, chair, sofa, desk, table, closet, toilet"
+            "description": "A library category (schemas/parse.py FURNITURE_CATEGORIES): bed, chair, ..."
           },
           "model": {
             "type": "string",
@@ -1890,6 +2332,17 @@
             "type": "number",
             "exclusiveMinimum": 0.0,
             "title": "Height"
+          },
+          "drawn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Footprint"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The block's footprint as drawn in the plan, kept when the guardrails moved or resized the item (position/width/depth then hold the corrected footprint)"
           }
         },
         "type": "object",
@@ -2336,6 +2789,18 @@
             "type": "number",
             "title": "Alpha",
             "default": 1.0
+          },
+          "texture": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texture",
+            "description": "Image URL: the landscape backdrop (boundary walls, horizon at eye level) or the sky (canopy)"
           }
         },
         "type": "object",
@@ -2479,6 +2944,17 @@
           "rotationY": {
             "type": "number",
             "title": "Rotationy"
+          },
+          "leaf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DoorLeafSpec"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Single doors: the interactive leaf"
           }
         },
         "type": "object",
@@ -2721,6 +3197,15 @@
                     "table",
                     "closet",
                     "toilet",
+                    "bathtub",
+                    "shower",
+                    "sink",
+                    "kitchen",
+                    "fridge",
+                    "cabinet",
+                    "dresser",
+                    "nightstand",
+                    "bookshelf",
                     "ignore"
                   ]
                 },
@@ -2841,10 +3326,23 @@
             "type": "string",
             "enum": [
               "uploaded",
+              "processing",
               "parsed",
               "failed"
             ],
             "title": "Status"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage",
+            "description": "While processing: the pipeline step (reading, classifying, checking, reviewing...)"
           },
           "modelVersion": {
             "type": "integer",
@@ -2893,6 +3391,17 @@
               }
             ],
             "title": "Parsestats"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckReport"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the automatic checks found and changed"
           }
         },
         "type": "object",
@@ -2939,10 +3448,23 @@
             "type": "string",
             "enum": [
               "uploaded",
+              "processing",
               "parsed",
               "failed"
             ],
             "title": "Status"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage",
+            "description": "While processing: the pipeline step (reading, classifying, checking, reviewing...)"
           },
           "modelVersion": {
             "type": "integer",
@@ -3342,7 +3864,6 @@
               "short_wall",
               "isolated_wall",
               "unsnapped_openings",
-              "overlapping_furniture",
               "furniture_outside_rooms",
               "unlabelled_room",
               "unresolved_furniture_blocks"

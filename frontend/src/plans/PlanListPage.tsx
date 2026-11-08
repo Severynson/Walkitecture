@@ -5,6 +5,7 @@ import * as endpoints from "../api/endpoints";
 import type { PlanSummary } from "../api/schema";
 import { useAuth } from "../auth/AuthContext";
 import { Logo } from "../brand/Logo";
+import { stageLabel } from "./Processing";
 
 const MAX_MB = 25;
 
@@ -21,6 +22,13 @@ export default function PlanListPage() {
     endpoints.listPlans().then(setPlans, (e) => setError(errorMessage(e)));
   }, []);
   useEffect(refresh, [refresh]);
+  // Plans being processed in the background: refresh until they are done.
+  const processing = plans?.some((p) => p.status === "processing") ?? false;
+  useEffect(() => {
+    if (!processing) return;
+    const timer = window.setInterval(refresh, 3000);
+    return () => window.clearInterval(timer);
+  }, [processing, refresh]);
 
   const upload = async (file: File) => {
     setError(null);
@@ -32,14 +40,11 @@ export default function PlanListPage() {
       setError(`That file is larger than ${MAX_MB} MB.`);
       return;
     }
-    setBusy(`Uploading and reading ${file.name}… this can take up to a minute for large drawings.`);
+    setBusy(`Uploading ${file.name}…`);
     try {
+      // The drawing is processed in the background; its page shows the progress.
       const plan = await endpoints.uploadPlan(file);
-      if (plan.status === "parsed") navigate(`/plans/${plan.id}`);
-      else {
-        setError(`${file.name}: ${plan.error ?? "the drawing could not be turned into a building."}`);
-        refresh();
-      }
+      navigate(`/plans/${plan.id}`);
     } catch (e) {
       setError(errorMessage(e));
       refresh();
@@ -130,20 +135,17 @@ export default function PlanListPage() {
             {plans.map((plan) => (
               <li key={plan.id}>
                 <div className="plan-main">
-                  {plan.hasModel ? (
-                    <Link to={`/plans/${plan.id}`} className="plan-name">
-                      {plan.filename}
-                    </Link>
-                  ) : (
-                    <span className="plan-name">{plan.filename}</span>
-                  )}
+                  <Link to={`/plans/${plan.id}`} className="plan-name">
+                    {plan.filename}
+                  </Link>
                   <span className="muted small">
                     {plan.sourceFormat.toUpperCase()} · {formatSize(plan.fileSize)} · {new Date(plan.createdAt).toLocaleString()}
                   </span>
                   {plan.status === "failed" && <span className="error small">{plan.error ?? "Could not be read."}</span>}
+                  {plan.status === "processing" && <span className="busy small">{stageLabel(plan.stage)}…</span>}
                 </div>
                 <span className={`badge ${plan.status}`}>{plan.status}</span>
-                {plan.hasModel && (
+                {plan.hasModel && plan.status === "parsed" && (
                   <Link className="button primary" to={`/plans/${plan.id}`}>
                     Walk
                   </Link>

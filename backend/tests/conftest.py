@@ -29,12 +29,14 @@ TEST_DATABASE_URL = os.environ.get(
 @pytest.fixture(scope="session")
 def settings() -> Settings:
     # Rate limits off: the suite registers many users from one IP (tests/test_prod.py covers the limiter).
+    # Uploads are processed before the response (tests/test_checks.py covers the background job).
     return Settings(
         _env_file=None,
         openai_api_key=None,
         database_url=TEST_DATABASE_URL,
         login_rate_limit=0,
         register_rate_limit=0,
+        process_in_background=False,
     )
 
 

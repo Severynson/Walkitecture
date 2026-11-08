@@ -272,6 +272,18 @@
     8.075
    ]
   },
+  "mapBounds": {
+   "min": [
+    -6.075,
+    -0.01,
+    -6.075
+   ],
+   "max": [
+    16.075,
+    10.0,
+    14.075
+   ]
+  },
   "meshes": [
    {
     "id": "wall_1:wall:0",
@@ -867,6 +879,108 @@
      8.15
     ],
     "rotationY": 0.0
+   },
+   {
+    "id": "map:ground",
+    "kind": "ground",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     5.0,
+     -0.11,
+     4.0
+    ],
+    "size": [
+     23.15,
+     0.2,
+     21.15
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:south",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     5.0,
+     5.0,
+     -6.325
+    ],
+    "size": [
+     23.15,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:north",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     5.0,
+     5.0,
+     14.325
+    ],
+    "size": [
+     23.15,
+     10.0,
+     0.5
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "map:boundary:west",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     -6.325,
+     5.0,
+     4.0
+    ],
+    "size": [
+     21.15,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:boundary:east",
+    "kind": "boundary",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     16.325,
+     5.0,
+     4.0
+    ],
+    "size": [
+     21.15,
+     10.0,
+     0.5
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "map:sky",
+    "kind": "sky",
+    "wallId": null,
+    "openingId": null,
+    "position": [
+     5.0,
+     10.1,
+     4.0
+    ],
+    "size": [
+     23.15,
+     0.2,
+     21.15
+    ],
+    "rotationY": 0.0
    }
   ],
   "openings": [
@@ -882,7 +996,8 @@
     "width": 1.5,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": null
    },
    {
     "id": "window_2",
@@ -896,7 +1011,8 @@
     "width": 1.2,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": 0.0
+    "rotationY": 0.0,
+    "leaf": null
    },
    {
     "id": "window_3",
@@ -910,7 +1026,8 @@
     "width": 1.2,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_4",
@@ -924,7 +1041,8 @@
     "width": 1.5,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": -3.141593
+    "rotationY": -3.141593,
+    "leaf": null
    },
    {
     "id": "window_5",
@@ -938,7 +1056,8 @@
     "width": 1.5,
     "height": 1.2192,
     "sillHeight": 0.762,
-    "rotationY": 1.570796
+    "rotationY": 1.570796,
+    "leaf": null
    },
    {
     "id": "door_1",
@@ -952,7 +1071,33 @@
     "width": 0.9,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": 1.570796
+    "rotationY": 1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      0.0,
+      0.0,
+      1.0
+     ],
+     "rotationY": -1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_2",
@@ -966,7 +1111,33 @@
     "width": 0.9,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      6.0,
+      0.0,
+      2.5
+     ],
+     "rotationY": -1.5708,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
+      2.1336,
+      0.045
+     ]
+    }
    },
    {
     "id": "door_3",
@@ -980,7 +1151,33 @@
     "width": 0.9,
     "height": 2.1336,
     "sillHeight": 0.0,
-    "rotationY": -1.570796
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      6.0,
+      0.0,
+      5.9
+     ],
+     "rotationY": 1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
+      2.1336,
+      0.045
+     ]
+    }
    }
   ],
   "furniture": [],
@@ -1030,27 +1227,48 @@
   "materials": {
    "wall": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "header": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "sill": {
     "color": "#EEEAE2",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "glass": {
     "color": "#9EC9E8",
-    "alpha": 0.35
+    "alpha": 0.35,
+    "texture": null
    },
    "floor": {
     "color": "#C9B79C",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
    },
    "ceiling": {
     "color": "#FAFAF7",
-    "alpha": 1.0
+    "alpha": 1.0,
+    "texture": null
+   },
+   "ground": {
+    "color": "#4A7F24",
+    "alpha": 1.0,
+    "texture": null
+   },
+   "boundary": {
+    "color": "#2580BB",
+    "alpha": 1.0,
+    "texture": "/map-end-background.jpg"
+   },
+   "sky": {
+    "color": "#5B93B5",
+    "alpha": 1.0,
+    "texture": "/sky.avif"
    }
   }
  },
@@ -1077,6 +1295,7 @@
     "WALLS": 4,
     "WINDOWS": 5
    }
-  }
+  },
+  "checks": []
  }
 }

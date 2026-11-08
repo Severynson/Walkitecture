@@ -14,7 +14,8 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import { Cameras, type ViewMode } from "./cameras";
-import { boxObjectId, createBox } from "./load/boxes";
+import { boxObjectId, createBox, SCENERY } from "./load/boxes";
+import { Doors } from "./load/doors";
 import { FurnitureLibrary } from "./load/furniture";
 import { createRoomLabel } from "./load/labels";
 import { Materials } from "./load/materials";
@@ -26,6 +27,18 @@ const SPAWN_RAYS = 72; // every 5°
 const SPAWN_FOV = (80 * Math.PI) / 180;
 const MAX_SIGHTLINE = 100; // m
 const SELECTION_COLOR = Color3.FromHexString("#ff9f1c");
+const BLUEPRINT = new Color4(0.059, 0.239, 0.447, 1); // top-down background (--blueprint in styles.css)
+const SKY = Color4.FromHexString("#5B93B5FF"); // first person: behind the sky photo's edges
+const FELL_BELOW = -2; // m: a walker this far under the floor is put back at the spawn point
+const OUT_OF_MAP = 0.5; // m beyond the map's boundary walls, likewise
+const DOOR_REACH = 2.5; // m: a door this close under the crosshair can be opened with E
+const FOCUS_EVERY = 6; // frames between door-focus checks
+
+/** The door under the crosshair (first person, within reach), for the "Press E" hint. */
+export interface DoorFocus {
+  id: string;
+  open: boolean;
+}
 /** Pick targets that are "the building" rather than an editable object. */
 const NOT_SELECTABLE = new Set(["floor", "ceiling"]);
 
@@ -48,6 +61,11 @@ export class Viewer {
   private readonly registry = new Registry();
   private readonly materials: Materials;
   private readonly furniture: FurnitureLibrary;
+  private readonly doors: Doors;
+  private focusedDoor: DoorFocus | null = null;
+  private frame = 0;
+  /** Called when the door under the crosshair changes (or opens/closes). */
+  onDoorFocus: ((focus: DoorFocus | null) => void) | null = null;
   private readonly highlight: HighlightLayer;
   private readonly selectionMaterial: StandardMaterial;
   private spec: BabylonSceneSpec | null = null;
@@ -57,7 +75,7 @@ export class Viewer {
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
     const scene = new Scene(this.engine);
-    scene.clearColor = new Color4(0.059, 0.239, 0.447, 1); // blueprint blue (--blueprint in styles.css)
+    scene.clearColor = SKY;
     scene.ambientColor = new Color3(0.3, 0.3, 0.3);
     scene.collisionsEnabled = true;
     scene.gravity = new Vector3(0, GRAVITY, 0);
@@ -79,7 +97,12 @@ export class Viewer {
     this.cameras = new Cameras(scene, canvas);
     this.materials = new Materials(scene);
     this.furniture = new FurnitureLibrary(scene);
+    this.doors = new Doors(scene);
+    scene.onAfterRenderObservable.add(() => {
+      if (++this.frame % FOCUS_EVERY === 0) this.updateDoorFocus();
+    });
 
+    scene.onBeforeRenderObservable.add(() => this.keepOnTheMap());
     this.engine.runRenderLoop(() => scene.render());
     window.addEventListener("resize", this.onResize);
     // Browser smoke test hook (frontend/e2e/smoke.mjs): dev builds, or localStorage "walkitecture.e2e" = "1".
@@ -94,8 +117,11 @@ export class Viewer {
     const walker = this.cameras.walker;
     const saved = keepCamera && this.spec ? { position: walker.position.clone(), rotation: walker.rotation.clone() } : null;
     this.registry.disposeAll();
+    this.materials.disposeScenery();
+    if (!keepCamera) this.doors.reset();
     this.spec = spec;
     for (const box of spec.meshes) createBox(this.scene, box, spec, this.materials, this.registry);
+    for (const opening of spec.openings) if (opening.leaf) void this.doors.place(opening, this.registry);
     for (const room of spec.rooms) createRoomLabel(this.scene, room, this.registry);
     for (const item of spec.furniture) void this.furniture.place(item, this.registry);
     if (saved) {
@@ -106,7 +132,7 @@ export class Viewer {
       this.cameras.fit(spec);
       this.faceOpenSpace();
     }
-    this.syncCeiling();
+    this.syncMode();
     this.select(this.selectedId);
   }
 
@@ -129,8 +155,11 @@ export class Viewer {
     for (const box of spec.meshes) {
       if (affected.has(boxObjectId(box))) createBox(this.scene, box, spec, this.materials, this.registry);
     }
+    for (const opening of spec.openings) {
+      if (opening.leaf && affected.has(opening.wallId)) void this.doors.place(opening, this.registry);
+    }
     for (const item of spec.furniture) if (affected.has(item.id)) void this.furniture.place(item, this.registry);
-    this.syncCeiling();
+    this.syncMode();
     this.select(this.selectedId);
   }
 
@@ -144,7 +173,7 @@ export class Viewer {
     const py = y ?? canvas.clientHeight / 2;
     const hit = this.scene.pick(px, py, (mesh) => mesh.isPickable && mesh.isVisible && !!mesh.metadata);
     const meta = hit?.pickedMesh?.metadata as MeshMeta | undefined;
-    if (!meta || NOT_SELECTABLE.has(meta.objectId) || meta.kind === "ceiling" || meta.kind === "floor") return null;
+    if (!meta || NOT_SELECTABLE.has(meta.objectId) || NOT_SELECTABLE.has(meta.kind) || SCENERY.has(meta.kind)) return null;
     return meta;
   }
 
@@ -187,14 +216,53 @@ export class Viewer {
     return [dir.x / len, dir.z / len];
   }
 
+  /** Opens or closes a door (default: the one under the crosshair); returns its new state, or null. */
+  toggleDoor(id: string | null = this.focusedDoor?.id ?? null): boolean | null {
+    if (!id) return null;
+    const open = this.doors.toggle(id);
+    if (open !== null && this.focusedDoor?.id === id) this.setDoorFocus({ id, open });
+    return open;
+  }
+
+  isDoorOpen(id: string): boolean {
+    return this.doors.isOpen(id);
+  }
+
+  get doorFocus(): DoorFocus | null {
+    return this.focusedDoor;
+  }
+
+  /** First person: the nearest thing under the crosshair; a door within reach gets the "Press E" hint. */
+  private updateDoorFocus(): void {
+    let focus: DoorFocus | null = null;
+    if (this.cameras.mode === "first-person" && this.spec) {
+      const camera = this.cameras.walker;
+      const ray = new Ray(camera.position.clone(), camera.getDirection(Vector3.Forward()), DOOR_REACH);
+      const target = (mesh: AbstractMesh) =>
+        mesh.isEnabled() && !!mesh.metadata && (mesh.isVisible || mesh.name.endsWith(":doorway"));
+      const hit = this.scene.pickWithRay(ray, target);
+      const meta = hit?.pickedMesh?.metadata as MeshMeta | undefined;
+      if (hit?.hit && meta?.kind === "door" && meta.openingId && this.doors.has(meta.openingId)) {
+        focus = { id: meta.openingId, open: this.doors.isOpen(meta.openingId) };
+      }
+    }
+    this.setDoorFocus(focus);
+  }
+
+  private setDoorFocus(focus: DoorFocus | null): void {
+    if (focus?.id === this.focusedDoor?.id && focus?.open === this.focusedDoor?.open) return;
+    this.focusedDoor = focus;
+    this.onDoorFocus?.(focus);
+  }
+
   setMode(mode: ViewMode): void {
     this.cameras.setMode(mode);
-    this.syncCeiling();
+    this.syncMode();
   }
 
   toggleMode(): ViewMode {
     const mode = this.cameras.toggle();
-    this.syncCeiling();
+    this.syncMode();
     return mode;
   }
 
@@ -205,11 +273,12 @@ export class Viewer {
   private faceOpenSpace(): void {
     const origin = this.cameras.walker.position.clone();
     const solid = (mesh: AbstractMesh) => mesh.checkCollisions && mesh.isEnabled();
-    // Sightline length in every direction (0 when the ray leaves the building).
+    // Sightline length in every direction (0 when the ray leaves the building: hits the map's end).
     const distances = Array.from({ length: SPAWN_RAYS }, (_, i) => {
       const yaw = (i / SPAWN_RAYS) * Math.PI * 2;
       const hit = this.scene.pickWithRay(new Ray(origin, new Vector3(Math.sin(yaw), 0, Math.cos(yaw)), MAX_SIGHTLINE), solid);
-      return hit?.hit ? hit.distance : 0;
+      const kind = (hit?.pickedMesh?.metadata as MeshMeta | undefined)?.kind;
+      return hit?.hit && !SCENERY.has(kind ?? "") ? hit.distance : 0;
     });
     // Score each heading by the mean sightline across the field of view, so the view runs along the
     // room (not into its farthest corner, which is the longest single ray in a rectangular room).
@@ -224,10 +293,37 @@ export class Viewer {
     this.cameras.walker.rotation.set(0, best.yaw, 0);
   }
 
-  /** The ceiling hides the plan from above, so it is only shown in first person. */
-  private syncCeiling(): void {
-    const ceiling = this.scene.getMeshByName("ceiling");
-    if (ceiling) ceiling.isVisible = this.cameras.mode === "first-person";
+  /**
+   * The ceiling hides the plan from above, and the scenery (ground, backdrop walls, sky) would box it
+   * in: both are only shown in first person, where the background is sky rather than blueprint.
+   */
+  private syncMode(): void {
+    const firstPerson = this.cameras.mode === "first-person";
+    for (const mesh of this.scene.meshes) {
+      const kind = (mesh.metadata as MeshMeta | undefined)?.kind;
+      if (kind === "ceiling" || (kind && SCENERY.has(kind))) mesh.isVisible = firstPerson;
+    }
+    this.scene.clearColor = firstPerson ? SKY : BLUEPRINT;
+  }
+
+  /** Guardrail: whatever happens (a gap in a collider, a glitch), the walker never leaves the map. */
+  private keepOnTheMap(): void {
+    const spec = this.spec;
+    if (!spec || this.cameras.mode !== "first-person") return;
+    const { position } = this.cameras.walker;
+    const [x0, , z0] = spec.mapBounds.min;
+    const [x1, , z1] = spec.mapBounds.max;
+    const off =
+      position.y < FELL_BELOW ||
+      position.x < x0 - OUT_OF_MAP ||
+      position.x > x1 + OUT_OF_MAP ||
+      position.z < z0 - OUT_OF_MAP ||
+      position.z > z1 + OUT_OF_MAP;
+    if (off) {
+      const [x, y, z] = spec.camera.position;
+      position.set(x, y, z);
+      this.cameras.walker.cameraDirection.setAll(0);
+    }
   }
 
   dispose(): void {
@@ -235,6 +331,7 @@ export class Viewer {
     this.cameras.dispose();
     this.registry.disposeAll();
     this.furniture.dispose();
+    this.doors.dispose();
     this.materials.dispose();
     this.highlight.dispose();
     this.scene.dispose();

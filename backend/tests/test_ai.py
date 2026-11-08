@@ -188,7 +188,6 @@ def test_suspects_are_found_deterministically():
     suspects = find_suspects(building, warnings, {"unresolvedFurnitureBlocks": ["LAVABO"]})
     kinds = {(s.kind, tuple(s.target_ids)) for s in suspects}
     assert ("short_wall", ("stub",)) in kinds
-    assert ("overlapping_furniture", ("f1", "f2")) in kinds
     assert ("unlabelled_room", ("room_1",)) in kinds
     assert ("unsnapped_openings", ()) in kinds and ("unresolved_furniture_blocks", ()) in kinds
 
@@ -243,6 +242,7 @@ async def test_review_endpoint_previews_applies_and_undoes(auth_client, llm_answ
             patch("rename_room", "room_99", name="Hall", reason="invented id"),
             patch("set_opening_type", "window_1", reason="missing parameter"),
         ],
+        decisions=[],
         notes="One stray wall.",
     )
 

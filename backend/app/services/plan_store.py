@@ -1,7 +1,8 @@
-"""Database operations on plans: loading (owner-scoped), the upload pipeline, edits with history, undo.
+"""Database operations on plans: loading (owner-scoped), running the pipeline, edits with history, undo.
 
 Upload pipeline (ARCHITECTURE.md): DWG -> DXF -> descriptive drawing JSON -> canonical building
-model (walls, openings, rooms, furniture) -> Babylon.js scene spec, all written to the database.
+model (walls, openings, rooms, furniture) -> automatic checks (pipeline.py, guardrails.py) ->
+Babylon.js scene spec, all written to the database. Uploads run it in the background (jobs.py).
 """
 
 import uuid
@@ -15,16 +16,14 @@ from app.models import Plan, PlanEdit
 from app.schemas.api import EditResponse, PlanDetail, PlanSummary, SceneResponse
 from app.schemas.babylon import BabylonScene
 from app.schemas.building import Building
+from app.schemas.checks import CheckReport
 from app.schemas.edits import AnyCommand
 from app.schemas.parse import ParseOptions
+from app.services import guardrails, pipeline
 from app.services.babylon_scene import build_scene
-from app.services.drawing_reader import DrawingReadError, describe_drawing
 from app.services.dwg_convert import ConversionError, convert_dwg_to_dxf
-from app.services.dxf_parser import ParseError, ParseResult, parse_dxf
+from app.services.dxf_parser import ParseError, ParseResult
 from app.services.edits import EditResult, apply_edit
-from app.services.furniture_llm import classify_unknown_furniture
-from app.services.furniture_placement import place_furniture
-from app.services.layers import layer_patterns
 
 
 class PlanNotFound(Exception):
@@ -43,6 +42,10 @@ class VersionConflict(Exception):
 
 class NothingToUndo(Exception):
     pass
+
+
+class PlanBusy(Exception):
+    """The plan is being (re)processed; its model will be replaced when that finishes."""
 
 
 async def get_plan(
@@ -96,6 +99,7 @@ def to_summary(plan: Plan) -> PlanSummary:
         source_format=plan.source_format,
         file_size=plan.file_size,
         status=plan.status,
+        stage=plan.stage if plan.status == "processing" else None,
         model_version=plan.model_version,
         has_model=plan.model is not None,
         error=plan.error,
@@ -106,7 +110,10 @@ def to_summary(plan: Plan) -> PlanSummary:
 
 def to_detail(plan: Plan) -> PlanDetail:
     return PlanDetail(
-        **to_summary(plan).model_dump(), parse_warnings=plan.parse_warnings or [], parse_stats=plan.parse_stats
+        **to_summary(plan).model_dump(),
+        parse_warnings=plan.parse_warnings or [],
+        parse_stats=plan.parse_stats,
+        report=CheckReport.model_validate(plan.report) if plan.report else None,
     )
 
 
@@ -115,64 +122,72 @@ def to_scene(plan: Plan) -> SceneResponse:
     return SceneResponse(plan_id=plan.id, version=plan.model_version, model=building, babylon=build_scene(building))
 
 
-async def parse_plan(session: AsyncSession, plan: Plan, options: ParseOptions, settings: Settings) -> ParseResult:
-    """Run the full pipeline and store every stage. Clears edit history (IDs may change).
+async def parse_plan(
+    session: AsyncSession, plan: Plan, options: ParseOptions | None, settings: Settings, *, ai: bool = False
+) -> ParseResult:
+    """Run the whole pipeline now and store every stage. Clears edit history (IDs may change).
 
-    `plan` must have been loaded with files=True and for_update=True.
+    `plan` must have been loaded with files=True and for_update=True. `options=None` lets the AI choose
+    the layer roles (with `ai`). Uploads use jobs.py instead, which runs this in the background.
     """
     warnings: list[str] = []
     try:
         if plan.dxf_file is None and plan.source_format == "dwg":
             plan.dxf_file, warnings = await convert_dwg_to_dxf(plan.original_file, settings)
         dxf = plan.dxf_file if plan.dxf_file is not None else plan.original_file
-        # Describe first: a plan that fails to build still gets its inventory (input for /classify).
-        try:
-            plan.drawing = describe_drawing(dxf, layer_patterns(settings, options))
-        except DrawingReadError as exc:
-            raise ParseError(str(exc)) from exc
-        result = parse_dxf(dxf, options, settings)
+        built = await pipeline.build_model(dxf, options, settings, ai=ai)
     except (ConversionError, ParseError) as exc:
-        plan.status, plan.error = "failed", str(exc)  # ARCHITECTURE.md §11: keep the plan, record why
+        plan.status, plan.error, plan.stage = "failed", str(exc), None  # ARCHITECTURE.md §11: keep the plan
         await session.commit()
         raise
-    result.warnings[:0] = warnings
-    await _llm_furniture_fallback(result, settings)
+    await store_built(session, plan, built, warnings)
+    await session.commit()
+    await session.refresh(plan)
+    if built.error:
+        raise built.error
+    return built.result
 
+
+async def store_built(session: AsyncSession, plan: Plan, built: pipeline.Built, conversion_warnings: list[str]) -> None:
+    """Write a pipeline result to `plan` (not committed). A failed build keeps the drawing JSON, so the
+    plan can still be inspected and re-parsed with other options."""
+    plan.drawing = built.drawing
+    plan.parse_options = built.options.model_dump(mode="json", by_alias=True, exclude_none=True)
+    plan.report = built.report.model_dump(mode="json", by_alias=True)
+    plan.stage = None
+    if built.error or built.result is None:
+        plan.status, plan.error = "failed", str(built.error)
+        return
+    result = built.result
+    result.warnings[:0] = conversion_warnings
     await session.execute(delete(PlanEdit).where(PlanEdit.plan_id == plan.id))
     _set_model(plan, result.building)
     plan.model_version += 1
     plan.status, plan.error = "parsed", None
     plan.parse_warnings = result.warnings
     plan.parse_stats = result.stats
-    await session.commit()
-    await session.refresh(plan)
-    return result
 
 
-async def _llm_furniture_fallback(result: ParseResult, settings: Settings) -> None:
-    """Ask the LLM about furniture blocks the rules could not identify, then place them by rule."""
-    unresolved = result.unresolved_furniture
-    if not unresolved or not settings.openai_api_key:
-        return
-    categories = await classify_unknown_furniture(unresolved, result.building.rooms, settings)
-    identified = []
-    for index, category in categories.items():
-        if category != "none":
-            candidate = unresolved[index]
-            candidate.category, candidate.matched_by = category, "llm"
-            identified.append(candidate)
-    if not identified:
-        return
-    start = len(result.building.furniture) + 1
-    added = place_furniture(identified, result.building.walls, result.warnings, start_index=start)
-    result.building.furniture.extend(added)
-    result.stats["furnitureCount"] = len(result.building.furniture)
-    result.stats["llmFurniture"] = [f.source_block for f in added]
-    result.stats["unresolvedFurnitureBlocks"] = sorted({c.block for c in unresolved if c.matched_by != "llm"})
+def _check_idle(plan: Plan) -> None:
+    if plan.status == "processing":
+        raise PlanBusy("The drawing is still being processed; try again when it is ready.")
+
+
+def _enforce(result: EditResult) -> EditResult:
+    """Edits must not break the furniture rule either (a moved wall pushes furniture out, or removes it)."""
+    building, fixes = guardrails.enforce(result.building)
+    if not fixes:
+        return result
+    notes = " ".join(fix.summary for fix in fixes)
+    return EditResult(
+        building=building,
+        affected_ids=[*result.affected_ids, *(fix.item_id for fix in fixes)],
+        summary=f"{result.summary} {notes}",
+    )
 
 
 def preview_edit(plan: Plan, command: AnyCommand) -> EditResult:
-    return apply_edit(building_of(plan), command)
+    return _enforce(apply_edit(building_of(plan), command))
 
 
 async def apply_and_record(
@@ -186,6 +201,7 @@ async def apply_and_record(
     dry_run: bool = False,
 ) -> EditResponse:
     plan = await get_plan(session, plan_id, owner_id, for_update=not dry_run)
+    _check_idle(plan)
     if base_version is not None and base_version != plan.model_version:
         raise VersionConflict(plan.model_version)
     result = preview_edit(plan, command)
@@ -221,9 +237,11 @@ async def replace_scene(
     session: AsyncSession, plan_id: uuid.UUID, owner_id: uuid.UUID, building: Building, base_version: int | None
 ) -> Plan:
     plan = await get_plan(session, plan_id, owner_id, for_update=True)
+    _check_idle(plan)
     if base_version is not None and base_version != plan.model_version:
         raise VersionConflict(plan.model_version)
     previous = plan.model
+    building, _ = guardrails.enforce(building)
     _set_model(plan, building)
     plan.model_version += 1
     plan.status, plan.error = "parsed", None
@@ -246,6 +264,7 @@ async def replace_scene(
 
 async def undo_last(session: AsyncSession, plan_id: uuid.UUID, owner_id: uuid.UUID) -> EditResponse:
     plan = await get_plan(session, plan_id, owner_id, for_update=True)
+    _check_idle(plan)
     stmt = (
         select(PlanEdit)
         .where(PlanEdit.plan_id == plan.id)

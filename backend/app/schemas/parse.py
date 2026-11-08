@@ -5,9 +5,13 @@ from pydantic import Field
 from app.schemas.base import CamelModel
 
 UnitName = Literal["auto", "mm", "cm", "m", "in", "ft"]
-FurnitureCategory = Literal["bed", "chair", "sofa", "desk", "table", "closet", "toilet"]
-BlockRole = Literal["door", "window", "bed", "chair", "sofa", "desk", "table", "closet", "toilet", "ignore"]
-FURNITURE_CATEGORIES: tuple[str, ...] = ("bed", "chair", "sofa", "desk", "table", "closet", "toilet")
+# Categories of the GLB library (services/furniture_catalog.py); one list for parse options, edits, and LLM answers.
+FURNITURE_CATEGORIES: tuple[str, ...] = (
+    "bed", "chair", "sofa", "desk", "table", "closet", "toilet", "bathtub", "shower", "sink", "kitchen", "fridge",
+    "cabinet", "dresser", "nightstand", "bookshelf",
+)  # fmt: skip
+FurnitureCategory = Literal[FURNITURE_CATEGORIES]  # type: ignore[valid-type]
+BlockRole = Literal[("door", "window", *FURNITURE_CATEGORIES, "ignore")]  # type: ignore[valid-type]
 
 
 class ParseOptions(CamelModel):

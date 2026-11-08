@@ -34,6 +34,9 @@ export function uploadPlan(file: File) {
   return api<PlanDetail>("/api/plans", { method: "POST", form, query: { parse: true } });
 }
 
+/** Process the drawing again from scratch (Retry); poll getPlan until it is no longer "processing". */
+export const processPlan = (id: string) => api<PlanDetail>(`/api/plans/${id}/process`, { method: "POST" });
+
 export const getScene = (id: string) => api<SceneResponse>(`/api/plans/${id}/scene`);
 export const applyEdit = (id: string, command: EditCommand, baseVersion: number) =>
   api<EditResponse>(`/api/plans/${id}/edits`, { method: "POST", json: { command, baseVersion, source: "ui" } });

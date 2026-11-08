@@ -17,6 +17,10 @@ from ezdxf.entities import DXFGraphic
 
 from app.services.furniture_catalog import category_for
 
+# A door/window name wins over these: "PUERTA COCINA" is the kitchen's door, not a kitchen unit. Other furniture
+# words still win ("wardrobe door" is part of a wardrobe).
+ROOM_WORD_CATEGORIES = (None, "kitchen")
+
 DOOR_BLOCK = re.compile(r"door|puerta|porte|\btür", re.IGNORECASE)
 # Cryptic abbreviations (P40, PC40, pp, pndo, NPBAÑO) only count as doors if the block has a swing arc.
 WEAK_DOOR_BLOCK = re.compile(r"^p\d|^pc\d|^pp?\d*$|^pndo|^np|^pd$", re.IGNORECASE)
@@ -113,9 +117,9 @@ class DrawingClassifier:
             return Classification("furniture", f"block {name!r} overridden as {override}", override, "manual")
         if layer_kind in ("window", "door"):
             return Classification(layer_kind, f"block {name!r} on {layer_kind} layer {layer!r}")
-        if WINDOW_BLOCK.search(name) and not category_for(name):
+        if WINDOW_BLOCK.search(name) and category_for(name) in ROOM_WORD_CATEGORIES:
             return Classification("window", f"block name {name!r} looks like a window")
-        if DOOR_BLOCK.search(name) and not category_for(name):
+        if DOOR_BLOCK.search(name) and category_for(name) in ROOM_WORD_CATEGORIES:
             return Classification("door", f"block name {name!r} looks like a door")
         if WEAK_DOOR_BLOCK.search(name) and self._block_has_arc(name):
             return Classification("door", f"block {name!r} has a door-like name and a swing arc")

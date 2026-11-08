@@ -121,6 +121,36 @@ try {
   await page.waitForFunction((b) => document.body.innerText.includes(`Window · ${b} m`), { timeout: 15000 }, before);
   log(`undo restored ${before} m`);
 
+  // 6b. Doors: look at a single door from 1.4 m, the hint appears, E opens it, E closes it
+  if ((await page.evaluate(() => window.__viewer.cameras.mode)) === "top-down") {
+    await page.keyboard.press("t"); // back to first person
+    await sleep(300);
+  }
+  const door = await page.evaluate(() => {
+    const v = window.__viewer;
+    const opening = v.spec.openings.find((o) => o.leaf);
+    if (!opening) return null;
+    const [cx, , cz] = opening.position;
+    const eye = v.spec.camera.eyeHeight;
+    const a = opening.rotationY; // the wall's normal is local +z: (sin a, cos a)
+    const walker = v.cameras.walker;
+    walker.position.set(cx + Math.sin(a) * 1.4, eye, cz + Math.cos(a) * 1.4);
+    walker.setTarget(new walker.position.constructor(cx, eye - 0.3, cz));
+    return opening.id;
+  });
+  if (!door) throw new Error("the sample apartment has no single door with a leaf");
+  await page.waitForFunction(() => document.querySelector(".door-hint")?.textContent.includes("to open"), { timeout: 10000 });
+  await shot("05b-door-hint");
+  await page.keyboard.press("e");
+  await page.waitForFunction(() => document.querySelector(".door-hint")?.textContent.includes("to close"), { timeout: 5000 });
+  await sleep(700);
+  if (!(await page.evaluate((id) => window.__viewer.isDoorOpen(id), door))) throw new Error(`${door} did not open`);
+  await shot("05c-door-open");
+  await page.keyboard.press("e");
+  await sleep(700);
+  if (await page.evaluate((id) => window.__viewer.isDoorOpen(id), door)) throw new Error(`${door} did not close`);
+  log(`door ${door}: hint shown, E opened and closed it`);
+
   // 7. Chat edit
   await page.type(".chat-form input", "Raise the ceiling to 3.5 meters");
   await page.click(".chat-form button");
@@ -128,7 +158,8 @@ try {
   await shot("06-after-chat");
   const msgs = await page.$$eval(".msg", (els) => els.map((e) => `[${e.className.replace("msg ", "")}] ${e.textContent}`));
   log("activity:", JSON.stringify(msgs));
-  log(`AI buttons ${(await text()).includes("AI tools need an OpenAI key") ? "disabled (no OpenAI key)" : "enabled"}`);
+  if (await page.$("button[title^='Re-read the drawing']").then((b) => b?.isVisible())) throw new Error("AI clean-up buttons are visible");
+  log("AI clean-up panel hidden (checks run automatically on upload)");
 
   // 8. Optional: upload a real DWG and walk it
   if (dwgFile) {
@@ -138,18 +169,62 @@ try {
     await input.uploadFile(dwgFile);
     log(`uploading ${dwgFile}…`);
     await page.waitForFunction(() => /^\/plans\/[0-9a-f-]+$/.test(location.pathname) || document.querySelector(".error"), {
-      timeout: 180000,
+      timeout: 60000,
     });
-    const err = await page.$eval(".error", (e) => e.textContent).catch(() => null);
-    if (err) throw new Error(`upload failed: ${err}`);
+    // Processed in the background (AI classification + review + guardrails): follow the stages.
+    const stages = new Set();
+    const started = Date.now();
+    for (;;) {
+      const state = await page.evaluate(() => ({
+        scene: !!window.__viewer?.scene?.meshes?.length,
+        error: document.querySelector(".error")?.textContent ?? null,
+        stage: document.querySelector(".stages li.active")?.textContent ?? null,
+      }));
+      if (state.error) throw new Error(`processing failed: ${state.error}`);
+      if (state.stage && !stages.has(state.stage)) {
+        stages.add(state.stage);
+        log(`  ${Math.round((Date.now() - started) / 1000)} s: ${state.stage}`);
+      }
+      if (state.scene) break;
+      if (Date.now() - started > 600000) throw new Error("processing took over 10 minutes");
+      await sleep(1000);
+    }
+    log(`processed in ${Math.round((Date.now() - started) / 1000)} s`);
     await waitForScene();
     await sleep(4000);
     await shot("07-uploaded-first-person");
+    // The map's end: stand on the open ground near the boundary, looking back at the building.
+    const outside = await page.evaluate(() => {
+      const v = window.__viewer;
+      const spec = v.spec;
+      const [x0, , z0] = spec.mapBounds.min;
+      const [x1, , z1] = spec.mapBounds.max;
+      const walker = v.cameras.walker;
+      walker.position.set(x0 + 1.5, spec.camera.eyeHeight, (z0 + z1) / 2);
+      walker.setTarget(walker.position.add(new walker.position.constructor(1, 0.15, 0.4)));
+      return { x0, x1, z0, z1 };
+    });
+    await sleep(2500);
+    await shot("07b-map-end");
+    // Falling or leaving the map puts the walker back at the spawn point.
+    const respawned = await page.evaluate(async () => {
+      const v = window.__viewer;
+      v.cameras.walker.position.set(v.spec.mapBounds.max[0] + 20, -10, 0);
+      await new Promise((r) => setTimeout(r, 300));
+      const p = v.cameras.walker.position;
+      return Math.hypot(p.x - v.spec.camera.position[0], p.z - v.spec.camera.position[2]) < 1;
+    });
+    if (!respawned) throw new Error("walker left the map without being put back");
+    log(`map end ok (ground ${Math.round(outside.x1 - outside.x0)} x ${Math.round(outside.z1 - outside.z0)} m, respawn guard works)`);
     await page.keyboard.press("t");
     await sleep(1500);
     await shot("08-uploaded-top-down");
     const furniture = await page.evaluate(() => window.__viewer.scene.transformNodes.filter((n) => n.metadata?.kind === "furniture").length);
     log(`uploaded plan walkable: ${(await text()).match(/\d+ walls · \d+ rooms · \d+ furniture/)?.[0]}, ${furniture} GLB models placed`);
+    const checks = await page.$$eval(".msg.assistant", (els) =>
+      els.map((e) => e.textContent).find((t) => t.includes("before building the 3D model")),
+    );
+    log("checks:", checks ?? "none reported");
   }
 
   // 9. Plan list, log out
@@ -166,6 +241,24 @@ try {
   await sleep(2500);
   await shot("09-public-sample");
   log("public sample viewer ok");
+
+  // 11. Every model of the furniture library loads and is placed (backend furniture_catalog.py)
+  await page.goto(`${base}/viewer?fixture=furniture-library&view=top`, { waitUntil: "networkidle0" });
+  await waitForScene();
+  const library = await page.waitForFunction(
+    () => {
+      const v = window.__viewer;
+      const placed = v.scene.transformNodes.filter((n) => n.metadata?.kind === "furniture").length;
+      return placed === v.spec.furniture.length && placed > 0 ? placed : false;
+    },
+    { timeout: 30000 },
+  );
+  await sleep(1500);
+  await shot("10-furniture-library");
+  await page.keyboard.press("t");
+  await sleep(2000);
+  await shot("11-furniture-library-walk");
+  log(`furniture library: all ${await library.jsonValue()} models loaded and placed`);
 } catch (error) {
   problems.push(`FAILED: ${error.message}`);
   await shot("zz-failure").catch(() => {});

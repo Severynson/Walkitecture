@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ViewMode } from "./cameras";
-import { Viewer } from "./engine";
+import { type DoorFocus, Viewer } from "./engine";
 import type { MeshMeta, SceneResponse } from "./types";
 
 interface Props {
@@ -34,17 +34,20 @@ export default function ViewerPage({ scene, loadKey, title, initialMode, onReady
   const downAt = useRef<{ x: number; y: number } | null>(null);
   const [mode, setMode] = useState<ViewMode>("first-person");
   const [locked, setLocked] = useState(false);
+  const [door, setDoor] = useState<DoorFocus | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
     const viewer = new Viewer(canvas);
     viewerRef.current = viewer;
+    viewer.onDoorFocus = setDoor;
     onReady?.(viewer);
 
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if (event.code === "KeyT") setMode(viewer.toggleMode());
+      if (event.code === "KeyE" && !event.repeat) viewer.toggleDoor();
     };
     const onLockChange = () => setLocked(document.pointerLockElement === canvas);
     window.addEventListener("keydown", onKey);
@@ -100,14 +103,19 @@ export default function ViewerPage({ scene, loadKey, title, initialMode, onReady
     <div className="viewer">
       <canvas ref={canvasRef} onPointerDown={onPointerDown} onClick={onClick} className="viewer-canvas" />
       {mode === "first-person" && locked && <div className="crosshair" aria-hidden />}
+      {mode === "first-person" && door && (
+        <div className="door-hint" role="status">
+          Press <kbd>E</kbd> to {door.open ? "close" : "open"} the door
+        </div>
+      )}
       <div className="hud">
         <strong>{title ?? "Walkitecture"}</strong>
         <div>{stats}</div>
         <div className="hud-help">
           {mode === "first-person"
             ? locked
-              ? "WASD / arrows walk · Shift runs · mouse looks · click selects · Esc frees the mouse · T top-down"
-              : "Click the view to look around · WASD / arrows to walk · Shift to run · T top-down"
+              ? "WASD / arrows walk · Shift runs · E opens doors · mouse looks · click selects · Esc frees the mouse · T top-down"
+              : "Click the view to look around · WASD / arrows to walk · Shift to run · E opens doors · T top-down"
             : "Click selects · drag orbits · right-drag pans · wheel zooms · T first person"}
         </div>
         <div className="row">
