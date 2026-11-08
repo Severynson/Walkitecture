@@ -126,3 +126,18 @@ async def test_falls_back_to_rules_when_openai_fails(demo_building, settings, mo
     assert result.source == "rules"
     assert result.command.parameters.height == pytest.approx(2.9)
     assert result.notes and "rule-based" in result.notes[0]
+
+
+def test_rules_delete_the_selected_wall_or_the_only_named_furniture(demo_building):
+    from app.schemas.building import FurnitureItem
+
+    sofa = FurnitureItem(id="furniture_1", category="sofa", model="couch_medium_by_quaternius.glb",
+                         position=(2.0, 2.0), facing=(0.0, 1.0), width=2.0, depth=0.9, height=0.85)  # fmt: skip
+    building = demo_building.model_copy(update={"furniture": [sofa]})
+    wall_id = building.walls[0].id
+    by_selection = interpret_with_rules("Delete this", wall_id, building)
+    assert by_selection.command.operation == "delete_wall" and by_selection.command.target_id == wall_id
+    by_name = interpret_with_rules("remove the sofa", None, building)
+    assert by_name.command.operation == "delete_furniture" and by_name.command.target_id == "furniture_1"
+    assert interpret_with_rules("delete it", None, building).clarification
+    assert "windows and doors" in interpret_with_rules("remove this", "window_1", building).clarification

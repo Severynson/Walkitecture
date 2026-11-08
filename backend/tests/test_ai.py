@@ -266,7 +266,8 @@ async def test_review_endpoint_previews_applies_and_undoes(auth_client, llm_answ
 async def test_review_ops_are_not_accepted_by_the_ui_edit_endpoint(auth_client):
     plan_id = (await auth_client.post("/api/plans/demo")).json()["plan"]["id"]
     response = await auth_client.post(
-        f"/api/plans/{plan_id}/edits", json={"command": {"operation": "delete_wall", "targetId": "wall_1"}}
+        f"/api/plans/{plan_id}/edits",
+        json={"command": {"operation": "merge_walls", "parameters": {"wallIds": ["wall_1", "wall_2"]}}},
     )
     assert response.status_code == 422
 

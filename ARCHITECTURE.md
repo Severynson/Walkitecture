@@ -307,6 +307,9 @@ Behaviour:
 - **Selection:** in first person (pointer locked) a click picks what is under the crosshair; in top-down, under the
   pointer. Openings select by `openingId`, walls by `wallId`, furniture by id (its footprint box is shown, because GLB
   instances can't be outlined). Floor/ceiling clear the selection.
+- **Deleting:** a selected wall or piece of furniture has a Delete button; the Delete/Backspace key does the same
+  (outside text fields). Chat understands "delete this" and "remove the sofa" (when there is exactly one). Undo
+  restores it.
 - **Edits:** sliders and buttons send `POST /edits` with `baseVersion`; chat sends `POST /interpret-edit` with
   `selectedId`, `cameraForward` (plan x/y of the view direction) and `apply=true`. `409 version_conflict` reloads the
   scene, `409 nothing_to_undo` and `422 problems` are shown in the activity log.
@@ -387,7 +390,8 @@ another user is treated as not found.
 | `POST /api/plans/{id}/review[?apply=true]` | LLM review patches (§4.3) | done |
 
 Edit allowlist: `resize_selected_window`, `resize_windows`, `set_ceiling_height` (2.1–6.0 m), `move_selected_wall`
-(free-standing walls). Edit responses include `affectedIds`, the new `version`, `model`, and `babylon`. Sending
+(free-standing walls), `delete_wall` (with its doors and windows), `delete_furniture`. Every edit is undoable, and the
+furniture rule (§4.4) is enforced on its result. Edit responses include `affectedIds`, the new `version`, `model`, and `babylon`. Sending
 `baseVersion` returns `409` on conflicts. Rejected edits return `422` with machine-readable `problems`.
 
 ### 8.3 Auth

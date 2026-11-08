@@ -14,7 +14,12 @@ interface Props {
   onSend(text: string): void;
 }
 
-const EXAMPLES = ["Make this window 50% wider", "Make all windows 20% wider", "Raise the ceiling to 3.5 meters"];
+const EXAMPLES = [
+  "Make this window 50% wider",
+  "Make all windows 20% wider",
+  "Raise the ceiling to 3.5 meters",
+  "Delete this",
+];
 
 /** Natural-language edits (POST /api/interpret-edit) plus the activity log of every change. */
 export default function ChatBox({ messages, busy, selectionLabel, aiMode, onSend }: Props) {

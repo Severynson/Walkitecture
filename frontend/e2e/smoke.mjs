@@ -121,6 +121,43 @@ try {
   await page.waitForFunction((b) => document.body.innerText.includes(`Window · ${b} m`), { timeout: 15000 }, before);
   log(`undo restored ${before} m`);
 
+  // 6a. Select a wall in 3D, delete it with the Delete key, bring it back with Undo
+  const wallsBefore = Number((await text()).match(/(\d+) walls ·/)[1]);
+  const wallTarget = await page.evaluate(() => {
+    const scene = window.__viewer.scene;
+    const ids = new Set(scene.meshes.filter((m) => m.metadata?.kind === "wall").map((m) => m.metadata.wallId));
+    // a wall without openings: clicking its middle hits the wall itself, not a window or door
+    const engine = scene.getEngine();
+    const vp = scene.activeCamera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+    const transform = scene.getTransformMatrix();
+    const ratio = engine.getRenderWidth() / engine.getRenderingCanvas().clientWidth;
+    const candidates = scene.meshes.filter(
+      (m) => m.metadata?.kind === "wall" && ids.has(m.metadata.wallId) &&
+        !scene.meshes.some((o) => o.metadata?.openingId && o.metadata.wallId === m.metadata.wallId),
+    );
+    for (const mesh of candidates) {
+      const box = mesh.getBoundingInfo().boundingBox;
+      const top = box.centerWorld.clone();
+      top.y = box.maximumWorld.y; // aim at the top face: the overhead camera looks down on it
+      const p = top.constructor.Project(top, transform.constructor.Identity(), transform, vp);
+      const x = p.x / ratio, y = p.y / ratio;
+      if (x > 60 && x < innerWidth * 0.7 && y > 220 && y < innerHeight - 60) return { x, y, wall: mesh.metadata.wallId };
+    }
+    return null;
+  });
+  if (!wallTarget) throw new Error("no clickable wall without openings in view");
+  await page.mouse.click(wallTarget.x, wallTarget.y);
+  await page.waitForSelector('::-p-xpath(//button[normalize-space(.)="Delete wall"])', { timeout: 5000 });
+  await page.keyboard.press("Delete");
+  await page.waitForFunction((n) => document.body.innerText.includes(`${n} walls ·`), { timeout: 15000 }, wallsBefore - 1);
+  if (await page.evaluate((id) => window.__viewer.scene.meshes.some((m) => m.metadata?.wallId === id), wallTarget.wall)) {
+    throw new Error(`${wallTarget.wall} is still drawn after deleting it`);
+  }
+  await shot("05a-wall-deleted");
+  await clickButton("Undo");
+  await page.waitForFunction((n) => document.body.innerText.includes(`${n} walls ·`), { timeout: 15000 }, wallsBefore);
+  log(`deleted ${wallTarget.wall} with the Delete key (${wallsBefore} -> ${wallsBefore - 1} walls), undo restored it`);
+
   // 6b. Doors: look at a single door from 1.4 m, the hint appears, E opens it, E closes it
   if ((await page.evaluate(() => window.__viewer.cameras.mode)) === "top-down") {
     await page.keyboard.press("t"); // back to first person

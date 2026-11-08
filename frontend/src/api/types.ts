@@ -697,6 +697,28 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** DeleteFurniture */
+        DeleteFurniture: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "delete_furniture";
+            /** Targetid */
+            targetId: string;
+            parameters?: components["schemas"]["NoParams"];
+        };
+        /** DeleteWall */
+        DeleteWall: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "delete_wall";
+            /** Targetid */
+            targetId: string;
+            parameters?: components["schemas"]["NoParams"];
+        };
         /**
          * DoorLeafSpec
          * @description A hinged door leaf (single doors). The frontend puts a pivot node at `hinge` with `rotationY` (closed)
@@ -792,7 +814,7 @@ export interface components {
         /** EditRequest */
         EditRequest: {
             /** Command */
-            command: components["schemas"]["ResizeSelectedWindow"] | components["schemas"]["ResizeWindows"] | components["schemas"]["SetCeilingHeight"] | components["schemas"]["MoveSelectedWall"];
+            command: components["schemas"]["ResizeSelectedWindow"] | components["schemas"]["ResizeWindows"] | components["schemas"]["SetCeilingHeight"] | components["schemas"]["MoveSelectedWall"] | components["schemas"]["DeleteWall"] | components["schemas"]["DeleteFurniture"];
             /**
              * Baseversion
              * @description Model version the client edited against; mismatches return 409.
@@ -1022,7 +1044,7 @@ export interface components {
         /** InterpretResponse */
         InterpretResponse: {
             /** Command */
-            command: (components["schemas"]["ResizeSelectedWindow"] | components["schemas"]["ResizeWindows"] | components["schemas"]["SetCeilingHeight"] | components["schemas"]["MoveSelectedWall"]) | null;
+            command: (components["schemas"]["ResizeSelectedWindow"] | components["schemas"]["ResizeWindows"] | components["schemas"]["SetCeilingHeight"] | components["schemas"]["MoveSelectedWall"] | components["schemas"]["DeleteWall"] | components["schemas"]["DeleteFurniture"]) | null;
             /**
              * Source
              * @enum {string}
@@ -1097,6 +1119,8 @@ export interface components {
              */
             offset: number;
         };
+        /** NoParams */
+        NoParams: Record<string, never>;
         /** Opening */
         Opening: {
             /** Id */

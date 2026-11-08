@@ -5,7 +5,7 @@ import * as endpoints from "../api/endpoints";
 import type { CheckReport, EditCommand, EditResponse, PlanDetail, SceneResponse } from "../api/schema";
 import AiPanel from "../edit/AiPanel";
 import ChatBox, { type ChatMessage } from "../edit/ChatBox";
-import EditPanel from "../edit/EditPanel";
+import EditPanel, { deleteCommand } from "../edit/EditPanel";
 import { describe, titleCase } from "../edit/selection";
 import type { Viewer } from "../viewer/engine";
 import ViewerPage from "../viewer/ViewerPage";
@@ -165,6 +165,22 @@ export default function PlanPage() {
       applyResult(result);
       say("assistant", result.summary);
     });
+
+  // Delete / Backspace removes the selected wall or piece of furniture (outside text fields).
+  const deleteSelected = deleteCommand(selection);
+  useEffect(() => {
+    if (!deleteSelected) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if ((event.key === "Delete" || event.key === "Backspace") && !busy) {
+        event.preventDefault();
+        void edit(deleteSelected);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const undo = () =>
     run(async () => {

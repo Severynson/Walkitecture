@@ -93,14 +93,36 @@ function SelectionEditor({
             </button>
           </div>
           <p className="hint">Only free-standing walls can move; connected walls are rejected to keep rooms intact.</p>
+          <DeleteButton busy={busy} label="Delete wall" onDelete={() => onEdit(deleteCommand(selection)!)} />
         </>
       )}
       {selection.kind === "furniture" && (
-        <p className="muted small">
-          {titleCase(selection.furniture.category)} · {selection.furniture.width.toFixed(2)} × {selection.furniture.depth.toFixed(2)} m
-          {selection.furniture.sourceBlock ? ` · from block “${selection.furniture.sourceBlock}”` : ""}
-        </p>
+        <>
+          <p className="muted small">
+            {titleCase(selection.furniture.category)} · {selection.furniture.width.toFixed(2)} × {selection.furniture.depth.toFixed(2)} m
+            {selection.furniture.sourceBlock ? ` · from block “${selection.furniture.sourceBlock}”` : ""}
+          </p>
+          <DeleteButton busy={busy} label={`Delete ${selection.furniture.category}`} onDelete={() => onEdit(deleteCommand(selection)!)} />
+        </>
       )}
+    </div>
+  );
+}
+
+/** The edit that deletes a selected wall or piece of furniture (null for windows and doors). */
+export function deleteCommand(selection: Selection | null): EditCommand | null {
+  if (selection?.kind === "wall") return { operation: "delete_wall", targetId: selection.id, parameters: {} };
+  if (selection?.kind === "furniture") return { operation: "delete_furniture", targetId: selection.id, parameters: {} };
+  return null;
+}
+
+function DeleteButton({ busy, label, onDelete }: { busy: boolean; label: string; onDelete(): void }) {
+  return (
+    <div className="row">
+      <button className="danger" disabled={busy} onClick={onDelete} title="Delete (or Backspace). Undo brings it back.">
+        {label}
+      </button>
+      <span className="hint">or press Delete · Undo restores it</span>
     </div>
   );
 }

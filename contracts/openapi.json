@@ -1929,6 +1929,50 @@
         ],
         "title": "Credentials"
       },
+      "DeleteFurniture": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "delete_furniture",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "string",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/NoParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "targetId"
+        ],
+        "title": "DeleteFurniture"
+      },
+      "DeleteWall": {
+        "properties": {
+          "operation": {
+            "type": "string",
+            "const": "delete_wall",
+            "title": "Operation"
+          },
+          "targetId": {
+            "type": "string",
+            "title": "Targetid"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/NoParams"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation",
+          "targetId"
+        ],
+        "title": "DeleteWall"
+      },
       "DoorLeafSpec": {
         "properties": {
           "url": {
@@ -2122,12 +2166,20 @@
               },
               {
                 "$ref": "#/components/schemas/MoveSelectedWall"
+              },
+              {
+                "$ref": "#/components/schemas/DeleteWall"
+              },
+              {
+                "$ref": "#/components/schemas/DeleteFurniture"
               }
             ],
             "title": "Command",
             "discriminator": {
               "propertyName": "operation",
               "mapping": {
+                "delete_furniture": "#/components/schemas/DeleteFurniture",
+                "delete_wall": "#/components/schemas/DeleteWall",
                 "move_selected_wall": "#/components/schemas/MoveSelectedWall",
                 "resize_selected_window": "#/components/schemas/ResizeSelectedWindow",
                 "resize_windows": "#/components/schemas/ResizeWindows",
@@ -2654,11 +2706,19 @@
                   },
                   {
                     "$ref": "#/components/schemas/MoveSelectedWall"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteWall"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteFurniture"
                   }
                 ],
                 "discriminator": {
                   "propertyName": "operation",
                   "mapping": {
+                    "delete_furniture": "#/components/schemas/DeleteFurniture",
+                    "delete_wall": "#/components/schemas/DeleteWall",
                     "move_selected_wall": "#/components/schemas/MoveSelectedWall",
                     "resize_selected_window": "#/components/schemas/ResizeSelectedWindow",
                     "resize_windows": "#/components/schemas/ResizeWindows",
@@ -2857,6 +2917,11 @@
           "offset"
         ],
         "title": "MoveWallParams"
+      },
+      "NoParams": {
+        "properties": {},
+        "type": "object",
+        "title": "NoParams"
       },
       "Opening": {
         "properties": {

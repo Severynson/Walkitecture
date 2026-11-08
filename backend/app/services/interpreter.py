@@ -79,6 +79,7 @@ def _context(building: Building, selected_id: str | None) -> dict:
         "selectedKind": building.kind_of(selected_id) if selected_id else None,
         "walls": walls,
         "rooms": [{"id": r.id, "name": r.name} for r in building.rooms],
+        "furniture": [{"id": f.id, "category": f.category} for f in building.furniture],
     }
 
 
@@ -112,6 +113,9 @@ def interpret_with_rules(
         return Interpretation(
             command=None, source="rules", explanation="Could not map the request.", clarification=message
         )
+
+    if DELETE_WORDS.search(lowered):
+        return _delete(lowered, selected_id, selected_kind, building, clarify)
 
     if "ceiling" in lowered:
         lengths = [v for v in _lengths(text) if v > 0]
@@ -162,8 +166,28 @@ def interpret_with_rules(
 
     return clarify(
         "Supported edits: resize the selected window, resize all windows, set the ceiling height, "
-        "or move a selected free-standing wall."
+        "move a selected free-standing wall, or delete the selected wall or piece of furniture."
     )
+
+
+DELETE_WORDS = re.compile(r"\b(delete|remove|erase|demolish|tear down|get rid of|take (?:it |this |that )?out)\b")
+
+
+def _delete(lowered: str, selected_id: str | None, selected_kind: str | None, building: Building, clarify):
+    """'Delete this' (the selected wall or furniture), or 'remove the sofa' when there is exactly one."""
+    if selected_kind in ("wall", "furniture"):
+        target, kind = selected_id, selected_kind
+    else:
+        named = [f for f in building.furniture if re.search(rf"\b{re.escape(f.category)}s?\b", lowered)]
+        if len(named) > 1:
+            return clarify(f"There are {len(named)} of those. Click the one to delete, then repeat the request.")
+        if not named:
+            if selected_kind in ("window", "door"):
+                return clarify("Walls and furniture can be deleted; windows and doors can only be resized for now.")
+            return clarify("Click the wall or piece of furniture you want to delete first.")
+        target, kind = named[0].id, "furniture"
+    operation = "delete_wall" if kind == "wall" else "delete_furniture"
+    return _finish({"operation": operation, "targetId": target, "parameters": {}}, f"Delete {kind} {target}.")
 
 
 def _width_factor(lowered: str) -> float | None:
@@ -198,7 +222,10 @@ def _finish(raw: dict, explanation: str) -> Interpretation:
 class _LLMEdit(BaseModel):
     """Flat schema for OpenAI structured outputs (strict mode handles flat nullable fields best)."""
 
-    operation: Literal["resize_selected_window", "resize_windows", "set_ceiling_height", "move_selected_wall", "none"]
+    operation: Literal[
+        "resize_selected_window", "resize_windows", "set_ceiling_height", "move_selected_wall", "delete_wall",
+        "delete_furniture", "none",
+    ]  # fmt: skip
     target_id: str | None
     factor: float | None
     width: float | None
@@ -221,6 +248,9 @@ You never write code. You only choose from these operations (all lengths in mete
   left-hand normal. If the user says forward/back, use cameraForwardDotNormal from the context:
   forward means sign(cameraForwardDotNormal), back means the opposite. If that value is null or
   near 0 and a direction word is used, ask for clarification instead.
+- delete_wall: target_id = the wall to remove ("delete this wall" -> the selected wall).
+- delete_furniture: target_id = the furniture item to remove: the selected one for "this", or the only
+  item in `furniture` matching the user's words (ask which one when several match).
 - none: the request is ambiguous, unsupported, or refers to an object that is not selected. Put a
   short question or explanation for the user in `clarification`.
 
@@ -283,7 +313,7 @@ def _from_llm(out: _LLMEdit) -> Interpretation:
         params = {"offset": out.offset} if out.offset is not None else {}
 
     raw: dict = {"operation": out.operation, "parameters": params}
-    if out.operation in ("resize_selected_window", "move_selected_wall"):
+    if out.operation in ("resize_selected_window", "move_selected_wall", "delete_wall", "delete_furniture"):
         raw["targetId"] = out.target_id
     try:
         command = EditCommandAdapter.validate_python(raw)

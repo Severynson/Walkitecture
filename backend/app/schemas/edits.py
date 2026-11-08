@@ -64,18 +64,9 @@ class MoveSelectedWall(CamelModel):
     parameters: MoveWallParams
 
 
-EditCommand = Annotated[
-    ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall,
-    Field(discriminator="operation"),
-]
-EditCommandAdapter: TypeAdapter[EditCommand] = TypeAdapter(EditCommand)
-
-ALLOWED_OPERATIONS = ("resize_selected_window", "resize_windows", "set_ceiling_height", "move_selected_wall")
-
-
-# --- Review-only operations (ARCHITECTURE.md §4.3) ------------------------------------------------
-# Proposed by the LLM reviewer and executed by the same edit engine (validation, undo, history), but not
-# accepted by POST /edits: the UI allowlist above stays small.
+# --- Review operations (ARCHITECTURE.md §4.3) ----------------------------------------------------
+# Proposed by the LLM reviewer and executed by the same edit engine (validation, undo, history). Only
+# delete_wall and delete_furniture are also accepted from the UI (EditCommand below).
 
 
 class NoParams(CamelModel):
@@ -166,6 +157,19 @@ class AddOpening(CamelModel):
     operation: Literal["add_opening"]
     target_id: str
     parameters: AddOpeningParams
+
+
+# What the UI (sliders, buttons, the Delete key) and the chat may send to POST /edits.
+EditCommand = Annotated[
+    ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | DeleteFurniture,
+    Field(discriminator="operation"),
+]
+EditCommandAdapter: TypeAdapter[EditCommand] = TypeAdapter(EditCommand)
+
+ALLOWED_OPERATIONS = (
+    "resize_selected_window", "resize_windows", "set_ceiling_height", "move_selected_wall", "delete_wall",
+    "delete_furniture",
+)  # fmt: skip
 
 
 ReviewCommand = Annotated[

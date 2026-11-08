@@ -200,3 +200,30 @@ async def test_delete_plan(auth_client):
     plan_id = (await create_demo(auth_client))["plan"]["id"]
     assert (await auth_client.delete(f"/api/plans/{plan_id}")).status_code == 204
     assert (await auth_client.get(f"/api/plans/{plan_id}")).status_code == 404
+
+
+async def test_the_selected_wall_or_furniture_can_be_deleted_and_undone(auth_client):
+    created = await create_demo(auth_client)
+    plan_id, model = created["plan"]["id"], created["scene"]["model"]
+    chair = {"id": "furniture_1", "category": "chair", "model": "chair_by_quaternius.glb", "position": [2.0, 2.0],
+             "facing": [0.0, 1.0], "width": 0.5, "depth": 0.55, "height": 0.9}  # fmt: skip
+    put = await auth_client.put(f"/api/plans/{plan_id}/scene", json={"model": {**model, "furniture": [chair]}})
+    assert put.status_code == 200, put.text
+
+    gone = await auth_client.post(
+        f"/api/plans/{plan_id}/edits", json={"command": {"operation": "delete_furniture", "targetId": "furniture_1"}}
+    )
+    assert gone.status_code == 200, gone.text
+    assert gone.json()["model"]["furniture"] == [] and gone.json()["affectedIds"] == ["furniture_1"]
+
+    wall = model["walls"][-1]
+    removed = await auth_client.post(
+        f"/api/plans/{plan_id}/edits", json={"command": {"operation": "delete_wall", "targetId": wall["id"]}}
+    )
+    assert removed.status_code == 200, removed.text
+    assert wall["id"] not in {w["id"] for w in removed.json()["model"]["walls"]}
+    assert removed.json()["summary"].startswith(f"Deleted wall {wall['id']}")
+
+    await auth_client.post(f"/api/plans/{plan_id}/undo")
+    restored = (await auth_client.post(f"/api/plans/{plan_id}/undo")).json()["model"]
+    assert wall["id"] in {w["id"] for w in restored["walls"]} and restored["furniture"][0]["id"] == "furniture_1"
