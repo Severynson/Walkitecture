@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { errorMessage } from "../api/client";
+import { Logo } from "../brand/Logo";
 import { useAuth } from "./AuthContext";
 
 /** Login and registration share one form; `mode` picks the endpoint. */
@@ -35,9 +36,12 @@ export default function AuthPage({ mode }: { mode: "login" | "register" }) {
   return (
     <main className="auth">
       <div className="card auth-card">
-        <h1 className="brand">Walkitecture</h1>
+        <div className="auth-head">
+          <Logo />
+          <span className="sheet-tag">{isLogin ? "A-002" : "A-003"}</span>
+        </div>
         <p className="muted">Don't just see the floor plan. Walk it.</p>
-        <h2>{isLogin ? "Log in" : "Create an account"}</h2>
+        <h1 className="auth-title">{isLogin ? "Log in" : "Create an account"}</h1>
         <form onSubmit={submit} className="stack">
           <label>
             Username

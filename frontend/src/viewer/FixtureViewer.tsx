@@ -41,7 +41,10 @@ export default function FixtureViewer() {
       onSelect={(meta) => viewer?.select(meta?.objectId ?? null)}
       hudExtra={
         <div className="hud-links">
-          <a href="/login">Log in</a> to upload your own DWG and edit it.
+          <a href="/">← Walkitecture</a>
+          <span>
+            <a href="/login">Log in</a> to upload your own DWG and edit it.
+          </span>
         </div>
       }
     />

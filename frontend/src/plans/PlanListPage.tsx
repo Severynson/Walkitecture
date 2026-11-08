@@ -4,6 +4,7 @@ import { errorMessage } from "../api/client";
 import * as endpoints from "../api/endpoints";
 import type { PlanSummary } from "../api/schema";
 import { useAuth } from "../auth/AuthContext";
+import { Logo } from "../brand/Logo";
 
 const MAX_MB = 25;
 
@@ -85,9 +86,9 @@ export default function PlanListPage() {
   return (
     <main className="page">
       <header className="topbar">
-        <span className="brand">Walkitecture</span>
+        <Logo />
         <span className="spacer" />
-        <span className="muted">{user?.username}</span>
+        <span className="muted user-chip">{user?.username}</span>
         <button onClick={logout}>Log out</button>
       </header>
 
@@ -100,6 +101,7 @@ export default function PlanListPage() {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
       >
+        <span className="sheet-tag">A-101 · New drawing</span>
         <h2>Upload a floor plan</h2>
         <p className="muted">
           Drop a <strong>.dwg</strong> file here or choose one. Walls, doors, windows, rooms, and furniture are read from
@@ -119,6 +121,7 @@ export default function PlanListPage() {
       </section>
 
       <section className="card">
+        <span className="sheet-tag">A-102 · Drawing register</span>
         <h2>Your plans</h2>
         {plans === null && !error && <p className="muted">Loading…</p>}
         {plans?.length === 0 && <p className="muted">No plans yet. Upload a DWG or add the sample apartment.</p>}

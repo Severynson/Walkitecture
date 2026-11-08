@@ -57,7 +57,7 @@ export class Viewer {
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: true });
     const scene = new Scene(this.engine);
-    scene.clearColor = new Color4(0.86, 0.9, 0.95, 1);
+    scene.clearColor = new Color4(0.059, 0.239, 0.447, 1); // blueprint blue (--blueprint in styles.css)
     scene.ambientColor = new Color3(0.3, 0.3, 0.3);
     scene.collisionsEnabled = true;
     scene.gravity = new Vector3(0, GRAVITY, 0);
