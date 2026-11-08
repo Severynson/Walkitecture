@@ -62,6 +62,12 @@ MAX_INSERT_DEPTH = 8
 SNAP_TOLERANCE = 0.01  # m: endpoints closer than this are merged
 MAX_BRIDGE_GAP = 4.0  # m: largest wall gap an opening may bridge
 LAYER0_SPARSE_RATIO = 0.25  # use layer "0" lines too when wall layers hold < 25% of their length
+# Floor tiles drawn as 0.25 m line grids on the wall layer used to pair with a real wall's face (ranked
+# widest-gap-first they claimed slices of it) and block the real partition. Pairs overlapping less than
+# MIN_PAIR_OVERLAP are "short": they rank after all long pairs, and count only when they cover most of both
+# lines (a pier's two short faces), not a short line against a long face.
+MIN_PAIR_OVERLAP = 0.3
+SHORT_PAIR_SHARE = 0.6
 DOUBLE_LINE_SHARE = 0.4  # 'auto': double-line when >= 40% of wall-line length pairs up
 PARALLEL_SIN = math.sin(math.radians(2.0))
 
@@ -450,13 +456,19 @@ def _pair_double_lines(
                 continue
             neighbors[i].append((j, offset))
             neighbors[j].append((i, cross(dirs[j], sub(a, c))))
-            if gap >= min_t and hi - lo >= max(MIN_WALL_LENGTH, gap):
-                candidates.append((-gap, -(hi - lo), i, j, lo, hi, math.copysign(1.0, offset)))
+            overlap = hi - lo
+            short = overlap < MIN_PAIR_OVERLAP
+            if short and overlap < SHORT_PAIR_SHARE * max(li, math.dist(c, d)):
+                continue  # a short line against a long face: pattern work (tiles), not a wall piece
+            if gap >= min_t and overlap >= max(MIN_WALL_LENGTH, gap):
+                candidates.append((short, -gap, -overlap, i, j, lo, hi, math.copysign(1.0, offset)))
 
+    # Long pairs claim their faces first (widest gap first among them, so cavity walls stay whole); short
+    # pairs (piers beside windows) only get lines nobody else took.
     candidates.sort()
     used: list[list[tuple[float, float]]] = [[] for _ in segments]
     centerlines: list[_Centerline] = []
-    for neg_gap, _neg_overlap, i, j, lo, hi, side in candidates:
+    for _short, neg_gap, _neg_overlap, i, j, lo, hi, side in candidates:
         gap = -neg_gap
         a, b = segments[i]
         di = dirs[i]

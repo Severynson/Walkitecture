@@ -14,7 +14,7 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import { Cameras, type ViewMode } from "./cameras";
-import { boxObjectId, createBox, SCENERY } from "./load/boxes";
+import { boxObjectId, createBox, MAP_END, SCENERY } from "./load/boxes";
 import { Doors } from "./load/doors";
 import { FurnitureLibrary } from "./load/furniture";
 import { createRoomLabel } from "./load/labels";
@@ -278,7 +278,7 @@ export class Viewer {
       const yaw = (i / SPAWN_RAYS) * Math.PI * 2;
       const hit = this.scene.pickWithRay(new Ray(origin, new Vector3(Math.sin(yaw), 0, Math.cos(yaw)), MAX_SIGHTLINE), solid);
       const kind = (hit?.pickedMesh?.metadata as MeshMeta | undefined)?.kind;
-      return hit?.hit && !SCENERY.has(kind ?? "") ? hit.distance : 0;
+      return hit?.hit && !SCENERY.has(kind ?? "") && !MAP_END.has(kind ?? "") ? hit.distance : 0;
     });
     // Score each heading by the mean sightline across the field of view, so the view runs along the
     // room (not into its farthest corner, which is the longest single ray in a rectangular room).

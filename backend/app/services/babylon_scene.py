@@ -172,7 +172,9 @@ def _end_extension(point: Point2, outward: Point2, wall: Wall, walls: list[Wall]
     Drawings often stop a wall a few centimetres short of its neighbour; ends up to MAX_JOINT_GAP away
     are joined. Free ends (nothing ahead within reach) are left as drawn.
     """
-    best: tuple[float, float] | None = None  # (distance ahead to the other wall, extension)
+    # (passes beside the other wall's end, distance ahead, extension): a wall the ray really hits wins over
+    # one whose end it only passes (that wall usually meets this one's face from the side, a T-junction).
+    best: tuple[bool, float, float] | None = None
     for other in walls:
         length = other.length
         if other is wall or length <= 0:
@@ -186,8 +188,8 @@ def _end_extension(point: Point2, outward: Point2, wall: Wall, walls: list[Wall]
                 continue  # side by side, not in line: their thickness bands don't overlap
             for q in (other.start, other.end):
                 ahead = dot(sub(q, point), outward)
-                if 0.0 <= ahead <= MAX_JOINT_GAP and (best is None or ahead < best[0]):
-                    best = (ahead, ahead)
+                if 0.0 <= ahead <= MAX_JOINT_GAP and (best is None or (False, ahead) < best[:2]):
+                    best = (False, ahead, ahead)
             continue
         ahead = dot(sub(other.start, point), normal) / cos  # along `outward` to the other centerline
         if ahead < -half / abs(cos) - 0.01 or ahead > MAX_JOINT_GAP + half / abs(cos):
@@ -198,9 +200,10 @@ def _end_extension(point: Point2, outward: Point2, wall: Wall, walls: list[Wall]
             continue  # the ray passes beside the other wall (whose own end may stop short of this corner)
         at_corner = along < margin or along > length - margin
         extension = ahead + (half / abs(cos) if at_corner else 0.0)
-        if best is None or ahead < best[0]:
-            best = (ahead, extension)
-    return max(0.0, best[1]) if best else 0.0
+        beside = along < 0.0 or along > length
+        if best is None or (beside, ahead) < best[:2]:
+            best = (beside, ahead, extension)
+    return max(0.0, best[2]) if best else 0.0
 
 
 def wall_spans(walls: list[Wall]) -> list[tuple[float, float]]:

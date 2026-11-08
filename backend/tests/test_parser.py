@@ -158,3 +158,20 @@ def test_a_window_filling_the_gap_up_to_the_next_wall_extends_its_wall():
     assert _extend_into_openings(lonely, [("window", glazing)]) == 0 and lonely[0].end == (2, 0)
     on_wall = walls()
     assert _extend_into_openings(on_wall, [("window", [(0.5, -0.1), (1.5, -0.1), (1.5, 0.1), (0.5, 0.1)])]) == 0
+
+
+def test_floor_tile_lines_cannot_steal_a_partitions_face():
+    """A 2 m partition (faces 0.20 m apart) next to a grid of 0.25 m tile edges 0.218 m from one face."""
+    from app.services.dxf_parser import _pair_double_lines
+
+    faces = [((0.0, 0.0), (0.0, 2.0)), ((0.2, 0.0), (0.2, 2.0))]
+    tiles = [((-0.218, y), (-0.218, y + 0.25)) for y in (0.1, 0.5, 0.9, 1.3)]
+    (wall,) = _pair_double_lines(faces + tiles, 0.05, 0.5, [])
+    assert wall.thickness == pytest.approx(0.2) and wall.length == pytest.approx(2.0)
+
+
+def test_short_piers_beside_windows_still_pair():
+    from app.services.dxf_parser import _pair_double_lines
+
+    (pier,) = _pair_double_lines([((0, 0), (0.255, 0)), ((0.07, 0.07), (0.255, 0.07))], 0.05, 0.5, [])
+    assert pier.thickness == pytest.approx(0.07)

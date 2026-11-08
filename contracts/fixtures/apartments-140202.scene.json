@@ -76,7 +76,7 @@
     ],
     "end": [
      6.8525,
-     3.775
+     3.8425
     ],
     "thickness": 0.245,
     "height": 3.048,
@@ -108,57 +108,6 @@
    {
     "id": "wall_5",
     "start": [
-     16.9025,
-     0.2218
-    ],
-    "end": [
-     16.9025,
-     0.03
-    ],
-    "thickness": 0.175,
-    "height": 3.048,
-    "openings": []
-   },
-   {
-    "id": "wall_6",
-    "start": [
-     5.1425,
-     4.1
-    ],
-    "end": [
-     5.1425,
-     3.775
-    ],
-    "thickness": 0.135,
-    "height": 3.048,
-    "openings": []
-   },
-   {
-    "id": "wall_7",
-    "start": [
-     16.8125,
-     3.6236
-    ],
-    "end": [
-     16.8125,
-     0.2243
-    ],
-    "thickness": 0.135,
-    "height": 3.048,
-    "openings": [
-     {
-      "id": "window_6",
-      "type": "window",
-      "offset": 0.1643,
-      "width": 3.235,
-      "height": 1.2192,
-      "sillHeight": 0.762
-     }
-    ]
-   },
-   {
-    "id": "wall_8",
-    "start": [
      0.2925,
      6.8025
     ],
@@ -171,13 +120,13 @@
     "openings": []
    },
    {
-    "id": "wall_9",
+    "id": "wall_6",
     "start": [
      4.0625,
      2.43
     ],
     "end": [
-     10.335,
+     9.905,
      2.43
     ],
     "thickness": 0.12,
@@ -194,10 +143,10 @@
     ]
    },
    {
-    "id": "wall_10",
+    "id": "wall_7",
     "start": [
      10.335,
-     2.43
+     2.37
     ],
     "end": [
      10.335,
@@ -208,7 +157,7 @@
     "openings": []
    },
    {
-    "id": "wall_11",
+    "id": "wall_8",
     "start": [
      4.0625,
      2.43
@@ -231,35 +180,7 @@
     ]
    },
    {
-    "id": "wall_12",
-    "start": [
-     6.6,
-     3.875
-    ],
-    "end": [
-     6.6,
-     3.74
-    ],
-    "thickness": 0.11,
-    "height": 3.048,
-    "openings": []
-   },
-   {
-    "id": "wall_13",
-    "start": [
-     5.45,
-     3.875
-    ],
-    "end": [
-     5.45,
-     3.74
-    ],
-    "thickness": 0.11,
-    "height": 3.048,
-    "openings": []
-   },
-   {
-    "id": "wall_14",
+    "id": "wall_9",
     "start": [
      5.0272,
      4.1341
@@ -282,7 +203,7 @@
     ]
    },
    {
-    "id": "wall_15",
+    "id": "wall_10",
     "start": [
      1.415,
      4.13
@@ -296,7 +217,7 @@
     "openings": []
    },
    {
-    "id": "wall_16",
+    "id": "wall_11",
     "start": [
      9.94,
      6.8025
@@ -310,7 +231,7 @@
     "openings": []
    },
    {
-    "id": "wall_17",
+    "id": "wall_12",
     "start": [
      3.9157,
      4.1325
@@ -324,7 +245,7 @@
     "openings": []
    },
    {
-    "id": "wall_18",
+    "id": "wall_13",
     "start": [
      0.2925,
      2.455
@@ -347,7 +268,7 @@
     ]
    },
    {
-    "id": "wall_19",
+    "id": "wall_14",
     "start": [
      9.94,
      5.241
@@ -361,7 +282,7 @@
     "openings": []
    },
    {
-    "id": "wall_20",
+    "id": "wall_15",
     "start": [
      2.84,
      3.46
@@ -384,9 +305,9 @@
     ]
    },
    {
-    "id": "wall_21",
+    "id": "wall_16",
     "start": [
-     5.1425,
+     5.145,
      3.775
     ],
     "end": [
@@ -397,9 +318,9 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "window_7",
+      "id": "window_6",
       "type": "window",
-      "offset": 0.3325,
+      "offset": 0.33,
       "width": 1.1,
       "height": 1.2192,
       "sillHeight": 0.762
@@ -407,7 +328,7 @@
      {
       "id": "door_6",
       "type": "door",
-      "offset": 3.6661,
+      "offset": 3.6636,
       "width": 1.0285,
       "height": 2.1336,
       "sillHeight": 0.0
@@ -415,7 +336,7 @@
     ]
    },
    {
-    "id": "wall_22",
+    "id": "wall_17",
     "start": [
      11.6636,
      4.3136
@@ -429,7 +350,7 @@
     "openings": []
    },
    {
-    "id": "wall_23",
+    "id": "wall_18",
     "start": [
      9.975,
      3.6586
@@ -460,7 +381,7 @@
     ]
    },
    {
-    "id": "wall_24",
+    "id": "wall_19",
     "start": [
      12.88,
      6.8025
@@ -483,7 +404,7 @@
     ]
    },
    {
-    "id": "wall_25",
+    "id": "wall_20",
     "start": [
      0.2925,
      0.16
@@ -497,7 +418,7 @@
     "openings": []
    },
    {
-    "id": "wall_26",
+    "id": "wall_21",
     "start": [
      10.335,
      0.03
@@ -511,7 +432,44 @@
     "openings": []
    },
    {
-    "id": "wall_27",
+    "id": "wall_22",
+    "start": [
+     16.9025,
+     3.4593
+    ],
+    "end": [
+     16.9025,
+     0.03
+    ],
+    "thickness": 0.175,
+    "height": 3.048,
+    "openings": [
+     {
+      "id": "window_7",
+      "type": "window",
+      "offset": 0.0,
+      "width": 3.235,
+      "height": 1.2192,
+      "sillHeight": 0.762
+     }
+    ]
+   },
+   {
+    "id": "wall_23",
+    "start": [
+     6.72,
+     3.8425
+    ],
+    "end": [
+     6.8525,
+     3.8425
+    ],
+    "thickness": 0.065,
+    "height": 3.048,
+    "openings": []
+   },
+   {
+    "id": "wall_24",
     "start": [
      6.9,
      0.16
@@ -1097,10 +1055,10 @@
     "position": [
      16.8675,
      1.524,
-     3.9793
+     3.8971
     ],
     "size": [
-     0.7114,
+     0.8757,
      3.048,
      0.245
     ],
@@ -1403,10 +1361,10 @@
     "position": [
      6.8525,
      1.524,
-     4.25
+     4.2675
     ],
     "size": [
-     0.95,
+     0.915,
      3.048,
      0.245
     ],
@@ -1420,10 +1378,10 @@
     "position": [
      5.1975,
      1.524,
-     5.4484
+     5.2713
     ],
     "size": [
-     2.7082,
+     3.0625,
      3.048,
      0.245
     ],
@@ -1433,125 +1391,6 @@
     "id": "wall_5:wall:0",
     "kind": "wall",
     "wallId": "wall_5",
-    "openingId": null,
-    "position": [
-     16.9025,
-     1.524,
-     0.1121
-    ],
-    "size": [
-     0.2243,
-     3.048,
-     0.175
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_6:wall:0",
-    "kind": "wall",
-    "wallId": "wall_6",
-    "openingId": null,
-    "position": [
-     5.1425,
-     1.524,
-     3.9571
-    ],
-    "size": [
-     0.4343,
-     3.048,
-     0.135
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_7:wall:0",
-    "kind": "wall",
-    "wallId": "wall_7",
-    "openingId": null,
-    "position": [
-     16.8125,
-     1.524,
-     3.5764
-    ],
-    "size": [
-     0.2343,
-     3.048,
-     0.135
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_7:header:window_6",
-    "kind": "header",
-    "wallId": "wall_7",
-    "openingId": "window_6",
-    "position": [
-     16.8125,
-     2.5146,
-     1.8418
-    ],
-    "size": [
-     3.235,
-     1.0668,
-     0.135
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_7:sill:window_6",
-    "kind": "sill",
-    "wallId": "wall_7",
-    "openingId": "window_6",
-    "position": [
-     16.8125,
-     0.381,
-     1.8418
-    ],
-    "size": [
-     3.235,
-     0.762,
-     0.135
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_7:glass:window_6",
-    "kind": "glass",
-    "wallId": "wall_7",
-    "openingId": "window_6",
-    "position": [
-     16.8125,
-     1.3716,
-     1.8418
-    ],
-    "size": [
-     3.235,
-     1.2192,
-     0.02
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_7:wall:1",
-    "kind": "wall",
-    "wallId": "wall_7",
-    "openingId": null,
-    "position": [
-     16.8125,
-     1.524,
-     0.2231
-    ],
-    "size": [
-     0.0025,
-     3.048,
-     0.135
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_8:wall:0",
-    "kind": "wall",
-    "wallId": "wall_8",
     "openingId": null,
     "position": [
      8.58,
@@ -1566,9 +1405,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_9:wall:0",
+    "id": "wall_6:wall:0",
     "kind": "wall",
-    "wallId": "wall_9",
+    "wallId": "wall_6",
     "openingId": null,
     "position": [
      5.5377,
@@ -1583,9 +1422,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_9:header:door_1",
+    "id": "wall_6:header:door_1",
     "kind": "header",
-    "wallId": "wall_9",
+    "wallId": "wall_6",
     "openingId": "door_1",
     "position": [
      7.6053,
@@ -1600,9 +1439,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_9:wall:1",
+    "id": "wall_6:wall:1",
     "kind": "wall",
-    "wallId": "wall_9",
+    "wallId": "wall_6",
     "openingId": null,
     "position": [
      9.2677,
@@ -1617,9 +1456,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_10:wall:0",
+    "id": "wall_7:wall:0",
     "kind": "wall",
-    "wallId": "wall_10",
+    "wallId": "wall_7",
     "openingId": null,
     "position": [
      10.335,
@@ -1634,9 +1473,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_11:wall:0",
+    "id": "wall_8:wall:0",
     "kind": "wall",
-    "wallId": "wall_11",
+    "wallId": "wall_8",
     "openingId": null,
     "position": [
      4.0625,
@@ -1651,9 +1490,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_11:header:door_2",
+    "id": "wall_8:header:door_2",
     "kind": "header",
-    "wallId": "wall_11",
+    "wallId": "wall_8",
     "openingId": "door_2",
     "position": [
      4.0625,
@@ -1668,9 +1507,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_11:wall:1",
+    "id": "wall_8:wall:1",
     "kind": "wall",
-    "wallId": "wall_11",
+    "wallId": "wall_8",
     "openingId": null,
     "position": [
      4.0625,
@@ -1685,60 +1524,26 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_12:wall:0",
+    "id": "wall_9:wall:0",
     "kind": "wall",
-    "wallId": "wall_12",
+    "wallId": "wall_9",
     "openingId": null,
     "position": [
-     6.6,
+     5.1736,
      1.524,
-     3.8075
+     4.1343
     ],
     "size": [
-     0.135,
-     3.048,
-     0.11
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_13:wall:0",
-    "kind": "wall",
-    "wallId": "wall_13",
-    "openingId": null,
-    "position": [
-     5.45,
-     1.524,
-     3.9574
-    ],
-    "size": [
-     0.4347,
-     3.048,
-     0.11
-    ],
-    "rotationY": 1.570796
-   },
-   {
-    "id": "wall_14:wall:0",
-    "kind": "wall",
-    "wallId": "wall_14",
-    "openingId": null,
-    "position": [
-     5.1186,
-     1.524,
-     4.1342
-    ],
-    "size": [
-     0.1828,
+     0.2928,
      3.048,
      0.08
     ],
     "rotationY": 3.14016
    },
    {
-    "id": "wall_14:header:door_3",
+    "id": "wall_9:header:door_3",
     "kind": "header",
-    "wallId": "wall_14",
+    "wallId": "wall_9",
     "openingId": "door_3",
     "position": [
      4.5129,
@@ -1753,9 +1558,9 @@
     "rotationY": 3.14016
    },
    {
-    "id": "wall_14:wall:1",
+    "id": "wall_9:wall:1",
     "kind": "wall",
-    "wallId": "wall_14",
+    "wallId": "wall_9",
     "openingId": null,
     "position": [
      3.082,
@@ -1770,9 +1575,9 @@
     "rotationY": 3.14016
    },
    {
-    "id": "wall_15:wall:0",
+    "id": "wall_10:wall:0",
     "kind": "wall",
-    "wallId": "wall_15",
+    "wallId": "wall_10",
     "openingId": null,
     "position": [
      0.8538,
@@ -1787,9 +1592,9 @@
     "rotationY": -3.141593
    },
    {
-    "id": "wall_16:wall:0",
+    "id": "wall_11:wall:0",
     "kind": "wall",
-    "wallId": "wall_16",
+    "wallId": "wall_11",
     "openingId": null,
     "position": [
      9.94,
@@ -1804,9 +1609,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_17:wall:0",
+    "id": "wall_12:wall:0",
     "kind": "wall",
-    "wallId": "wall_17",
+    "wallId": "wall_12",
     "openingId": null,
     "position": [
      3.9157,
@@ -1821,9 +1626,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_18:wall:0",
+    "id": "wall_13:wall:0",
     "kind": "wall",
-    "wallId": "wall_18",
+    "wallId": "wall_13",
     "openingId": null,
     "position": [
      1.1812,
@@ -1838,9 +1643,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_18:header:door_4",
+    "id": "wall_13:header:door_4",
     "kind": "header",
-    "wallId": "wall_18",
+    "wallId": "wall_13",
     "openingId": "door_4",
     "position": [
      2.4375,
@@ -1855,9 +1660,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_19:wall:0",
+    "id": "wall_14:wall:0",
     "kind": "wall",
-    "wallId": "wall_19",
+    "wallId": "wall_14",
     "openingId": null,
     "position": [
      10.8193,
@@ -1872,9 +1677,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_20:header:door_5",
+    "id": "wall_15:header:door_5",
     "kind": "header",
-    "wallId": "wall_20",
+    "wallId": "wall_15",
     "openingId": "door_5",
     "position": [
      2.84,
@@ -1889,9 +1694,9 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_20:wall:0",
+    "id": "wall_15:wall:0",
     "kind": "wall",
-    "wallId": "wall_20",
+    "wallId": "wall_15",
     "openingId": null,
     "position": [
      2.84,
@@ -1906,9 +1711,9 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_21:wall:0",
+    "id": "wall_16:wall:0",
     "kind": "wall",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "openingId": null,
     "position": [
      5.275,
@@ -1923,10 +1728,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:header:window_7",
+    "id": "wall_16:header:window_6",
     "kind": "header",
-    "wallId": "wall_21",
-    "openingId": "window_7",
+    "wallId": "wall_16",
+    "openingId": "window_6",
     "position": [
      6.025,
      2.5146,
@@ -1940,10 +1745,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:sill:window_7",
+    "id": "wall_16:sill:window_6",
     "kind": "sill",
-    "wallId": "wall_21",
-    "openingId": "window_7",
+    "wallId": "wall_16",
+    "openingId": "window_6",
     "position": [
      6.025,
      0.381,
@@ -1957,10 +1762,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:glass:window_7",
+    "id": "wall_16:glass:window_6",
     "kind": "glass",
-    "wallId": "wall_21",
-    "openingId": "window_7",
+    "wallId": "wall_16",
+    "openingId": "window_6",
     "position": [
      6.025,
      1.3716,
@@ -1974,9 +1779,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:wall:1",
+    "id": "wall_16:wall:1",
     "kind": "wall",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "openingId": null,
     "position": [
      7.6918,
@@ -1991,9 +1796,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:header:door_6",
+    "id": "wall_16:header:door_6",
     "kind": "header",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "openingId": "door_6",
     "position": [
      9.3228,
@@ -2008,9 +1813,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:wall:2",
+    "id": "wall_16:wall:2",
     "kind": "wall",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "openingId": null,
     "position": [
      9.9061,
@@ -2025,9 +1830,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_22:wall:0",
+    "id": "wall_17:wall:0",
     "kind": "wall",
-    "wallId": "wall_22",
+    "wallId": "wall_17",
     "openingId": null,
     "position": [
      11.6636,
@@ -2042,9 +1847,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_23:wall:0",
+    "id": "wall_18:wall:0",
     "kind": "wall",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "openingId": null,
     "position": [
      9.94,
@@ -2059,9 +1864,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_23:header:door_7",
+    "id": "wall_18:header:door_7",
     "kind": "header",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "openingId": "door_7",
     "position": [
      10.3825,
@@ -2076,9 +1881,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_23:wall:1",
+    "id": "wall_18:wall:1",
     "kind": "wall",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "openingId": null,
     "position": [
      13.2293,
@@ -2093,9 +1898,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_23:header:door_8",
+    "id": "wall_18:header:door_8",
     "kind": "header",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "openingId": "door_8",
     "position": [
      16.1828,
@@ -2110,26 +1915,26 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_23:wall:2",
+    "id": "wall_18:wall:2",
     "kind": "wall",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "openingId": null,
     "position": [
-     16.7886,
+     16.8436,
      1.524,
      3.6586
     ],
     "size": [
-     0.1829,
+     0.2929,
      3.048,
      0.07
     ],
     "rotationY": 0.0
    },
    {
-    "id": "wall_24:wall:0",
+    "id": "wall_19:wall:0",
     "kind": "wall",
-    "wallId": "wall_24",
+    "wallId": "wall_19",
     "openingId": null,
     "position": [
      12.88,
@@ -2144,9 +1949,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_24:header:door_9",
+    "id": "wall_19:header:door_9",
     "kind": "header",
-    "wallId": "wall_24",
+    "wallId": "wall_19",
     "openingId": "door_9",
     "position": [
      12.88,
@@ -2161,9 +1966,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_24:wall:1",
+    "id": "wall_19:wall:1",
     "kind": "wall",
-    "wallId": "wall_24",
+    "wallId": "wall_19",
     "openingId": null,
     "position": [
      12.88,
@@ -2178,9 +1983,9 @@
     "rotationY": 1.570796
    },
    {
-    "id": "wall_25:wall:0",
+    "id": "wall_20:wall:0",
     "kind": "wall",
-    "wallId": "wall_25",
+    "wallId": "wall_20",
     "openingId": null,
     "position": [
      3.535,
@@ -2195,9 +2000,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_26:wall:0",
+    "id": "wall_21:wall:0",
     "kind": "wall",
-    "wallId": "wall_26",
+    "wallId": "wall_21",
     "openingId": null,
     "position": [
      13.6325,
@@ -2212,9 +2017,111 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_27:wall:0",
+    "id": "wall_22:wall:0",
     "kind": "wall",
-    "wallId": "wall_27",
+    "wallId": "wall_22",
+    "openingId": null,
+    "position": [
+     16.9025,
+     1.524,
+     3.5764
+    ],
+    "size": [
+     0.2343,
+     3.048,
+     0.175
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_22:header:window_7",
+    "kind": "header",
+    "wallId": "wall_22",
+    "openingId": "window_7",
+    "position": [
+     16.9025,
+     2.5146,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     1.0668,
+     0.175
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_22:sill:window_7",
+    "kind": "sill",
+    "wallId": "wall_22",
+    "openingId": "window_7",
+    "position": [
+     16.9025,
+     0.381,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     0.762,
+     0.175
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_22:glass:window_7",
+    "kind": "glass",
+    "wallId": "wall_22",
+    "openingId": "window_7",
+    "position": [
+     16.9025,
+     1.3716,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     1.2192,
+     0.02
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_22:wall:1",
+    "kind": "wall",
+    "wallId": "wall_22",
+    "openingId": null,
+    "position": [
+     16.9025,
+     1.524,
+     0.1121
+    ],
+    "size": [
+     0.2243,
+     3.048,
+     0.175
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_23:wall:0",
+    "kind": "wall",
+    "wallId": "wall_23",
+    "openingId": null,
+    "position": [
+     6.8475,
+     1.524,
+     3.8425
+    ],
+    "size": [
+     0.255,
+     3.048,
+     0.065
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_24:wall:0",
+    "kind": "wall",
+    "wallId": "wall_24",
     "openingId": null,
     "position": [
      7.534,
@@ -2229,9 +2136,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_27:header:door_10",
+    "id": "wall_24:header:door_10",
     "kind": "header",
-    "wallId": "wall_27",
+    "wallId": "wall_24",
     "openingId": "door_10",
     "position": [
      8.618,
@@ -2246,9 +2153,9 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_27:wall:1",
+    "id": "wall_24:wall:1",
     "kind": "wall",
-    "wallId": "wall_27",
+    "wallId": "wall_24",
     "openingId": null,
     "position": [
      9.7015,
@@ -2476,24 +2383,9 @@
     "leaf": null
    },
    {
-    "id": "window_6",
-    "type": "window",
-    "wallId": "wall_7",
-    "position": [
-     16.8125,
-     1.3716,
-     1.8418
-    ],
-    "width": 3.235,
-    "height": 1.2192,
-    "sillHeight": 0.762,
-    "rotationY": 1.570796,
-    "leaf": null
-   },
-   {
     "id": "door_1",
     "type": "door",
-    "wallId": "wall_9",
+    "wallId": "wall_6",
     "position": [
      7.6053,
      1.0668,
@@ -2533,7 +2425,7 @@
    {
     "id": "door_2",
     "type": "door",
-    "wallId": "wall_11",
+    "wallId": "wall_8",
     "position": [
      4.0625,
      1.0668,
@@ -2573,7 +2465,7 @@
    {
     "id": "door_3",
     "type": "door",
-    "wallId": "wall_14",
+    "wallId": "wall_9",
     "position": [
      4.5129,
      1.0668,
@@ -2613,7 +2505,7 @@
    {
     "id": "door_4",
     "type": "door",
-    "wallId": "wall_18",
+    "wallId": "wall_13",
     "position": [
      2.4375,
      1.0668,
@@ -2653,7 +2545,7 @@
    {
     "id": "door_5",
     "type": "door",
-    "wallId": "wall_20",
+    "wallId": "wall_15",
     "position": [
      2.84,
      1.0668,
@@ -2691,9 +2583,9 @@
     }
    },
    {
-    "id": "window_7",
+    "id": "window_6",
     "type": "window",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "position": [
      6.025,
      1.3716,
@@ -2708,7 +2600,7 @@
    {
     "id": "door_6",
     "type": "door",
-    "wallId": "wall_21",
+    "wallId": "wall_16",
     "position": [
      9.3228,
      1.0668,
@@ -2748,7 +2640,7 @@
    {
     "id": "door_7",
     "type": "door",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "position": [
      10.3825,
      1.0668,
@@ -2788,7 +2680,7 @@
    {
     "id": "door_8",
     "type": "door",
-    "wallId": "wall_23",
+    "wallId": "wall_18",
     "position": [
      16.1828,
      1.0668,
@@ -2828,7 +2720,7 @@
    {
     "id": "door_9",
     "type": "door",
-    "wallId": "wall_24",
+    "wallId": "wall_19",
     "position": [
      12.88,
      1.0668,
@@ -2866,9 +2758,24 @@
     }
    },
    {
+    "id": "window_7",
+    "type": "window",
+    "wallId": "wall_22",
+    "position": [
+     16.9025,
+     1.3716,
+     1.8418
+    ],
+    "width": 3.235,
+    "height": 1.2192,
+    "sillHeight": 0.762,
+    "rotationY": 1.570796,
+    "leaf": null
+   },
+   {
     "id": "door_10",
     "type": "door",
-    "wallId": "wall_27",
+    "wallId": "wall_24",
     "position": [
      8.618,
      1.0668,
@@ -3660,7 +3567,7 @@
     16.902,
     6.803
    ],
-   "wallCount": 26,
+   "wallCount": 23,
    "windowCount": 7,
    "doorCount": 9,
    "roomCount": 8,
@@ -3697,12 +3604,12 @@
    }
   },
   "checks": [
-   "F1 facade_gap: The outer wall has a 3.38 m hole with no window or door between wall_25 (it stops in mid-air) and wall_10. -> entrance",
-   "F2 enclosed_space: an unnamed 3.7 m² space (3.7 m²) has no door from the rest of the building; it is empty -> keep",
-   "F3 interior_window: Window window_5 (1.10 m) on wall_3 is between two indoor spaces: kitchen and an unnamed 3.7 m² space. -> keep",
-   "F4 interior_window: Window window_7 (1.10 m) on wall_21 is between two indoor spaces: an unnamed 3.7 m² space and SALÓN COMEDOR / bathroom 2 / bedroom 2 / bedroom 3. -> keep",
-   "Added wall wall_27 (3.44 m).",
-   "Added door door_10 (0.90 m) to wall wall_27."
+   "F1 facade_gap: The outer wall has a 3.38 m hole with no window or door between wall_20 (it stops in mid-air) and wall_7. -> entrance",
+   "F2 enclosed_space: an unnamed 3.8 m² space (3.8 m²) has no door from the rest of the building; it is empty -> keep",
+   "F3 interior_window: Window window_5 (1.10 m) on wall_3 is between two indoor spaces: kitchen and an unnamed 3.8 m² space. -> keep",
+   "F4 interior_window: Window window_6 (1.10 m) on wall_16 is between two indoor spaces: an unnamed 3.8 m² space and SALÓN COMEDOR / bathroom 2 / bedroom 2 / bedroom 3. -> keep",
+   "Added wall wall_24 (3.44 m).",
+   "Added door door_10 (0.90 m) to wall wall_24."
   ]
  }
 }

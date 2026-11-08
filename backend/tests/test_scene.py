@@ -210,3 +210,16 @@ def test_every_library_model_fills_its_footprint_and_faces_forward(model, facing
     assert (x1 - x0, z1 - z0) == pytest.approx((across, along), abs=1e-3)
     assert ((x0 + x1) / 2, (z0 + z1) / 2) == pytest.approx((3.0, 2.0), abs=1e-3)
     assert front == pytest.approx(facing, abs=1e-6)
+
+
+def test_a_wall_end_reaches_the_wall_ahead_not_one_meeting_it_from_the_side():
+    """wall a ends 0.4 m above wall c; wall b (from the left) stops at a's face just above a's end."""
+    walls = [
+        Wall(id="a", start=(0.0, 3.0), end=(0.0, 0.4), thickness=0.25, height=3.0),
+        Wall(id="b", start=(-2.0, 0.37), end=(-0.17, 0.37), thickness=0.08, height=3.0),
+        Wall(id="c", start=(-0.05, 0.0), end=(3.0, 0.0), thickness=0.07, height=3.0),
+    ]
+    scene = build_scene(Building(ceiling_height=3.0, walls=walls))
+    (piece,) = [m for m in scene.meshes if m.wall_id == "a"]
+    bottom = piece.position[2] - piece.size[0] / 2
+    assert bottom == pytest.approx(-0.035, abs=0.01)  # down to c's far face: no slit between a and c
