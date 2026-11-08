@@ -159,6 +159,14 @@ AI can choose, never invent geometry.
 | No window between two indoor spaces | Raster of the plan (10 cm cells): free areas = rooms; outdoors = connected to the drawing's border *and* open to the sky in ≥ 3 of 8 directions (so a building with a gap in its facade still has an inside) | turn it into a door, remove it, **keep** (glazed partition) |
 | Every room has an entrance; the building has an exterior door | Room graph: rooms ≥ 1.5 m² and ≥ 0.6 m wide, joined by doors; components not reachable from the main part | turn a window on its boundary into a door, remove a 0.5–1.5 m wall closing it (a door leaf drawn on the wall layer), add a 0.8–0.9 m door on a shared wall (up to 3 candidates, circulation rooms first), **keep** (shaft, light well) |
 | Furniture outside the building | Farther than 0.3 m outside the convex outline of the walls | **remove** (> 1.5 m from any wall: legend/library symbols), **keep** (closer: terrace) |
+| No holes in the facade | A wall end in mid-air whose line reaches another wall (or a collinear piece) within 0.6–4 m, with the building's outline on one side only | **entrance** (wall + 0.9 m door), glazing, plain wall, keep open |
+| A bathroom has doors or none, never a door plus a door-free connection (bathrooms only: other rooms may be open to each other) | Bathrooms found by their fixtures (toilet, shower, bathtub; labels are often printed beside the room); another room's label in the same free area; the hole whose closing separates them | **wall** (when the bathroom has a door), door, keep (only offered when it has no door) |
+
+The parser feeds these checks better geometry first: a window or door filling the gap between a wall's end and
+the next wall extends that wall; doors hang on the wall line through their swing arc's hinge and closed end (a
+door block's square outline touches two walls); double-line pairs shorter than 0.3 m rank after long pairs and
+count only when they cover most of both lines (tile grids drawn on the wall layer used to eat partitions); a
+cryptic door-like name with an arc is not a door on a sanitary layer (shower trays).
 
 `resolve` applies the review patches, then the chosen options, then `settle` (the furniture rule) on the result, so the
 hard rule holds whatever was decided. A corrected item keeps its drawn footprint in `drawn`. The same `settle` runs after

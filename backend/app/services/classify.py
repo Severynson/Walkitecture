@@ -20,6 +20,9 @@ from app.services.furniture_catalog import category_for
 # A door/window name wins over these: "PUERTA COCINA" is the kitchen's door, not a kitchen unit. Other furniture
 # words still win ("wardrobe door" is part of a wardrobe).
 ROOM_WORD_CATEGORIES = (None, "kitchen")
+# A cryptic "door-like" name with an arc is not a door on a sanitary/fixture layer: "pd" on SANITARIOS is a
+# round shower tray (its curved front is the arc). Clear names ("PUERTA ...") still win anywhere.
+FIXTURE_LAYER = re.compile(r"sanit|plumb|fontaner|ducha|shower|aparato|fixture", re.IGNORECASE)
 
 DOOR_BLOCK = re.compile(r"door|puerta|porte|\btür", re.IGNORECASE)
 # Cryptic abbreviations (P40, PC40, pp, pndo, NPBAÑO) only count as doors if the block has a swing arc.
@@ -121,7 +124,7 @@ class DrawingClassifier:
             return Classification("window", f"block name {name!r} looks like a window")
         if DOOR_BLOCK.search(name) and category_for(name) in ROOM_WORD_CATEGORIES:
             return Classification("door", f"block name {name!r} looks like a door")
-        if WEAK_DOOR_BLOCK.search(name) and self._block_has_arc(name):
+        if WEAK_DOOR_BLOCK.search(name) and not FIXTURE_LAYER.search(layer) and self._block_has_arc(name):
             return Classification("door", f"block {name!r} has a door-like name and a swing arc")
         if layer_kind == "opening":
             if self._block_has_arc(name):

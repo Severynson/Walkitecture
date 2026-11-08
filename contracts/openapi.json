@@ -1621,7 +1621,8 @@
               "interior_window",
               "enclosed_space",
               "no_exterior_door",
-              "facade_gap"
+              "facade_gap",
+              "bathroom_open"
             ],
             "title": "Kind"
           },

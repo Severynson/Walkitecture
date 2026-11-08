@@ -207,6 +207,10 @@ interpretation most likely is:
   with the entrance door when the space behind is a hall or entrance (or the building has no other exterior
   door), with glazing when it is a living room or faces a terrace, with a plain wall otherwise; keep it open
   only for a real porch, terrace or open passage.
+- bathroom_open: a bathroom either has doors or has none; one with a door that is also open to another room
+  is impossible (a lost wall piece, e.g. a curved or angled wall around a shower). Close the opening with a
+  wall when the bathroom already has a door; a door in it when that is the bathroom's only way in. This rule
+  is for bathrooms only: other rooms may well be open to each other.
 - furniture_outside: usually a drawing artefact (legend, symbol library, another sheet): remove it unless it
   plausibly stands on a balcony, terrace or garden.
 Return empty lists when there is nothing to do."""

@@ -7,7 +7,8 @@ from pydantic import Field
 from app.schemas.base import CamelModel
 
 FindingKind = Literal[
-    "furniture_conflict", "furniture_outside", "interior_window", "enclosed_space", "no_exterior_door", "facade_gap"
+    "furniture_conflict", "furniture_outside", "interior_window", "enclosed_space", "no_exterior_door", "facade_gap",
+    "bathroom_open"
 ]  # fmt: skip
 
 

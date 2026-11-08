@@ -241,6 +241,38 @@ def test_a_gap_between_two_rooms_is_a_passage_not_a_hole():
     assert [f for f in guardrails.analyze(building).findings if f.kind == "facade_gap"] == []
 
 
+def bath_and_bedroom(furniture, door_between=True):
+    """Bathroom (x 0-3) and bedroom (x 3-6); the wall between stops 1 m short of the north wall."""
+    middle = [wall("mid1", (3, 0), (3, 2.2), *([door("door_2", 0.6, 0.8)] if door_between else [])),
+              wall("mid2", (3, 3.2), (3, 4))]  # fmt: skip
+    return Building(
+        ceiling_height=H,
+        walls=[wall("s", (0, 0), (6, 0), door("door_1", 4.0)), wall("e", (6, 0), (6, 4)), wall("n", (6, 4), (0, 4)),
+               wall("w", (0, 4), (0, 0)), *middle],
+        rooms=[Room(id="room_1", name="Bedroom", label_position=(4.5, 2))],
+        furniture=furniture,
+    )  # fmt: skip
+
+
+def test_a_bathroom_with_a_door_cannot_also_be_open_to_another_room():
+    toilet = item("f1", "toilet", "toilet_by_quaternius.glb", (0.5, 2.0), 0.4, 0.7, facing=(1.0, 0.0))
+    building = bath_and_bedroom([toilet])
+    (finding,) = [f for f in guardrails.analyze(building).findings if f.kind == "bathroom_open"]
+    assert finding.default == "wall" and [o.id for o in finding.options] == ["wall", "door"]  # no "keep": it has a door
+    assert "Bedroom" in finding.detail and "1.00 m" in finding.detail
+    sealed = guardrails.resolve(building, [finding], [], {}).building
+    assert not [f for f in guardrails.analyze(sealed).findings if f.kind == "bathroom_open"]
+
+
+def test_a_bathroom_without_doors_may_stay_open_and_other_rooms_are_not_checked():
+    toilet = item("f1", "toilet", "toilet_by_quaternius.glb", (0.5, 2.0), 0.4, 0.7, facing=(1.0, 0.0))
+    (finding,) = [f for f in guardrails.analyze(bath_and_bedroom([toilet], door_between=False)).findings
+                  if f.kind == "bathroom_open"]  # fmt: skip
+    assert finding.default == "door" and "keep" in [o.id for o in finding.options]
+    living = item("f1", "sofa", "couch_medium_by_quaternius.glb", (1.5, 2.0), 2.0, 0.9, facing=(1.0, 0.0))
+    assert not [f for f in guardrails.analyze(bath_and_bedroom([living])).findings if f.kind == "bathroom_open"]
+
+
 # --- The scene: nobody walks or falls off the map --------------------------------------------------
 
 

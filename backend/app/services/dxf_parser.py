@@ -154,6 +154,9 @@ def parse_dxf(data: bytes, options: ParseOptions, settings: Settings) -> ParseRe
 
     segments = [(sub(a, origin), sub(b, origin)) for a, b in meters]
     opening_points = [(kind, [to_plan(p) for p in _entity_points(e)]) for kind, e in collected.openings]
+    # Door swings: (hinge, latch candidates) per arc, to hang each door on the wall it really sits in.
+    swings = [_swing_arcs(e, to_plan) if kind == "door" else [] for kind, e in collected.openings]
+    swings = [sw for sw, (_, pts) in zip(swings, opening_points, strict=True) if pts]
     opening_points = [(kind, pts) for kind, pts in opening_points if pts]
 
     style = options.wall_style
@@ -190,8 +193,9 @@ def parse_dxf(data: bytes, options: ParseOptions, settings: Settings) -> ParseRe
     # Real drawings often hold other sheets/details beside the plan: ignore anything outside the walls.
     inside = _building_box(walls)
     outside = 0
-    kept_openings = [(k, pts) for k, pts in opening_points if any(inside(p) for p in pts)]
-    outside += len(opening_points) - len(kept_openings)
+    kept = [i for i, (_, pts) in enumerate(opening_points) if any(inside(p) for p in pts)]
+    outside += len(opening_points) - len(kept)
+    kept_openings = [(opening_points[i][0], _door_line(swings[i], walls) or opening_points[i][1]) for i in kept]
     if extended := _extend_into_openings(walls, kept_openings):
         warnings.append(f"Extended {extended} wall(s) through windows/doors that filled a gap up to another wall.")
     _place_openings(walls, kept_openings, options, settings, warnings)
@@ -674,6 +678,58 @@ def _place_openings(
                     sill_height=round(sill_h, 4),
                 )
             )
+
+
+DOOR_RADIUS = (0.45, 1.3)  # m: swing arcs of real doors (smaller arcs are handles, bigger ones not doors)
+
+
+def _swing_arcs(entity: DXFGraphic, to_plan) -> list[tuple[Point2, Point2, Point2]]:
+    """(hinge, end 1, end 2) of every door-sized arc in a door block, in plan coordinates. One end of a
+    swing arc is the latch side of the closed door, on the wall line through the hinge; the other end
+    is the open leaf."""
+    out = []
+    for part in recursive_decompose([entity]):
+        if part.dxftype() != "ARC":
+            continue
+        try:
+            center, a, b = (to_plan((v.x, v.y)) for v in (part.dxf.center, part.start_point, part.end_point))
+        except Exception:  # noqa: BLE001 - odd arcs (non-planar, broken) just give no hint
+            continue
+        if DOOR_RADIUS[0] <= math.dist(center, a) <= DOOR_RADIUS[1]:
+            out.append((center, a, b))
+    return out
+
+
+def _door_line(swings: list[tuple[Point2, Point2, Point2]], walls: list[Wall]) -> list[Point2] | None:
+    """The door's jamb-to-jamb points on the wall line it sits in, from its swing arcs: the hinge and the
+    arc end that lie on one wall's line (the closest wall wins; a double door's two leaves share the line).
+    A door block's leaf and arc make a square outline that touches walls on two sides, so hosting by the
+    outline alone hung doors on the wrong wall. None when the block has no usable arc."""
+    best: tuple[float, Wall] | None = None
+    for hinge, *ends in swings:
+        for end in ends:
+            for wall in walls:
+                if wall.length <= 0:
+                    continue
+                d = unit(sub(wall.end, wall.start))
+                reach = max(wall.thickness, 0.3)
+                offsets = [abs(cross(d, sub(p, wall.start))) for p in (hinge, end)]
+                if max(offsets) > reach:
+                    continue
+                ts = [dot(sub(p, wall.start), d) for p in (hinge, end)]
+                beyond = max(0.0, min(ts) - wall.length, -max(ts))  # how far the door lies past the wall's ends
+                if beyond > MAX_BRIDGE_GAP:
+                    continue
+                score = beyond + sum(offsets)
+                if best is None or score < best[0]:
+                    best = (score, wall)
+    if best is None:
+        return None
+    wall = best[1]
+    d = unit(sub(wall.end, wall.start))
+    reach = max(wall.thickness, 0.3)
+    points = [p for hinge, *ends in swings for p in (hinge, *ends) if abs(cross(d, sub(p, wall.start))) <= reach]
+    return points if len(points) >= 2 else None
 
 
 JAMB_REACH = 0.45  # m: an extended wall end this close to another wall has reached the far jamb

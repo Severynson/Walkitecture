@@ -175,3 +175,34 @@ def test_short_piers_beside_windows_still_pair():
 
     (pier,) = _pair_double_lines([((0, 0), (0.255, 0)), ((0.07, 0.07), (0.255, 0.07))], 0.05, 0.5, [])
     assert pier.thickness == pytest.approx(0.07)
+
+
+def test_a_door_hangs_on_the_wall_its_swing_starts_from():
+    """Door block in the corner gap between wall a (y=0, ends at x=2) and wall b (x=3): its leaf and arc
+    touch both walls, but the hinge (2, 0) and the closed-leaf end (2.9, 0) lie on a's line."""
+    from app.schemas.building import Wall
+    from app.services.dxf_parser import _door_line
+
+    walls = [
+        Wall(id="a", start=(0.0, 0.0), end=(2.0, 0.0), thickness=0.1, height=3.0),
+        Wall(id="b", start=(3.0, 0.0), end=(3.0, 3.0), thickness=0.1, height=3.0),
+    ]
+    swing = [((2.0, 0.0), (2.9, 0.0), (2.0, 0.9))]  # hinge, closed end, open end
+    points = _door_line(swing, walls)
+    assert sorted(points) == [(2.0, 0.0), (2.9, 0.0)]
+    assert _door_line([], walls) is None
+
+
+def test_a_shower_tray_with_a_door_like_name_is_not_a_door():
+    from app.config import Settings
+    from app.services.classify import DrawingClassifier
+    from app.services.layers import layer_patterns
+
+    doc = ezdxf.new()
+    for name in ("pd", "p1"):
+        doc.blocks.new(name).add_arc((0, 0), 0.6, 0, 90)
+    shower = doc.modelspace().add_blockref("pd", (0, 0), dxfattribs={"layer": "SANITARIOS"})
+    door = doc.modelspace().add_blockref("p1", (5, 0), dxfattribs={"layer": "CARPINTERIA"})
+    classifier = DrawingClassifier(doc, layer_patterns(Settings(_env_file=None), ParseOptions()))
+    assert classifier.classify(shower, "SANITARIOS").category != "door"
+    assert classifier.classify(door, "CARPINTERIA").category == "door"

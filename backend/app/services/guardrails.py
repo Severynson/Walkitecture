@@ -784,12 +784,21 @@ def _connected(point: Point2, wall: Wall, walls: list[Wall]) -> bool:
     )
 
 
-def _gap_findings(b: _Builder) -> None:
-    """Holes in the facade: a wall that stops in mid-air while its line runs into another wall a little
-    further on, with the building's outside on one side of the hole. Usually a wall piece (or the entrance
-    door, or glazing) the drawing or the parser lost; sometimes a real open porch or terrace."""
-    walls = b.building.walls
-    hull = _hull([corner for _, box in wall_boxes(walls) for corner in _corners(box)])
+@dataclass
+class _Gap:
+    wall: Wall  # the wall that stops in mid-air
+    point: Point2  # its free end
+    outward: Point2
+    q: Point2  # where its line reaches the next wall
+    other: Wall
+    ahead: float  # free end -> q
+    gap: float  # clear width of the hole
+
+
+def _wall_gaps(walls: list[Wall], widest: float) -> list[_Gap]:
+    """Holes between a wall's free end and the next wall along its line: a wall running into another one,
+    or a collinear piece of the same wall further on. Each hole once."""
+    gaps: list[_Gap] = []
     seen: set[tuple] = set()
     for wall in walls:
         if wall.length <= 0:
@@ -798,67 +807,169 @@ def _gap_findings(b: _Builder) -> None:
         for point, outward in ((wall.end, d), (wall.start, scale(d, -1.0))):
             if _connected(point, wall, walls):
                 continue
-            hit: tuple[float, Wall, Point2] | None = None
+            hit: tuple[float, Wall, Point2, float] | None = None  # (ahead, other, q, clear gap)
             for other in walls:
                 if other is wall or other.length <= 0:
+                    continue
+                od = unit(sub(other.end, other.start))
+                if abs(outward[0] * od[1] - outward[1] * od[0]) < 0.05:  # parallel: a collinear piece?
+                    offset = abs(outward[0] * (other.start[1] - point[1]) - outward[1] * (other.start[0] - point[0]))
+                    if offset > (wall.thickness + other.thickness) / 2:
+                        continue
+                    for end in (other.start, other.end):
+                        ahead = dot(sub(end, point), outward)
+                        if 0.05 < ahead and (hit is None or ahead < hit[0]):
+                            hit = (ahead, other, add(point, scale(outward, ahead)), ahead)
                     continue
                 q = line_intersection(point, add(point, outward), other.start, other.end)
                 if q is None:
                     continue
                 along = project_param(q, other.start, other.end)
                 ahead = dot(sub(q, point), outward)
-                if (
-                    -other.thickness <= along <= other.length + other.thickness
-                    and 0.05 < ahead
-                    and (hit is None or ahead < hit[0])
-                ):
-                    hit = (ahead, other, q)
-            if hit is None:
+                if -other.thickness <= along <= other.length + other.thickness and 0.05 < ahead:
+                    if hit is None or ahead < hit[0]:
+                        hit = (ahead, other, q, ahead - other.thickness / 2)
+            if hit is None or not FACADE_GAP[0] <= hit[3] <= widest:
                 continue
-            ahead, other, q = hit
-            gap = ahead - other.thickness / 2
-            if not FACADE_GAP[0] <= gap <= FACADE_GAP[1]:
-                continue
+            ahead, other, q, gap = hit
             key = tuple(sorted((tuple(round(v, 1) for v in point), tuple(round(v, 1) for v in q))))
-            if key in seen:
+            if key not in seen:
+                seen.add(key)
+                gaps.append(_Gap(wall, point, outward, q, other, ahead, gap))
+    return gaps
+
+
+def _gap_findings(b: _Builder) -> None:
+    """Holes in the facade: a wall that stops in mid-air while its line runs into another wall a little
+    further on, with the building's outside on one side of the hole. Usually a wall piece (or the entrance
+    door, or glazing) the drawing or the parser lost; sometimes a real open porch or terrace."""
+    walls = b.building.walls
+    hull = _hull([corner for _, box in wall_boxes(walls) for corner in _corners(box)])
+    for hole in _wall_gaps(walls, FACADE_GAP[1]):
+        wall, point, outward, q, other, ahead, gap = (
+            hole.wall,
+            hole.point,
+            hole.outward,
+            hole.q,
+            hole.other,
+            hole.ahead,
+            hole.gap,
+        )
+        middle = add(point, scale(outward, gap / 2))
+        n = (-outward[1], outward[0])
+        sides = [_outside_hull(add(middle, scale(n, s * SIDE_PROBE)), hull) > 0.05 for s in (1, -1)]
+        if sides[0] == sides[1]:
+            continue  # inside the building: a passage between rooms
+        new_id = b.wall_id()
+        add_wall = {"operation": "add_wall", "targetId": new_id,
+                    "parameters": {"start": list(point), "end": list(q), "thickness": wall.thickness}}  # fmt: skip
+        length = ahead
+        options = []
+        door = min(ENTRANCE_DOOR, gap - 0.2)
+        if door >= 0.6:
+            offset = (length - door) / 2
+            options.append(CheckOption(
+                id="entrance", description=f"Close it with a wall holding a {door:.2f} m entrance door",
+                commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
+                                     "parameters": {"type": "door", "offset": round(offset, 3), "width": door}}],
+            ))  # fmt: skip
+        if gap >= 1.5:
+            glass = round(gap - 0.6, 3)
+            options.append(CheckOption(
+                id="glazing", description=f"Close it with a wall holding a {glass:.2f} m window (glazed facade)",
+                commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
+                                     "parameters": {"type": "window", "offset": round((length - glass) / 2, 3),
+                                                    "width": glass}}],
+            ))  # fmt: skip
+        options += [
+            CheckOption(id="wall", description="Close it with a plain wall", commands=[add_wall]),
+            CheckOption(id="keep", description="Keep it open (a real open porch, terrace or passage)"),
+        ]
+        b.add(
+            "facade_gap", [wall.id, other.id],
+            f"The outer wall has a {gap:.2f} m hole with no window or door between {wall.id} (it stops in "
+            f"mid-air) and {other.id}.",
+            options, "entrance" if door >= 0.6 else "wall",
+        )  # fmt: skip
+
+
+BATHROOM = re.compile(
+    r"bath|ba[ñn]o|aseo|\bwc\b|w\.c|toilet|lavabo|restroom|lavatory|shower|ducha|servicio|sanitari", re.IGNORECASE
+)
+BATHROOM_GAP = 2.0  # m: widest hole considered a bathroom's door-free connection
+
+
+def _region_label(regions: _Regions, point: Point2) -> int | None:
+    idx = regions.index(point)
+    return None if idx is None or regions.labels[idx] < 0 else regions.labels[idx]
+
+
+BATH_FIXTURES = ("toilet", "shower", "bathtub")
+
+
+def _bathroom_findings(b: _Builder) -> None:
+    """A bathroom either has doors, or it has none; a bathroom with a door that is also open to another room
+    (a wall piece the drawing or parser lost, e.g. an angled wall around a shower) is impossible. Bathrooms
+    are found by their fixtures (toilet, shower, bathtub), since room labels are often printed beside the
+    room. A bathroom shares its space with another room when that room's label is in the same free area;
+    then the hole whose closing separates them is the finding."""
+    building = b.building
+    fixtures = [f for f in building.furniture if f.category in BATH_FIXTURES]
+    if not fixtures:
+        return
+    labelled = [(room.name, room.label_position) for room in building.rooms if room.label_position]
+    regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
+    if regions is None:
+        return
+    gaps = _wall_gaps(building.walls, BATHROOM_GAP)
+    done: set[int] = set()
+    for fixture in fixtures:
+        label = _region_label(regions, fixture.position)
+        if label is None or label in done or regions.outdoor[regions.index(fixture.position)]:
+            continue
+        done.add(label)
+        here = [(n, pos) for n, pos in labelled if _region_label(regions, pos) == label]
+        others = [n for n, _ in here if not BATHROOM.search(n)]
+        if not others:
+            continue  # a room of its own
+        name = next((n for n, _ in here if BATHROOM.search(n)), f"The bathroom with {fixture.category} {fixture.id}")
+        for hole in sorted(gaps, key=lambda g: math.dist(g.point, fixture.position)):
+            wall_id = b.wall_id()
+            sealed = Wall(id=wall_id, start=hole.point, end=hole.q, thickness=hole.wall.thickness,
+                          height=building.ceiling_height)  # fmt: skip
+            test = building.model_copy(update={"walls": [*building.walls, sealed]})
+            split = _regions(test, [box for _, box in wall_boxes(test.walls)])
+            mine = _region_label(split, fixture.position) if split else None
+            if mine is None or any(_region_label(split, pos) == mine for n, pos in here if not BATHROOM.search(n)):
+                b.new_walls -= 1  # closing this hole does not separate the bathroom: give the id back
                 continue
-            seen.add(key)
-            middle = add(point, scale(outward, gap / 2))
-            n = (-outward[1], outward[0])
-            sides = [_outside_hull(add(middle, scale(n, s * SIDE_PROBE)), hull) > 0.05 for s in (1, -1)]
-            if sides[0] == sides[1]:
-                continue  # inside the building: a passage between rooms
-            new_id = b.wall_id()
-            add_wall = {"operation": "add_wall", "targetId": new_id,
-                        "parameters": {"start": list(point), "end": list(q), "thickness": wall.thickness}}  # fmt: skip
-            length = ahead
-            options = []
-            door = min(ENTRANCE_DOOR, gap - 0.2)
+            has_door = any(
+                any(i is not None and split.labels[i] == mine for i in _sides(split, w, o.offset + o.width / 2))
+                for w in building.walls
+                for o in w.openings
+                if o.type == "door"
+            )
+            seal = {"start": list(hole.point), "end": list(hole.q), "thickness": hole.wall.thickness}
+            add_wall = {"operation": "add_wall", "targetId": wall_id, "parameters": seal}
+            options = [CheckOption(id="wall", description=f"Close the {hole.gap:.2f} m opening with a wall",
+                                   commands=[add_wall])]  # fmt: skip
+            door = min(0.8, hole.gap - 0.1)
             if door >= 0.6:
-                offset = (length - door) / 2
+                offset = round((hole.ahead - door) / 2, 3)
                 options.append(CheckOption(
-                    id="entrance", description=f"Close it with a wall holding a {door:.2f} m entrance door",
-                    commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
-                                         "parameters": {"type": "door", "offset": round(offset, 3), "width": door}}],
+                    id="door", description=f"Put a {door:.2f} m door in the opening",
+                    commands=[add_wall, {"operation": "add_opening", "targetId": wall_id,
+                                         "parameters": {"type": "door", "offset": offset, "width": door}}],
                 ))  # fmt: skip
-            if gap >= 1.5:
-                glass = round(gap - 0.6, 3)
-                options.append(CheckOption(
-                    id="glazing", description=f"Close it with a wall holding a {glass:.2f} m window (glazed facade)",
-                    commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
-                                         "parameters": {"type": "window", "offset": round((length - glass) / 2, 3),
-                                                        "width": glass}}],
-                ))  # fmt: skip
-            options += [
-                CheckOption(id="wall", description="Close it with a plain wall", commands=[add_wall]),
-                CheckOption(id="keep", description="Keep it open (a real open porch, terrace or passage)"),
-            ]
+            if not has_door:
+                options.append(CheckOption(id="keep", description="Keep it open: a bathroom without any door"))
             b.add(
-                "facade_gap", [wall.id, other.id],
-                f"The outer wall has a {gap:.2f} m hole with no window or door between {wall.id} (it stops in "
-                f"mid-air) and {other.id}.",
-                options, "entrance" if door >= 0.6 else "wall",
+                "bathroom_open", [hole.wall.id, hole.other.id],
+                f"{name} {'has a door but ' if has_door else ''}is also open to {', '.join(sorted(set(others))[:4])} "
+                f"through a {hole.gap:.2f} m opening between {hole.wall.id} and {hole.other.id}.",
+                options, "wall" if has_door else "door",
             )  # fmt: skip
+            break
 
 
 def _hull(points: list[Point2]) -> list[Point2]:
@@ -967,6 +1078,7 @@ def analyze(building: Building) -> Analysis:
     b = _Builder(building)
     notes: list[str] = []
     _gap_findings(b)
+    _bathroom_findings(b)
     regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
     if regions is None:
         if building.walls:

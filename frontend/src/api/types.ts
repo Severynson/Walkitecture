@@ -585,7 +585,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "furniture_conflict" | "furniture_outside" | "interior_window" | "enclosed_space" | "no_exterior_door" | "facade_gap";
+            kind: "furniture_conflict" | "furniture_outside" | "interior_window" | "enclosed_space" | "no_exterior_door" | "facade_gap" | "bathroom_open";
             /** Targetids */
             targetIds: string[];
             /** Detail */
