@@ -8,6 +8,7 @@ import {
   HighlightLayer,
   InstancedMesh,
   Mesh,
+  MeshBuilder,
   Ray,
   Scene,
   StandardMaterial,
@@ -33,6 +34,10 @@ const FELL_BELOW = -2; // m: a walker this far under the floor is put back at th
 const OUT_OF_MAP = 0.5; // m beyond the map's boundary walls, likewise
 const DOOR_REACH = 2.5; // m: a door this close under the crosshair can be opened with E
 const FOCUS_EVERY = 6; // frames between door-focus checks
+const UNSTICK_EVERY = 2; // frames between checks for colliders overlapping the walker
+const BODY_INSET = 0.85; // the overlap test uses a body this much smaller: touching a wall is not overlapping it
+/** Never let go of these, even when overlapping the walker (it would fall through or leave the map). */
+const ALWAYS_SOLID = new Set(["floor", "ground", "barrier", "boundary"]);
 
 /** The door under the crosshair (first person, within reach), for the "Press E" hint. */
 export interface DoorFocus {
@@ -64,6 +69,9 @@ export class Viewer {
   private readonly doors: Doors;
   private focusedDoor: DoorFocus | null = null;
   private frame = 0;
+  /** Colliders let go of because they overlapped the walker (`freeTheWalker`). */
+  private readonly ghosts = new Set<AbstractMesh>();
+  private body: Mesh | null = null;
   /** Called when the door under the crosshair changes (or opens/closes). */
   onDoorFocus: ((focus: DoorFocus | null) => void) | null = null;
   private readonly highlight: HighlightLayer;
@@ -103,6 +111,9 @@ export class Viewer {
     });
 
     scene.onBeforeRenderObservable.add(() => this.keepOnTheMap());
+    scene.onBeforeRenderObservable.add(() => {
+      if (this.frame % UNSTICK_EVERY === 0) this.freeTheWalker();
+    });
     this.engine.runRenderLoop(() => scene.render());
     window.addEventListener("resize", this.onResize);
     // Browser smoke test hook (frontend/e2e/smoke.mjs): dev builds, or localStorage "walkitecture.e2e" = "1".
@@ -304,6 +315,52 @@ export class Viewer {
       if (kind === "ceiling" || (kind && SCENERY.has(kind))) mesh.isVisible = firstPerson;
     }
     this.scene.clearColor = firstPerson ? SKY : BLUEPRINT;
+  }
+
+  /**
+   * Guardrail: the walker can always walk away. Babylon only stops the walker's own moves, so a collider that
+   * ends up overlapping its body (a door swung shut onto it, an edit or undo that put a wall or furniture
+   * where it stands, a spawn point too close to something) would pin it in place for good. Such a collider
+   * stops colliding until the walker has stepped out of it. The floor and the map's end always stay solid.
+   */
+  private freeTheWalker(): void {
+    for (const mesh of this.ghosts) {
+      if (mesh.isDisposed()) this.ghosts.delete(mesh);
+    }
+    if (this.cameras.mode !== "first-person") return;
+    const body = this.walkerBody();
+    for (const mesh of this.ghosts) {
+      if (!mesh.intersectsMesh(body, true)) {
+        mesh.checkCollisions = true;
+        this.ghosts.delete(mesh);
+      }
+    }
+    for (const mesh of this.scene.meshes) {
+      if (!mesh.checkCollisions || mesh === body || !mesh.isEnabled()) continue;
+      const kind = (mesh.metadata as MeshMeta | undefined)?.kind;
+      if (!kind || ALWAYS_SOLID.has(kind)) continue;
+      if (mesh.intersectsMesh(body, true)) {
+        mesh.checkCollisions = false;
+        this.ghosts.add(mesh);
+      }
+    }
+  }
+
+  /** An invisible box a little inside the walker's collision ellipsoid, kept where the walker stands. */
+  private walkerBody(): Mesh {
+    if (!this.body || this.body.isDisposed()) {
+      this.body = MeshBuilder.CreateBox("walker:body", { size: 1 }, this.scene);
+      this.body.isVisible = false;
+      this.body.isPickable = false;
+      this.body.checkCollisions = false;
+    }
+    const walker = this.cameras.walker;
+    const { ellipsoid, ellipsoidOffset } = walker;
+    // Babylon centers the collision ellipsoid at position - ellipsoid.y + ellipsoidOffset.
+    this.body.position.set(walker.position.x, walker.position.y - ellipsoid.y + ellipsoidOffset.y, walker.position.z);
+    this.body.scaling.set(ellipsoid.x * 2 * BODY_INSET, ellipsoid.y * 2 * BODY_INSET, ellipsoid.z * 2 * BODY_INSET);
+    this.body.computeWorldMatrix(true);
+    return this.body;
   }
 
   /** Guardrail: whatever happens (a gap in a collider, a glitch), the walker never leaves the map. */

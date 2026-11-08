@@ -1,10 +1,11 @@
 """Guardrails: what the 3D scene may never show, checked and fixed before it is built (ARCHITECTURE.md §4.4).
 
 Hard rule, always enforced by code (`settle`):
-* Furniture never intersects a wall (doorways included) or another piece of furniture. A conflicting
-  item moves (up to MAX_SHIFT) and/or shrinks a little (down to MIN_SCALE) to the nearest clear spot,
-  or is removed when there is no room for it. Only a chair tucked under a table or desk may overlap
-  it (up to CHAIR_TUCK). Bigger, more important pieces are placed first and keep their spot.
+* Furniture never intersects a wall (doorways included), the clear floor in front of a door (both sides,
+  `door_clearances`), or another piece of furniture. A conflicting item moves (up to MAX_SHIFT) and/or
+  shrinks a little (down to MIN_SCALE) to the nearest clear spot, or is removed when there is no room for
+  it. Only a chair tucked under a table or desk may overlap it (up to CHAIR_TUCK). Bigger, more important
+  pieces are placed first and keep their spot.
 
 Judgement calls (`analyze`): found by code, decided by the AI among precomputed options (each one a
 validated edit, so the AI can choose but never invent geometry), with a safe default without AI:
@@ -17,12 +18,13 @@ validated edit, so the AI can choose but never invent geometry), with a safe def
 holds whatever was decided. All of this is pure CPU work on a Building (run in a worker process).
 """
 
+import heapq
 import math
 import re
 from array import array
 from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import product
+from itertools import combinations, product
 
 from app.schemas.building import Building, Footprint, FurnitureItem, Point2, Wall
 from app.schemas.checks import CheckChange, CheckFinding, CheckOption
@@ -33,7 +35,9 @@ from app.services.furniture_catalog import CATALOG
 from app.services.geometry import (
     SegmentGrid,
     add,
+    cross,
     dot,
+    left_normal,
     line_intersection,
     point_segment_distance,
     project_param,
@@ -119,9 +123,35 @@ def wall_boxes(walls: list[Wall]) -> list[tuple[Wall, Box]]:
     return out
 
 
+LEAF_DOOR_MAX = 1.2  # m: doors up to this wide get a hinged leaf (doors.SINGLE_DOOR_MAX)
+PASSAGE_CLEARANCE = 0.8  # m kept free on each side of a wider door (double door, open passage)
+
+
+def door_clearances(walls: list[Wall]) -> list[tuple[str, Box]]:
+    """The floor that must stay free in front of every door, on both sides: as wide as the door and as deep
+    as it is wide (the leaf sweeps a quarter circle that fits in this square, whichever way it opens), or
+    PASSAGE_CLEARANCE deep for doors too wide for a leaf. Each box spans the wall's thickness too."""
+    out = []
+    for wall in walls:
+        if wall.length <= 0:
+            continue
+        ux, uy = unit(sub(wall.end, wall.start))
+        for opening in wall.openings:
+            if opening.type != "door":
+                continue
+            depth = opening.width if opening.width <= LEAF_DOOR_MAX else PASSAGE_CLEARANCE
+            s = opening.offset + opening.width / 2
+            box = Box(wall.start[0] + ux * s, wall.start[1] + uy * s, ux, uy, opening.width / 2,
+                      wall.thickness / 2 + depth)  # fmt: skip
+            out.append((f"doorway {opening.id}", box))
+    return out
+
+
 class _WallIndex:
-    def __init__(self, walls: list[Wall]):
-        self.items = wall_boxes(walls)
+    """Everything furniture may not cut into besides other furniture: walls as rendered and door clearances."""
+
+    def __init__(self, walls: list[Wall], extra: list[tuple[str, Box]] = ()):
+        self.items = [(wall.id, box) for wall, box in wall_boxes(walls)] + door_clearances(walls) + list(extra)
         segments = []
         for _, box in self.items:
             dx, dy = box.ux * box.hu, box.uy * box.hu
@@ -130,7 +160,7 @@ class _WallIndex:
         self.grid = SegmentGrid(segments, cell=2.0)
 
     def near(self, bbox: tuple[float, float, float, float], margin: float) -> list[tuple[str, Box]]:
-        return [(self.items[i][0].id, self.items[i][1]) for i in self.grid.near(*bbox, margin=margin + self.max_half)]
+        return [self.items[i] for i in self.grid.near(*bbox, margin=margin + self.max_half)]
 
 
 class _FurnitureIndex:
@@ -269,9 +299,14 @@ def _fix_summary(item: FurnitureItem, dx: float, dy: float, k: float, conflicts:
     return "moved", f"Moved {what} {shift:.2f} m {clear}."
 
 
-def settle(building: Building, remove: set[str] | frozenset[str] = frozenset()) -> tuple[Building, list[FurnitureFix]]:
-    """Enforce the furniture rule: returns the corrected building (input untouched) and what changed."""
-    walls = _WallIndex(building.walls)
+def settle(
+    building: Building,
+    remove: set[str] | frozenset[str] = frozenset(),
+    walkways: list[tuple[str, Box]] = (),
+) -> tuple[Building, list[FurnitureFix]]:
+    """Enforce the furniture rule (`walkways`: floor that must stay clear too, see `make_walkable`): returns the
+    corrected building (input untouched) and what changed."""
+    walls = _WallIndex(building.walls, walkways)
     placed = _FurnitureIndex()
     kept: dict[str, FurnitureItem] = {}
     fixes: list[FurnitureFix] = []
@@ -288,7 +323,7 @@ def settle(building: Building, remove: set[str] | frozenset[str] = frozenset()) 
             kept[item.id] = item
             placed.add(item, box)
             continue
-        conflicts = [hit_id for hit_id, _ in sorted(hits, key=lambda h: -h[1])]
+        conflicts = list(dict.fromkeys(hit_id for hit_id, _ in sorted(hits, key=lambda h: -h[1])))
         found = _place(item, walls, placed)
         if found is None:
             summary = f"Removed {item.category} {item.id}: no room for it clear of {', '.join(conflicts[:3])}."
@@ -304,9 +339,9 @@ def settle(building: Building, remove: set[str] | frozenset[str] = frozenset()) 
     return building.model_copy(update={"furniture": furniture}), fixes
 
 
-def find_conflicts(building: Building) -> list[tuple[str, str, float]]:
+def find_conflicts(building: Building, walkways: list[tuple[str, Box]] = ()) -> list[tuple[str, str, float]]:
     """(furniture id, wall/furniture id, depth) for every violation of the furniture rule."""
-    walls = _WallIndex(building.walls)
+    walls = _WallIndex(building.walls, walkways)
     index = _FurnitureIndex()
     boxes = [(item, furniture_box(item)) for item in building.furniture]
     for item, box in boxes:
@@ -577,6 +612,220 @@ def _space_graph(building: Building, regions: _Regions) -> _Spaces:
 
 def _component_labels(spaces: _Spaces, root: int) -> set[int]:
     return {label for label, r in spaces.space_of.items() if r == root and label != OUTDOORS}
+
+
+# --- Walkable paths -----------------------------------------------------------------------------
+
+PATH_WIDTH = 0.9  # m of clear floor between the doors of every room and hallway (the walker is 0.6 m wide)
+WALKER_RADIUS = 0.3  # m: narrower than this, nobody gets through at all
+PATH_BOX_STEP = 1  # raster cells between the boxes that keep a found path clear (1: turns stay covered)
+WALKWAY_ROUNDS = 3
+MAX_WIDEN = 0.6  # m: a wall moves at most this far to widen a passage
+
+
+def _rasterize_round(boxes: list[Box], x0: float, y0: float, cell: float, nx: int, ny: int, grow: float) -> bytearray:
+    """Cells whose center lies within `grow` of a box (round corners, unlike `_rasterize`)."""
+    blocked = bytearray(nx * ny)
+    g2 = grow * grow
+    for box in boxes:
+        bx0, by0, bx1, by1 = box.bbox()
+        i0, i1 = max(0, math.floor((bx0 - grow - x0) / cell)), min(nx - 1, math.floor((bx1 + grow - x0) / cell))
+        j0, j1 = max(0, math.floor((by0 - grow - y0) / cell)), min(ny - 1, math.floor((by1 + grow - y0) / cell))
+        for j in range(j0, j1 + 1):
+            py = y0 + (j + 0.5) * cell - box.cy
+            row = j * nx
+            for i in range(i0, i1 + 1):
+                px = x0 + (i + 0.5) * cell - box.cx
+                du = max(abs(px * box.ux + py * box.uy) - box.hu, 0.0)
+                dv = max(abs(py * box.ux - px * box.uy) - box.hv, 0.0)
+                if du * du + dv * dv <= g2:
+                    blocked[row + i] = 1
+    return blocked
+
+
+def _solid_wall_boxes(walls: list[Wall]) -> list[Box]:
+    """Walls as rendered with their doorways open (windows stay solid)."""
+    out = []
+    for wall, (s0, s1) in zip(walls, wall_spans(walls), strict=True):
+        if wall.length <= 0:
+            continue
+        ux, uy = unit(sub(wall.end, wall.start))
+        at, pieces = s0, []
+        for lo, hi in sorted((o.offset, o.offset + o.width) for o in wall.openings if o.type == "door"):
+            if lo > at:
+                pieces.append((at, lo))
+            at = max(at, hi)
+        if s1 > at:
+            pieces.append((at, s1))
+        for a, b in pieces:
+            if b - a > 1e-3:
+                mid = (a + b) / 2
+                out.append(
+                    Box(wall.start[0] + ux * mid, wall.start[1] + uy * mid, ux, uy, (b - a) / 2, wall.thickness / 2)
+                )
+    return out
+
+
+@dataclass
+class _Floor:
+    """Where a walker may go in each room: rooms are the free areas between walls (doors closed, `_regions`)."""
+
+    regions: _Regions
+    solid: bytearray  # walls, doorways open
+    body: bytearray  # closer to a wall than WALKER_RADIUS (outside door clearances): nobody fits
+    tight: bytearray  # closer to a wall than PATH_WIDTH / 2 (outside door clearances)
+    furniture: bytearray  # closer to furniture than PATH_WIDTH / 2 (outside door clearances): it must move
+    blocked: bytearray  # so close to furniture that moving it MAX_SHIFT is not enough: it would go
+    entries: dict[int, list[tuple[str, int]]]  # room label -> (door id, cell just inside that door)
+
+
+def _floor(building: Building) -> _Floor | None:
+    regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
+    if regions is None:
+        return None
+    grid = (regions.x0, regions.y0, regions.cell, regions.nx, regions.ny)
+    half = PATH_WIDTH / 2
+    walls = _solid_wall_boxes(building.walls)
+    slots = _rasterize([box for _, box in door_clearances(building.walls)], *grid, 0.0)
+
+    def outside_slots(cells: bytearray) -> bytearray:
+        return bytearray(c and not s for c, s in zip(cells, slots, strict=True))
+
+    entries: dict[int, list[tuple[str, int]]] = defaultdict(list)
+    for wall in building.walls:
+        if wall.length <= 0:
+            continue
+        d, n = _wall_frame(wall)
+        for o in (o for o in wall.openings if o.type == "door"):
+            mid = add(wall.start, scale(d, o.offset + o.width / 2))
+            depth = o.width if o.width <= LEAF_DOOR_MAX else PASSAGE_CLEARANCE
+            reach = wall.thickness / 2 + min(depth, half)
+            for side in (1.0, -1.0):
+                idx = regions.index(add(mid, scale(n, side * reach)))
+                if idx is None or regions.outdoor[idx] or regions.labels[idx] < 0:
+                    continue
+                if regions.is_space(label := regions.labels[idx]):
+                    entries[label].append((o.id, idx))
+    boxes = [furniture_box(i) for i in building.furniture]
+    return _Floor(
+        regions,
+        solid=_rasterize(walls, *grid, 0.0),
+        body=outside_slots(_rasterize_round(walls, *grid, WALKER_RADIUS)),
+        tight=outside_slots(_rasterize_round(walls, *grid, half)),
+        furniture=outside_slots(_rasterize_round(boxes, *grid, half - 2 * TOUCH)),  # `settle` allows TOUCH
+        blocked=outside_slots(_rasterize_round(boxes, *grid, max(half - MAX_SHIFT, 0.0))),
+        entries=entries,
+    )
+
+
+REMOVAL_COST = 25  # a path cell that only removing a piece of furniture clears costs this many pushed aside
+
+
+def _cheapest_path(floor: _Floor, sources: set[int], target: int, cost) -> list[int] | None:
+    """Cheapest way from any source to `target` (Dijkstra); cost(idx) is a small int, or None (no way)."""
+    nx, n = floor.regions.nx, floor.regions.nx * floor.regions.ny
+    dist = dict.fromkeys(sources, 0)
+    prev: dict[int, int] = {}
+    heap = [(0, idx) for idx in sources]
+    heapq.heapify(heap)
+    while heap:
+        d, idx = heapq.heappop(heap)
+        if d > dist[idx]:
+            continue
+        if idx == target:
+            path = [idx]
+            while path[-1] in prev:
+                path.append(prev[path[-1]])
+            return path[::-1]
+        for nb in _neighbors(idx, nx, n):
+            step = cost(nb)
+            if step is None or dist.get(nb, math.inf) <= d + step:
+                continue
+            dist[nb], prev[nb] = d + step, idx
+            heapq.heappush(heap, (d + step, nb))
+    return None
+
+
+@dataclass
+class _Narrow:
+    """Two doors of a room that only a passage narrower than PATH_WIDTH (between walls) connects."""
+
+    label: int
+    doors: tuple[str, str]
+    cells: list[int]  # the too-narrow cells on the best way between them
+
+
+def _paths(building: Building) -> tuple[list[tuple[str, Box]], list[_Narrow], _Floor | None]:
+    """Every room's doors must be connected by a PATH_WIDTH wide clear path. Where furniture blocks the way:
+    boxes along the way that blocks the fewest of it (to keep clear, `settle`); where walls do: the passage."""
+    floor = _floor(building)
+    if floor is None:
+        return [], [], None
+    labels, cell = floor.regions.labels, floor.regions.cell
+    walkways: list[tuple[str, Box]] = []
+    narrow: list[_Narrow] = []
+    for label, entries in sorted(floor.entries.items()):
+        if len({door for door, _ in entries}) < 2:
+            continue
+
+        def walls_only(idx: int, label: int = label) -> int | None:
+            return None if labels[idx] != label or floor.solid[idx] or floor.tight[idx] else 0
+
+        def with_furniture(idx: int, label: int = label) -> int | None:
+            # squeezing past furniture (it moves a little) beats going through it (it is removed)
+            if walls_only(idx) is None:
+                return None
+            return REMOVAL_COST if floor.blocked[idx] else floor.furniture[idx]
+
+        def squeeze(idx: int, label: int = label) -> int | None:
+            return None if labels[idx] != label or floor.solid[idx] or floor.body[idx] else floor.tight[idx]
+
+        first, start = entries[0]
+        reached = {start}
+        opened: set[int] = set()
+        for door, idx in entries[1:]:
+            if idx in reached or door == first:
+                continue
+            clear = _cheapest_path(  # already a clear way?
+                floor,
+                reached,
+                idx,
+                lambda i: 0 if i in opened else (None if floor.furniture[i] else walls_only(i)),  # noqa: B023
+            )
+            if clear is not None:
+                reached.update(clear)
+                continue
+            free = _cheapest_path(floor, reached, idx, lambda i: 0 if i in opened else with_furniture(i))  # noqa: B023
+            if free is not None:
+                name = f"walkway {first}-{door}"
+                for k, i in enumerate(free):
+                    if k % PATH_BOX_STEP == 0 or k == len(free) - 1:
+                        cx = floor.regions.x0 + (i % floor.regions.nx + 0.5) * cell
+                        cy = floor.regions.y0 + (i // floor.regions.nx + 0.5) * cell
+                        walkways.append((name, Box(cx, cy, 1.0, 0.0, PATH_WIDTH / 2, PATH_WIDTH / 2)))
+                opened.update(free)
+            elif free is None and (tight := _cheapest_path(floor, reached, idx, squeeze)) is not None:
+                narrow.append(_Narrow(label, (first, door), [i for i in tight if floor.tight[i]]))
+                free = tight
+            reached.update(free or ())
+    return walkways, narrow, floor
+
+
+def make_walkable(
+    building: Building, remove: set[str] | frozenset[str] = frozenset()
+) -> tuple[Building, list[FurnitureFix]]:
+    """`settle`, then keep a PATH_WIDTH wide way clear between the doors of every room: furniture in the way
+    moves a little or is removed like any other conflict. A moved piece may block another way, so this repeats
+    a few times. Passages the walls make too narrow are left to `_narrow_findings`."""
+    walkways: list[tuple[str, Box]] = []
+    settled, fixes = settle(building, remove)
+    for _ in range(WALKWAY_ROUNDS):
+        found, _, _ = _paths(settled)
+        if not found:
+            break
+        walkways += found
+        settled, fixes = settle(building, remove, walkways)
+    return settled, fixes
 
 
 # --- Findings ------------------------------------------------------------------------------------
@@ -1096,23 +1345,37 @@ def _what(items: list[FurnitureItem]) -> str:
     )
 
 
-def _incompatible_findings(b: _Builder, rooms_from: Building) -> None:
-    """Rooms (free areas of `rooms_from`) holding bathroom fixtures together with things that never stand in a
-    bathroom: one of the two groups is misidentified (a washbasin read as a kitchen sink, a symbol read as a
-    toilet), or a wall between two rooms is missing."""
+@dataclass
+class _RoomContents:
+    """Indoor free areas of a building (region label ->) with the furniture and room labels inside them."""
+
+    items: dict[int, list[FurnitureItem]]
+    names: dict[int, list[str]]
+
+
+def _room_contents(building: Building, rooms_from: Building) -> _RoomContents | None:
+    """`building`'s furniture and `rooms_from`'s labels, grouped by the free areas of `rooms_from`."""
     regions = _regions(rooms_from, [box for _, box in wall_boxes(rooms_from.walls)])
     if regions is None:
-        return
-    by_room: dict[int, list[FurnitureItem]] = defaultdict(list)
-    for item in b.building.furniture:
+        return None
+    items: dict[int, list[FurnitureItem]] = defaultdict(list)
+    for item in building.furniture:
         idx = regions.index(item.position)
         if idx is not None and regions.labels[idx] >= 0 and not regions.outdoor[idx]:
-            by_room[regions.labels[idx]].append(item)
+            items[regions.labels[idx]].append(item)
     names: dict[int, list[str]] = defaultdict(list)
     for room in rooms_from.rooms:
         if room.label_position and (label := _region_label(regions, room.label_position)) is not None:
             names[label].append(room.name)
-    for label, items in sorted(by_room.items()):
+    return _RoomContents(items, names)
+
+
+def _incompatible_findings(b: _Builder, rooms: _RoomContents) -> None:
+    """Rooms holding bathroom fixtures together with things that never stand in a bathroom: one of the two
+    groups is misidentified (a washbasin read as a kitchen sink, a symbol read as a toilet), or a wall between
+    two rooms is missing."""
+    names = rooms.names
+    for label, items in sorted(rooms.items.items()):
         bath = [i for i in items if i.category in BATH_FIXTURES]
         other = [i for i in items if i.category in NEVER_WITH_BATH_FIXTURES]
         if not bath or not other:
@@ -1134,6 +1397,137 @@ def _incompatible_findings(b: _Builder, rooms_from: Building) -> None:
                          remove_furniture=[i.id for i in bath]),
              CheckOption(id="keep", description="Keep both: they are in two rooms and a wall between them is missing")],
             default,
+        )  # fmt: skip
+
+
+# A labelled room's type, from its label (English and Spanish drawings). A room whose labels name several types
+# (open plan: "Cocina-comedor", "Kitchen / Living") takes them all; unlabelled rooms, halls, storage, terraces
+# and the like are not judged (the bathroom-fixture rule above still applies to them).
+ROOM_TYPES = {
+    "bathroom": re.compile(BATHROOM.pattern + r"|en.?suite", re.IGNORECASE),
+    "kitchen": re.compile(r"kitchen|cocina|pantry|despensa", re.IGNORECASE),
+    "bedroom": re.compile(r"bed|dormitor|habitaci[oó]n|alcoba|rec[aá]mara|nursery|guest", re.IGNORECASE),
+    "living": re.compile(r"living|lounge|family|sitting|dining|sal[oó]n|estar|comedor", re.IGNORECASE),
+    "office": re.compile(r"office|study|despacho|oficina|meeting|conference|reuni[oó]n", re.IGNORECASE),
+    "studio": re.compile(r"studio|estudio|loft|monoambiente", re.IGNORECASE),
+}
+# What never stands in each type of room. Open-plan kitchens (in a living room, an office kitchenette, a Spanish
+# "office" by the kitchen) and studios are fine. A category is out of place only when every type of its room
+# forbids it.
+_BED_ROOM = ("bed", "nightstand", "dresser")
+_KITCHEN = ("kitchen", "sink", "fridge")
+NEVER_IN = {
+    "bathroom": NEVER_WITH_BATH_FIXTURES,
+    "kitchen": (*BATH_FIXTURES, *_BED_ROOM),
+    "bedroom": (*BATH_FIXTURES, *_KITCHEN),
+    "living": (*BATH_FIXTURES, "bed"),
+    "office": (*BATH_FIXTURES, "bed"),
+    "studio": BATH_FIXTURES,
+}
+# What makes a room recognisably the type its label says: when none of it is there, the label more likely
+# belongs to a neighbouring room (labels are often printed beside their room) than the furniture is wrong.
+TYPICAL = {
+    "bathroom": BATH_FIXTURES,
+    "kitchen": _KITCHEN,
+    "bedroom": _BED_ROOM,
+    "living": ("sofa", "table"),
+    "office": ("desk", "bookshelf"),
+    "studio": ("bed", *_KITCHEN, "sofa"),
+}
+ROOM_WORDS = {"living": "living or dining room", "office": "office or study"}
+
+
+def _misplaced_findings(b: _Builder, rooms: _RoomContents, flagged: set[str]) -> None:
+    """Furniture that does not belong in the type of room it stands in (a toilet in the kitchen, a bed in the
+    living room, a fridge in a bedroom): misidentified, or the room's label is misplaced. Items in `flagged`
+    already have a finding of their own."""
+    for label, items in sorted(rooms.items.items()):
+        names = rooms.names.get(label, [])
+        types = [kind for kind, pattern in ROOM_TYPES.items() if any(pattern.search(n) for n in names)]
+        if not types:
+            continue
+        misplaced = [
+            i for i in items if i.id not in flagged and all(i.category in NEVER_IN[kind] for kind in types)
+        ]  # fmt: skip
+        if not misplaced:
+            continue
+        what = " / ".join(ROOM_WORDS.get(kind, kind) for kind in types)
+        typical = any(i.category in TYPICAL[kind] for i in items if i not in misplaced for kind in types)
+        b.add(
+            "misplaced_furniture", [i.id for i in misplaced],
+            f"{_what(misplaced)} stand{'s' if len(misplaced) == 1 else ''} in {' / '.join(names)} (a {what}), "
+            f"where {'it does' if len(misplaced) == 1 else 'they do'} not belong"
+            + ("." if typical else f"; nothing else there is typical of a {what}."),
+            [CheckOption(id="remove", description=f"Remove {_what(misplaced)} (misidentified, or not part of this "
+                                                  "room)", remove_furniture=[i.id for i in misplaced]),
+             CheckOption(id="keep", description="Keep it: the room's label is misplaced (it names a neighbouring "
+                                                "room) or wrong")],
+            "remove" if typical else "keep",
+        )  # fmt: skip
+
+
+def _cell_center(regions: _Regions, idx: int) -> Point2:
+    return (regions.x0 + (idx % regions.nx + 0.5) * regions.cell, regions.y0 + (idx // regions.nx + 0.5) * regions.cell)
+
+
+def _narrow_findings(b: _Builder, narrow: list[_Narrow], floor: _Floor) -> None:
+    """Passages between two parallel walls narrower than PATH_WIDTH on the only way between two doors (a
+    hallway, the gap beside a stair or a built-in): one of the walls moves out by the difference, into the
+    bigger room behind it by default (outdoors last: that changes the facade)."""
+    regions = floor.regions
+    walls = [w for w in b.building.walls if w.length > 0]
+    seen: set[frozenset[str]] = set()
+    for passage in narrow:
+        best: tuple[float, Wall, Wall, Point2] | None = None
+        for idx in passage.cells[::2]:
+            p = _cell_center(regions, idx)
+            reach = PATH_WIDTH / 2 + regions.cell
+            near = [w for w in walls if point_segment_distance(p, w.start, w.end) <= w.thickness / 2 + reach]
+            # both walls run alongside p (not one of them ending just before it)
+            near = [w for w in near if 0.0 <= project_param(p, w.start, w.end) <= w.length]
+            for w1, w2 in combinations(near, 2):
+                if abs(cross(unit(sub(w1.end, w1.start)), unit(sub(w2.end, w2.start)))) > 0.05:
+                    continue
+                n1 = left_normal(w1.start, w1.end)
+                at, other = dot(sub(p, w1.start), n1), dot(sub(w2.start, w1.start), n1)
+                if at * (other - at) <= 0:
+                    continue  # p is not between the two
+                gap = abs(other) - (w1.thickness + w2.thickness) / 2
+                if gap < PATH_WIDTH and (best is None or gap < best[0]):
+                    best = (gap, w1, w2, p)
+        if best is None:
+            continue
+        gap, w1, w2, p = best
+        widen = round(PATH_WIDTH - gap + 0.02, 3)
+        if frozenset((w1.id, w2.id)) in seen or widen > MAX_WIDEN:
+            continue
+        seen.add(frozenset((w1.id, w2.id)))
+        ranked: list[tuple[float, CheckOption]] = []
+        for w in (w1, w2):
+            n = left_normal(w.start, w.end)
+            away = -1.0 if dot(sub(p, w.start), n) > 0 else 1.0
+            along = add(w.start, scale(unit(sub(w.end, w.start)), project_param(p, w.start, w.end)))
+            far = regions.probe(along, scale(n, away), w.thickness / 2)
+            if far is None or regions.outdoor[far]:
+                rank, into = -1.0, "outdoors"
+            else:
+                rank, into = regions.areas.get(regions.labels[far], 0.0), regions.name(regions.labels[far])
+            option = CheckOption(
+                id=f"widen:{w.id}", description=f"Move {w.id} {widen:.2f} m out, into {into}",
+                commands=[{"operation": "shift_wall", "targetId": w.id, "parameters": {"offset": away * widen}}],
+            )  # fmt: skip
+            if b.valid(option.commands):
+                ranked.append((rank, option))
+        if not ranked:
+            continue
+        ranked.sort(key=lambda r: -r[0])
+        b.add(
+            "narrow_passage", [w1.id, w2.id],
+            f"The way between {passage.doors[0]} and {passage.doors[1]} through {regions.name(passage.label)} is only "
+            f"{gap:.2f} m wide between {w1.id} and {w2.id}; walking needs {PATH_WIDTH:.2f} m.",
+            [*(option for _, option in ranked),
+             CheckOption(id="keep", description="Keep it as drawn (a real tight spot, or the drawing is right)")],
+            ranked[0][1].id,
         )  # fmt: skip
 
 
@@ -1245,7 +1639,13 @@ def analyze(building: Building) -> Analysis:
     _gap_findings(b)
     _missing_wall_findings(b)
     _bathroom_findings(b)
-    _incompatible_findings(b, _with_defaults(building, b.findings, ("facade_gap", "missing_wall", "bathroom_open")))
+    rooms = _room_contents(
+        building, _with_defaults(building, b.findings, ("facade_gap", "missing_wall", "bathroom_open"))
+    )
+    if rooms is not None:
+        _incompatible_findings(b, rooms)
+        flagged = {i for f in b.findings if f.kind == "incompatible_furniture" for i in f.target_ids}
+        _misplaced_findings(b, rooms, flagged)
     regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
     if regions is None:
         if building.walls:
@@ -1254,8 +1654,11 @@ def analyze(building: Building) -> Analysis:
         spaces = _space_graph(building, regions)
         _space_findings(b, spaces)
         _window_findings(b, spaces)
+        _, narrow, floor = _paths(building)
+        if floor is not None:
+            _narrow_findings(b, narrow, floor)
     _outside_findings(b)
-    _, fixes = settle(building)
+    _, fixes = make_walkable(building)
     _furniture_findings(b, sorted(fixes, key=lambda f: (f.action != "removed", -f.shift)))
     if len(b.findings) > MAX_FINDINGS:
         notes.append(f"{len(b.findings) - MAX_FINDINGS} more findings used their defaults (too many to review).")
@@ -1312,7 +1715,7 @@ def resolve(
                 "ai" if by == "ai" else "guardrails",
                 f"{finding.id} {option.id}",
             )
-    building, fixes = settle(building, remove)
+    building, fixes = make_walkable(building, remove)
     for fix in fixes:
         changes.append(
             CheckChange(target_ids=[fix.item_id], summary=fix.summary, source="ai" if fix.decided else "guardrails")
@@ -1321,7 +1724,8 @@ def resolve(
 
 
 def enforce(building: Building) -> tuple[Building, list[FurnitureFix]]:
-    """The hard rule only (after manual edits): returns the building unchanged when nothing conflicts."""
-    if not find_conflicts(building):
+    """The hard rules only (after manual edits): returns the building unchanged when nothing conflicts and
+    every room's doors are connected by a clear path."""
+    if not find_conflicts(building) and not _paths(building)[0]:
         return building, []
-    return settle(building)
+    return make_walkable(building)

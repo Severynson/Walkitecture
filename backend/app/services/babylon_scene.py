@@ -371,13 +371,37 @@ def _clearance(point: Point2, building: Building) -> float:
     return min([*walls, *furniture], default=9.0)
 
 
+SPAWN_GRID = 0.5  # m between the spots tried when no room label has room around it
+
+
+def _indoor_spots(building: Building) -> list[Point2]:
+    """Grid points on the building's floor (inside a room, not outdoors), for a spawn point of last resort."""
+    from app.services import guardrails  # guardrails -> this module
+
+    regions = guardrails._regions(building, [box for _, box in guardrails.wall_boxes(building.walls)])
+    if regions is None:
+        return []
+    step = max(1, round(SPAWN_GRID / regions.cell))
+    spots = []
+    for j in range(0, regions.ny, step):
+        for i in range(0, regions.nx, step):
+            idx = j * regions.nx + i
+            if regions.labels[idx] >= 0 and not regions.outdoor[idx] and regions.is_space(regions.labels[idx]):
+                spots.append(guardrails._cell_center(regions, idx))
+    return spots
+
+
 def _camera(building: Building, fallback: Point2) -> CameraSpec:
     """Spawn at the room label with the most open space around it (the main room, not a corridor or a
-    store), else the plan center. Real drawings rarely have room outlines, so clearance is the measure."""
+    store). Real drawings rarely have room outlines, so clearance is the measure. Without such a label, the
+    roomiest spot on the floor: never inside a wall or a piece of furniture (the walker could not move)."""
     candidates = [r.label_position for r in building.rooms if r.label_position]
     scored = [
         (clearance, point) for point in candidates if (clearance := _clearance(point, building)) >= MIN_SPAWN_CLEARANCE
     ]
+    if not scored:
+        scored = [(_clearance(point, building), point) for point in _indoor_spots(building)]
+        scored = [s for s in scored if s[0] > 0]
     x, z = max(scored)[1] if scored else fallback
     return CameraSpec(
         position=_v(x, EYE_HEIGHT, z), target=_v(x, EYE_HEIGHT, z + 1.0), eye_height=EYE_HEIGHT, body_height=BODY_HEIGHT

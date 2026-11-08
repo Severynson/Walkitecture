@@ -159,6 +159,19 @@ class AddOpening(CamelModel):
     parameters: AddOpeningParams
 
 
+class ShiftWallParams(CamelModel):
+    offset: float = Field(description="Signed distance in meters along the wall's left-hand normal")
+
+
+class ShiftWall(CamelModel):
+    """Guardrails only (widening a passage too narrow to walk): moves a wall that is joined to others, stretching
+    the walls that meet it at right angles; never proposed free-form by the LLM."""
+
+    operation: Literal["shift_wall"]
+    target_id: str
+    parameters: ShiftWallParams
+
+
 # What the UI (sliders, buttons, the Delete key) and the chat may send to POST /edits.
 EditCommand = Annotated[
     ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | DeleteFurniture,
@@ -184,7 +197,8 @@ REVIEW_OPERATIONS = (
 
 AnyCommand = Annotated[
     ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | MergeWalls
-    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom | AddOpening | AddWall,
+    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom | AddOpening | AddWall
+    | ShiftWall,
     Field(discriminator="operation"),
 ]  # fmt: skip
 AnyCommandAdapter: TypeAdapter[AnyCommand] = TypeAdapter(AnyCommand)

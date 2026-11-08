@@ -11,7 +11,7 @@ from app.schemas.edits import AnyCommandAdapter
 from app.schemas.parse import ParseOptions
 from app.services import guardrails, llm, pipeline, plan_store
 from app.services.babylon_scene import MAP_MARGIN, build_scene, rendered_footprint
-from app.services.edits import apply_edit
+from app.services.edits import EditRejected, apply_edit
 from app.services.furniture_catalog import CATALOG
 from app.services.llm_classify import _Answer as ClassifyAnswer
 from app.services.reviewer import _Answer as ReviewAnswer
@@ -131,6 +131,127 @@ def test_edits_cannot_push_a_wall_into_furniture():
     result = plan_store._enforce(apply_edit(building, command))
     assert "c" in result.affected_ids and "Moved chair c" in result.summary
     assert guardrails.find_conflicts(result.building) == []
+
+
+SOFA = "couch_medium_by_quaternius.glb"
+
+
+def test_furniture_beside_a_door_moves_out_of_its_way():
+    chair = item("c", "chair", CHAIR, (2.0, 0.6), 0.5, 0.55)  # 15 cm into the floor in front of door_1 (x 1-1.9)
+    building = two_rooms(furniture=[chair])
+    assert guardrails.find_conflicts(building) == [("c", "doorway door_1", pytest.approx(0.15, abs=0.002))]
+    settled, (fix,) = guardrails.settle(building)
+    assert fix.action == "moved" and fix.conflicts == ["doorway door_1"]
+    assert settled.furniture[0].position[0] >= 2.15 - guardrails.TOUCH
+    assert guardrails.find_conflicts(settled) == []
+
+
+def test_furniture_blocking_a_door_with_nowhere_to_go_is_removed():
+    sofa = item("s", "sofa", SOFA, (1.45, 0.7), 2.0, 0.9, facing=(0.0, 1.0))  # right inside the front door
+    settled, (fix,) = guardrails.settle(two_rooms(furniture=[sofa]))
+    assert fix.action == "removed" and "doorway door_1" in fix.summary
+    assert settled.furniture == []
+
+
+def test_a_door_is_kept_clear_on_both_sides_as_deep_as_it_is_wide():
+    building = two_rooms([door("door_2", 1.5)])  # in wall mid (x 4), y 1.5-2.4: clear x 3.0-5.0
+    behind = item("c", "chair", CHAIR, (5.2, 1.95), 0.5, 0.55, facing=(1.0, 0.0))  # bedroom side, 15 cm in
+    assert [hit for _, hit, _ in guardrails.find_conflicts(building.model_copy(update={"furniture": [behind]}))] == [
+        "doorway door_2"
+    ]
+    clear = behind.model_copy(update={"position": (5.3, 1.95)})
+    assert guardrails.find_conflicts(building.model_copy(update={"furniture": [clear]})) == []
+
+
+def test_a_door_added_by_an_edit_clears_its_way():
+    closet = item("f1", "closet", CLOSET, (2.0, 3.68), 1.2, 0.6)
+    command = AnyCommandAdapter.validate_python(
+        {"operation": "add_opening", "targetId": "n", "parameters": {"type": "door", "offset": 5.55, "width": 0.9}}
+    )  # wall n runs from x 8 to x 0: the door spans x 1.55-2.45, right behind the closet
+    result = plan_store._enforce(apply_edit(two_rooms(furniture=[closet]), command))
+    assert "f1" in result.affected_ids and "doorway" in result.summary
+    assert guardrails.find_conflicts(result.building) == []
+
+
+def test_furniture_leaves_a_clear_path_between_a_rooms_doors():
+    # Living: front door_1 (x 1-1.9 in the south wall) and door_2 to the bedroom (y 1.5-2.4 in wall mid, x 4).
+    # A row of closets across the room (x 0.1-3.3), clear of both doors' zones, leaves 0.6 m to wall mid.
+    closets = [item("f1", "closet", CLOSET, (0.9, 1.25), 1.6, 0.4), item("f2", "closet", CLOSET, (2.5, 1.25), 1.6, 0.4)]
+    building = two_rooms([door("door_2", 1.5)], furniture=closets)
+    assert guardrails.find_conflicts(building) == []  # no wall, door zone or furniture is hit ...
+    walkways, _, _ = guardrails._paths(building)
+    assert walkways  # ... but the way from the front door to the bedroom is blocked
+    walkable, fixes = guardrails.make_walkable(building)
+    assert fixes and all("walkway door_1-door_2" in fix.summary for fix in fixes)
+    assert guardrails._paths(walkable)[0] == []
+
+
+def test_a_manual_edit_keeps_the_path_clear_too():
+    closets = [item("f1", "closet", CLOSET, (0.9, 1.25), 1.6, 0.4), item("f2", "closet", CLOSET, (2.5, 1.25), 1.6, 0.4)]
+    building = two_rooms(furniture=closets)  # no door to the bedroom yet: nothing to connect
+    command = AnyCommandAdapter.validate_python(
+        {"operation": "add_opening", "targetId": "mid", "parameters": {"type": "door", "offset": 1.5, "width": 0.9}}
+    )
+    result = plan_store._enforce(apply_edit(building, command))
+    assert "walkway" in result.summary and guardrails._paths(result.building)[0] == []
+
+
+def corridor(gap=0.75):
+    """6 x 3 m: partition p (y = 0.1 + gap + 0.1, from the west wall to x 5) leaves a `gap` wide corridor along
+    the south wall; door_a (west wall) opens into the corridor, door_b (north wall) into the room above."""
+    y = 0.1 + gap + 0.1
+    return Building(
+        ceiling_height=H,
+        walls=[wall("s", (0, 0), (6, 0)), wall("e", (6, 0), (6, 3)),
+               wall("n", (6, 3), (0, 3), door("door_b", 4.0)),
+               wall("w", (0, 3), (0, 0), door("door_a", 3 - 0.1 - gap, gap)),
+               wall("p", (0, y), (5, y))],
+        rooms=[Room(id="room_1", name="Hall", label_position=(3, 2))],
+    )  # fmt: skip
+
+
+def test_a_hallway_too_narrow_to_walk_is_widened():
+    building = corridor()
+    (finding,) = [f for f in guardrails.analyze(building).findings if f.kind == "narrow_passage"]
+    assert "only 0.75 m wide between s and p" in finding.detail
+    assert finding.default == "widen:p"  # into the room, not out of the facade
+    assert [o.id for o in finding.options] == ["widen:p", "widen:s", "keep"]
+    widened = guardrails.resolve(building, [finding], [], {}).building
+    assert widened.find_wall("p").start[1] == pytest.approx(0.95 + 0.17)
+    assert not [f for f in guardrails.analyze(widened).findings if f.kind == "narrow_passage"]
+
+
+def test_a_hallway_wide_enough_is_left_alone():
+    assert not [f for f in guardrails.analyze(corridor(0.95)).findings if f.kind == "narrow_passage"]
+
+
+def test_shifting_a_wall_stretches_the_walls_that_meet_it():
+    building = two_rooms([door("door_2", 1.5)])
+    shift = AnyCommandAdapter.validate_python(
+        {"operation": "shift_wall", "targetId": "mid", "parameters": {"offset": 0.5}}
+    )
+    result = apply_edit(building, shift)  # mid runs north: its left is west
+    moved = result.building
+    assert moved.find_wall("mid").start == (3.5, 0) and moved.find_wall("mid").end == (3.5, 4)
+    assert moved.find_wall("s").start == (0, 0) and moved.find_wall("s").end == (8, 0)  # mid rests on s and n
+    assert moved.find_wall("mid").openings[0].offset == 1.5
+    corner = two_rooms()
+    shift_w = AnyCommandAdapter.validate_python(
+        {"operation": "shift_wall", "targetId": "w", "parameters": {"offset": -0.3}}
+    )
+    stretched = apply_edit(corner, shift_w).building  # w runs south: its left is east, so -0.3 moves it west
+    assert stretched.find_wall("s").start == (-0.3, 0) and stretched.find_wall("n").end == (-0.3, 4)
+    assert stretched.find_wall("s").openings[0].offset == pytest.approx(1.3)  # the front door stays put
+
+
+def test_a_wall_meeting_another_at_an_angle_cannot_shift():
+    slanted = wall("slant", (2, 0.1), (3, 1))
+    building = two_rooms(extra_walls=[slanted])
+    command = AnyCommandAdapter.validate_python(
+        {"operation": "shift_wall", "targetId": "s", "parameters": {"offset": 0.2}}
+    )
+    with pytest.raises(EditRejected, match="angle"):
+        apply_edit(building, command)
 
 
 def test_the_furniture_showroom_holds_every_model_without_conflicts():
@@ -418,6 +539,52 @@ def test_open_plan_kitchens_and_studios_are_fine():
     sofa = item("f3", "sofa", "couch_medium_by_quaternius.glb", (1.2, 0.8), 2.0, 0.9, facing=(0.0, 1.0))
     building = two_rooms([door("door_2", 1.5)], furniture=[fridge, bed, sofa])
     assert not [f for f in guardrails.analyze(building).findings if f.kind == "incompatible_furniture"]
+
+
+FRIDGE, NIGHTSTAND = "kitchen_fridge_quarternius.glb", "night_stand_quaternius.glb"
+
+
+def misplaced(building):
+    return [f for f in guardrails.analyze(building).findings if f.kind == "misplaced_furniture"]
+
+
+def test_furniture_that_does_not_belong_in_its_room_is_removed():
+    fridge = item("f1", "fridge", FRIDGE, (6.5, 3.5), 0.7, 0.7)
+    bed = item("f2", "bed", BED, (6.0, 1.5), 1.93, 2.03)
+    building = two_rooms([door("door_2", 1.5)], furniture=[fridge, bed])  # a fridge in the Bedroom
+    (finding,) = misplaced(building)
+    assert finding.target_ids == ["f1"] and finding.default == "remove" and "Bedroom (a bedroom)" in finding.detail
+    assert [f.id for f in guardrails.resolve(building, [finding], [], {}).building.furniture] == ["f2"]
+
+
+def test_a_bed_where_the_label_says_kitchen_is_kept_when_nothing_else_says_kitchen():
+    bed = item("f1", "bed", BED, (2.0, 2.0), 1.93, 2.03)
+    building = two_rooms([door("door_2", 1.5)], furniture=[bed])
+    building.rooms[0].name = "Cocina"  # probably the label of the room next door
+    (finding,) = misplaced(building)
+    assert finding.default == "keep" and "nothing else there is typical" in finding.detail
+
+
+def test_open_plan_rooms_studios_and_unlabelled_rooms_are_not_judged():
+    fridge = item("f1", "fridge", FRIDGE, (0.5, 3.5), 0.7, 0.7)
+    sofa = item("f2", "sofa", SOFA, (2.0, 2.0), 2.0, 0.9)
+    bed = item("f3", "bed", BED, (6.0, 1.5), 1.93, 2.03)
+    nightstand = item("f4", "nightstand", NIGHTSTAND, (7.5, 3.5), 0.45, 0.4)
+    building = two_rooms([door("door_2", 1.5)], furniture=[fridge, sofa, bed, nightstand])
+    building.rooms[0].name = "Salón-cocina"
+    building.rooms[1].name = "Studio"
+    assert misplaced(building) == []
+    building.rooms[1].name = "Trastero"  # storage: not a room type the rule judges
+    assert misplaced(building) == []
+
+
+def test_a_toilet_beside_a_fridge_is_one_finding_not_two():
+    toilet = item("f1", "toilet", "toilet_by_quaternius.glb", (0.5, 3.0), 0.4, 0.7, facing=(1.0, 0.0))
+    fridge = item("f2", "fridge", FRIDGE, (2.5, 3.5), 0.7, 0.7)
+    building = two_rooms([door("door_2", 1.5)], furniture=[toilet, fridge])
+    building.rooms[0].name = "Kitchen"
+    kinds = [f.kind for f in guardrails.analyze(building).findings]
+    assert kinds.count("incompatible_furniture") == 1 and "misplaced_furniture" not in kinds
 
 
 def three_sided_room(name="Living room"):

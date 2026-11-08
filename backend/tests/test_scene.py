@@ -87,6 +87,23 @@ def test_camera_spawns_inside_a_room_at_eye_height(demo_building):
     assert 0 < camera.position[0] < 10 and 0 < camera.position[2] < 8
 
 
+def test_camera_never_spawns_inside_furniture_or_a_wall():
+    walls = [
+        Wall(id="s", start=(0, 0), end=(6, 0), thickness=0.2, height=3),
+        Wall(id="e", start=(6, 0), end=(6, 4), thickness=0.2, height=3),
+        Wall(id="n", start=(6, 4), end=(0, 4), thickness=0.2, height=3),
+        Wall(id="w", start=(0, 4), end=(0, 0), thickness=0.2, height=3),
+        Wall(id="mid", start=(3, 0), end=(3, 4), thickness=0.2, height=3),  # through the plan's center
+    ]
+    bed = FurnitureItem(id="f1", category="bed", model="bed_king_by_quaternius.glb", position=(1.5, 2.0),
+                        facing=(0.0, -1.0), width=1.9, depth=2.0, height=0.6)  # fmt: skip
+    camera = build_scene(Building(ceiling_height=3, walls=walls, furniture=[bed])).camera  # no room labels
+    x, z = camera.position[0], camera.position[2]
+    assert abs(x - 3) > 0.4  # not in wall mid (the old fallback: the plan's center)
+    assert not (0.55 <= x <= 2.45 and 1.0 <= z <= 3.0)  # not in the bed
+    assert 0.4 < x < 5.6 and 0.4 < z < 3.6
+
+
 def test_camera_spawns_in_the_most_open_room():
     from app.schemas.building import Room
 

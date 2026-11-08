@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import NoReturn
 
 from app.config import FOOT
-from app.schemas.building import Building, Opening, Wall
+from app.schemas.building import Building, Opening, Point2, Wall
 from app.schemas.edits import (
     AddOpening,
     AddWall,
@@ -26,6 +26,7 @@ from app.schemas.edits import (
     SetCeilingHeight,
     SetFurnitureCategory,
     SetOpeningType,
+    ShiftWall,
 )
 from app.services.furniture_catalog import choose_model
 from app.services.geometry import (
@@ -38,8 +39,10 @@ from app.services.geometry import (
     cross,
     dot,
     left_normal,
+    point_segment_distance,
     scale,
     segment_distance,
+    segments_intersect,
     sub,
     unit,
     validate_wall,
@@ -91,6 +94,8 @@ def apply_edit(building: Building, command: AnyCommand) -> EditResult:
             affected, summary = _add_opening(proposed, command)
         case AddWall():
             affected, summary = _add_wall(proposed, command)
+        case ShiftWall():
+            affected, summary = _shift_wall(proposed, command)
         case _:  # pragma: no cover - the discriminated union makes this unreachable
             _reject("unsupported_operation", f"Unsupported operation: {command!r}")
 
@@ -324,6 +329,59 @@ def _add_wall(b: Building, cmd: AddWall) -> tuple[list[str], str]:
     )  # fmt: skip
     b.walls.append(wall)
     return [wall.id], f"Added wall {wall.id} ({wall.length:.2f} m)."
+
+
+MAX_WALL_SHIFT = 1.0  # m
+
+
+def _shift_wall(b: Building, cmd: ShiftWall) -> tuple[list[str], str]:
+    """Move a wall along its normal together with its joints: walls meeting it at right angles (corners and
+    T-junctions) stretch or shrink with it, and its own ends slide along the walls they rest on. Joints at any
+    other angle, or a wall continuing in line, cannot follow, so the edit is rejected."""
+    wall = _wall_or_reject(b, cmd.target_id)
+    offset = cmd.parameters.offset
+    if not 1e-3 <= abs(offset) <= MAX_WALL_SHIFT:
+        _reject("offset_out_of_range", f"Walls shift by 0.001-{MAX_WALL_SHIFT} m.", wall.id)
+    start, end = wall.start, wall.end
+    d = unit(sub(end, start))
+    shift = scale(left_normal(start, end), offset)
+    joined: list[Wall] = []
+    rests_on: list[tuple[Point2, Wall]] = []  # (new end of `wall`, the wall it rests on)
+    for other in b.walls:
+        if other is wall or other.length <= 0:
+            continue
+        tol = (wall.thickness + other.thickness) / 2 + 0.01
+        ends = [k for k in ("start", "end") if point_segment_distance(getattr(other, k), start, end) <= tol]
+        on = [p for p in (start, end) if point_segment_distance(p, other.start, other.end) <= tol]
+        if not ends and not on and not segments_intersect(start, end, other.start, other.end):
+            continue
+        od = unit(sub(other.end, other.start))
+        if abs(dot(od, d)) > 0.05:
+            _reject("angled_joint", f"Wall {other.id} meets {wall.id} at an angle or in line.", wall.id)
+        for k in ends:
+            old = getattr(other, k)
+            new = _round_point(add(old, shift))
+            if k == "start":  # openings keep their place in the world: offsets count from the start
+                moved = dot(sub(new, old), od)
+                for opening in other.openings:
+                    opening.offset = round(opening.offset - moved, 4)
+            setattr(other, k, new)
+        if ends:
+            joined.append(other)
+        rests_on += [(add(p, shift), other) for p in on]
+    wall.start, wall.end = _round_point(add(start, shift)), _round_point(add(end, shift))
+    for p, other in rests_on:
+        if point_segment_distance(p, other.start, other.end) > (wall.thickness + other.thickness) / 2 + 0.01:
+            _reject("joint_lost", f"Shifting {wall.id} would move its end off wall {other.id}.", wall.id)
+    moved = {wall.id, *(w.id for w in joined), *(o.id for _, o in rests_on)}
+    for other in b.walls:
+        clearance = (wall.thickness + other.thickness) / 2
+        if other.id not in moved and segment_distance(wall.start, wall.end, other.start, other.end) < clearance:
+            _reject("wall_collision", f"Shifting wall {wall.id} by {offset:+.2f} m would hit wall {other.id}.", wall.id)
+    affected = [wall.id, *(w.id for w in joined)]
+    return affected, f"Shifted wall {wall.id} by {offset:+.2f} m" + (
+        f" (stretching {', '.join(w.id for w in joined)})." if joined else "."
+    )
 
 
 def _add_opening(b: Building, cmd: AddOpening) -> tuple[list[str], str]:

@@ -154,7 +154,7 @@ AI can choose, never invent geometry.
 
 | Rule | Detection | Options (default **bold**) |
 | --- | --- | --- |
-| **Furniture never cuts into a wall** (doorways included) **or other furniture**; only a chair may sit up to 20 cm under a table/desk | Oriented footprints as rendered vs wall boxes as rendered (joint extensions included), separating-axis test, 1 cm tolerance | **accept** the gentle fix (move ≤ 35 cm and/or shrink to ≥ 85 %, cheapest clear spot; bigger, more important pieces keep their spot), remove this item, remove the other one. Moves under 3 cm are applied without asking |
+| **Furniture never cuts into a wall** (doorways included), **the floor in front of a door, a room's walking path, or other furniture**; only a chair may sit up to 20 cm under a table/desk. Also enforced after every manual and chat edit | Oriented footprints as rendered vs wall boxes as rendered (joint extensions included) and door clearances (`door_clearances`: as wide as the door and as deep as it is wide on both sides, so any swing fits; 0.8 m deep for doors wider than 1.2 m), separating-axis test, 1 cm tolerance. Walking paths (`make_walkable`): on a 10 cm raster, every room's doors must be joined by a path 0.9 m wide (the walker is 0.6 m); where furniture blocks it, the way that needs the least furniture pushed aside (removal counts 25×) becomes 0.9 m boxes that `settle` keeps clear, up to 3 rounds | **accept** the gentle fix (move ≤ 35 cm and/or shrink to ≥ 85 %, cheapest clear spot; bigger, more important pieces keep their spot), remove this item, remove the other one. Moves under 3 cm are applied without asking |
 | Furniture fits the drawing | `rendered_footprint`: the model fills the drawn outline exactly when its proportions allow (≤ 2.25× off), else keeps believable proportions inside the outline; never larger than drawn (a 7 ft bed is drawn 7 ft) | — |
 | No window between two indoor spaces | Raster of the plan (10 cm cells): free areas = rooms; outdoors = connected to the drawing's border *and* open to the sky in ≥ 3 of 8 directions (so a building with a gap in its facade still has an inside) | turn it into a door, remove it, **keep** (glazed partition) |
 | Every room has an entrance; the building has an exterior door | Room graph: rooms ≥ 1.5 m² and ≥ 0.6 m wide, joined by doors; components not reachable from the main part | turn a window on its boundary into a door, remove a 0.5–1.5 m wall closing it (a door leaf drawn on the wall layer), add a 0.8–0.9 m door on a shared wall (up to 3 candidates, circulation rooms first), **keep** (shaft, light well) |
@@ -162,6 +162,8 @@ AI can choose, never invent geometry.
 | No holes in the facade | A wall end in mid-air whose line reaches another wall (or a collinear piece) within 0.6–4 m, with the building's outline on one side only | **entrance** (wall + 0.9 m door), glazing, plain wall, keep open |
 | No room misses a whole outer wall (open to the street) unless it is a balcony, terrace, veranda or yard | Two free wall ends 1–12 m apart whose connecting line runs along the building's outline and crosses no wall | **window** (a wall with a window 1.3x the building's typical window), door, plain wall, keep (**default** when the room is named balcony/terrace/patio…) |
 | Furniture from contradictory contexts never shares a room | A free area (after the default seals) holding bathroom fixtures (toilet, shower, bathtub) and a kitchen unit/stove, kitchen sink, fridge, or living/sleeping furniture (washbasins are not modelled; kitchen + bed or sofa is fine) | remove the non-bathroom group or the bathroom group (**default** by the room's name, else the smaller group), keep (a wall between two rooms is missing) |
+| Furniture belongs in its labelled room (upload only; manual edits may place anything) | Room type from the labels in a free area (bathroom, kitchen, bedroom, living/dining, office, studio; English and Spanish; several types = open plan, a category is out of place only when every type forbids it): bath fixtures only in bathrooms; beds, nightstands, dressers not in kitchens; kitchen units, sinks, fridges not in bedrooms or bathrooms; beds not in living rooms or offices. Unlabelled rooms, halls, storage and terraces are not judged; items already in an incompatible-furniture finding are skipped | **remove** (when something else in the room fits its label), **keep** (when nothing does: the label most likely names a neighbouring room) |
+| Hallways and passages are wide enough to walk (0.9 m) | The walking-path raster with furniture ignored: the only way between two doors of a room passes closer than 0.45 m to walls (but leaves the 0.6 m walker through); the narrowest pair of parallel walls flanking it | **widen** (`shift_wall`, guardrails only: the wall moves out by the shortfall, ≤ 0.6 m, and the walls meeting it at right angles stretch; into the bigger room behind it by default, outdoors last), widen the other wall, keep |
 | A bathroom has doors or none, never a door plus a door-free connection (bathrooms only: other rooms may be open to each other) | Bathrooms found by their fixtures (toilet, shower, bathtub; labels are often printed beside the room); another room's label in the same free area; the hole whose closing separates them | **wall** (when the bathroom has a door), door, keep (only offered when it has no door) |
 
 The parser feeds these checks better geometry first: a window or door filling the gap between a wall's end and
@@ -250,10 +252,10 @@ meters, **y up; plan x → x, plan y → z**.
 | Doors | Open from 0 to 7 ft; a `header` box of the wall's thickness from 7 ft to the wall top |
 | Windows | Open from 2.5 to 6.5 ft; a `sill` box below, a `header` above, a thin `glass` pane in between |
 | `openings[]` | Opening centers, sizes, and rotation (for picking and highlighting); single doors (≤ 1.2 m) carry a `leaf` |
-| Door `leaf` | `{url, hinge, rotationY, swing, modelPosition, modelRotationY, scaling, size}`: the door GLB on a pivot at the hinge; `rotationY + swing` = open (88°). `services/doors.py` tries both jambs × both sides and keeps the swing that sweeps through no furniture or other wall; ties go to the hinge nearer a corner |
+| Door `leaf` | `{url, hinge, rotationY, swing, modelPosition, modelRotationY, scaling, size}`: the door GLB on a pivot at the hinge; `rotationY + swing` = open (88°). `services/doors.py` tries both jambs × both sides and keeps the swing that sweeps through no furniture or other wall; ties go to the hinge nearer a corner. An open leaf must never cut the 0.9 m walking path between two doors of the room it opens into (so it never stands across a hallway or in front of another doorway): that comes before everything else, and a door that would block whichever way it opens gets no leaf. Doors whose swings can meet choose together so no two leaves sweep the same floor; when no combination works, the narrower door gets no leaf (an open doorway) |
 | `furniture[]` | `{id, category, model, url, position, rotationY, scaling, footprintCenter, footprint, facing}`; `url` is `/furniture/<file>`, served from `frontend/public/furniture/` |
 | `rooms[]` | Label positions |
-| `camera` | First-person spawn point at eye height (6 ft walker: 1.709 m), `bodyHeight`, plus a target |
+| `camera` | First-person spawn point at eye height (6 ft walker: 1.709 m), `bodyHeight`, plus a target. The roomiest room label (≥ 0.5 m clear); without one, the roomiest spot on a 0.5 m grid over the rooms' floor, never inside a wall or furniture |
 | `materials` | Color + alpha per mesh `kind`; `texture` (image URL) for `boundary` (`/map-end-background.jpg`) and `sky` (`/sky.avif`) |
 | `bounds` · `mapBounds` | Building extents · the walkable map (building + `MAP_MARGIN`) |
 
@@ -322,6 +324,10 @@ Behaviour:
   door blocks the walker. Open doors stay open across edits.
 - **Map end:** ground, backdrop walls and sky are shown only in first person (top-down keeps the blueprint background);
   if the walker ever falls below the floor or leaves `mapBounds`, it is put back at the spawn point.
+- **Never stuck:** Babylon only stops the walker's own moves, so a collider overlapping its body (a door swung onto
+  it, an edit or undo that put a wall or furniture where it stands) used to pin it in place. Every other frame,
+  `freeTheWalker` tests a box 85 % of the walker's ellipsoid against solid colliders; one that overlaps stops
+  colliding until the walker has left it. Floor, ground and the map's end always stay solid.
 - First-person body: ellipsoid radius 0.3 m, 6 ft tall, eye height from `spec.camera.eyeHeight` (1.709 m), gravity on; GLB meshes
   don't collide, their footprint boxes do. Shared materials per `kind`, `freezeWorldMatrix()` on static meshes.
 
@@ -347,7 +353,7 @@ backend/app/
     dxf_parser.py         DXF → building model
     furniture_catalog.py, furniture_placement.py, furniture_llm.py, glb_bounds.py
     babylon_scene.py      model → scene spec (walls, openings, furniture, map end)
-    doors.py              door leaves: hinge side and swing that clear furniture
+    doors.py              door leaves: hinge side and swing that clear furniture and each other
     edits.py, geometry.py allowlisted edits + validation
     interpreter.py        OpenAI + rule-based edit interpretation
     pipeline.py           §4 orchestration: read → AI classify → furniture → checks → AI review → fix

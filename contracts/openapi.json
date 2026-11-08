@@ -1624,7 +1624,9 @@
               "facade_gap",
               "bathroom_open",
               "incompatible_furniture",
-              "missing_wall"
+              "misplaced_furniture",
+              "missing_wall",
+              "narrow_passage"
             ],
             "title": "Kind"
           },

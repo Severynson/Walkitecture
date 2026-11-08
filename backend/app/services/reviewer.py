@@ -203,9 +203,12 @@ Be conservative: propose a patch only when the evidence is clear, never invent I
 geometrically valid) plus a default. Give exactly one decision per finding: its id and the id of the
 option you choose, with a one-line reason. Think about where the mistake in the drawing or its
 interpretation most likely is:
-- furniture_conflict: furniture may never cut into walls or other furniture. The options differ in which
-  piece moves/shrinks slightly or is removed. Keep the piece the drawing and room make plausible (a bed in a
-  bedroom over an overlapping chair; one of two duplicate blocks); "accept" keeps the gentle fix.
+- furniture_conflict: furniture may never cut into walls, other furniture, or the floor in front of a door
+  ("doorway <id>": as wide and as deep as the door, on both sides, so the door opens and nobody's way is
+  blocked), or a room's walking path ("walkway <door>-<door>": 0.9 m clear between two doors of the same
+  room). The options differ in which piece moves/shrinks slightly or is removed. Keep the piece the
+  drawing and room make plausible (a bed in a bedroom over an overlapping chair; one of two duplicate
+  blocks); "accept" keeps the gentle fix.
 - interior_window: a window between two indoor spaces is almost always a mistake: usually a door drawn or
   classified as a window (convert it, especially when a room behind it has no other entrance), sometimes a
   misread wall (remove it). Keep it only for a plausible glazed partition (offices) or a borrowed light.
@@ -230,6 +233,13 @@ interpretation most likely is:
   One group is misidentified (a washbasin read as a kitchen sink, a symbol read as a toilet): remove the group
   the room's name, size and the drawing contradict. Keep both only when they plainly stand in two rooms whose
   dividing wall is missing.
+- misplaced_furniture: furniture in a room whose label says it does not belong there (a toilet in a kitchen,
+  a bed in a living room, a fridge in a bedroom). Remove it when it is misidentified or the room plainly is
+  what its label says; keep it when the label most likely names a neighbouring room (labels are often
+  printed beside their room) or the drawing shows the room is something else.
+- narrow_passage: the only way between two doors of a room (usually a hallway) is narrower than 0.9 m
+  between two walls. Widen it (the default moves the wall into the bigger room behind it) unless the drawing
+  plainly shows a real tight spot as drawn, or one of the walls is misread.
 - furniture_outside: usually a drawing artefact (legend, symbol library, another sheet): remove it unless it
   plausibly stands on a balcony, terrace or garden.
 Return empty lists when there is nothing to do."""
