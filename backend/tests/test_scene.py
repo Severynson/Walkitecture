@@ -102,3 +102,78 @@ def test_camera_spawns_in_the_most_open_room():
     ]
     camera = build_scene(Building(ceiling_height=3, walls=walls, rooms=rooms)).camera
     assert (camera.position[0], camera.position[2]) == (7, 4)
+
+
+# --- Wall joints: corners of mixed thickness, drafting gaps, free ends --------------------------
+
+
+def _wall_extent(scene, wall_id):
+    """(min, max) of the wall's boxes along its own axis, measured from its start (local x)."""
+    lo, hi = math.inf, -math.inf
+    for m in scene.meshes:
+        if m.wall_id == wall_id and m.kind == "wall":
+            lo, hi = min(lo, m.position[0] - m.size[0] / 2), max(hi, m.position[0] + m.size[0] / 2)
+    return lo, hi
+
+
+def test_corner_of_thick_and_thin_walls_is_filled():
+    # Thick wall along x ending at the origin, thin wall along +y starting there.
+    thick = Wall(id="thick", start=(-4, 0), end=(0, 0), thickness=0.24, height=3)
+    thin = Wall(id="thin", start=(0, 0), end=(0, 3), thickness=0.07, height=3)
+    scene = build_scene(Building(ceiling_height=3, walls=[thick, thin]))
+    _, thick_end = _wall_extent(scene, "thick")
+    assert thick_end == pytest.approx(0.035, abs=1e-3)  # reaches the thin wall's far face
+    thin_boxes = [m for m in scene.meshes if m.wall_id == "thin" and m.kind == "wall"]
+    assert min(m.position[2] - m.size[0] / 2 for m in thin_boxes) == pytest.approx(-0.12, abs=1e-3)  # thick's far face
+
+
+def test_small_drafting_gap_is_closed_but_free_ends_stay():
+    long_wall = Wall(id="long", start=(0, 0), end=(6, 0), thickness=0.2, height=3)
+    near = Wall(id="near", start=(2, 0.25), end=(2, 3), thickness=0.1, height=3)  # stops 15 cm short of long's face
+    free = Wall(id="free", start=(4, 1.5), end=(4, 3), thickness=0.1, height=3)  # 1.4 m from anything: a free end
+    scene = build_scene(Building(ceiling_height=3, walls=[long_wall, near, free]))
+    near_lo = min(m.position[2] - m.size[0] / 2 for m in scene.meshes if m.wall_id == "near" and m.kind == "wall")
+    free_lo = min(m.position[2] - m.size[0] / 2 for m in scene.meshes if m.wall_id == "free" and m.kind == "wall")
+    assert near_lo == pytest.approx(0.0, abs=1e-3)  # T-junction: reaches the long wall's centerline
+    assert free_lo == pytest.approx(1.5, abs=1e-3)
+
+
+def test_collinear_pieces_are_bridged():
+    a = Wall(id="a", start=(0, 0), end=(2, 0), thickness=0.1, height=3)
+    b = Wall(id="b", start=(2.12, 0), end=(4, 0), thickness=0.1, height=3)
+    scene = build_scene(Building(ceiling_height=3, walls=[a, b]))
+    assert _wall_extent(scene, "a")[1] == pytest.approx(2.12, abs=1e-3)
+
+
+def test_furniture_keeps_its_proportions_when_the_block_is_oversized():
+    # An "armchair with a person" block: 1.0 x 0.94 m for a 0.5 x 0.55 m chair model.
+    item = FurnitureItem(
+        id="f", category="chair", model="chair_by_quaternius.glb", position=(1, 1), facing=(0.0, 1.0),
+        width=1.0, depth=0.94, height=0.9,
+    )  # fmt: skip
+    (spec,) = build_scene(Building(ceiling_height=3, furniture=[item])).furniture
+    width, depth = spec.footprint
+    stretch = (width / depth) / (0.5 / 0.55)
+    assert 1 / 1.3**2 <= stretch <= 1.3**2  # each axis at most 1.3x off the chair's own proportions
+    assert math.sqrt(width * depth / (0.5 * 0.55)) == pytest.approx(
+        1.6, abs=1e-3
+    )  # overall size capped at 1.6x the real chair
+
+
+def test_corner_where_both_walls_stop_short_is_closed():
+    # Drawn corner that doesn't meet: the vertical wall stops 15 cm below the horizontal one's line,
+    # and the horizontal one stops 4 cm before the vertical one's line.
+    horizontal = Wall(id="h", start=(0.04, 3.0), end=(4, 3.0), thickness=0.07, height=3)
+    vertical = Wall(id="v", start=(0, 0), end=(0, 2.85), thickness=0.07, height=3)
+    scene = build_scene(Building(ceiling_height=3, walls=[horizontal, vertical]))
+    assert _wall_extent(scene, "h")[0] == pytest.approx(-0.035, abs=1e-3)  # x reaches v's far face (x = -0.035)
+    v_top = max(m.position[2] + m.size[0] / 2 for m in scene.meshes if m.wall_id == "v" and m.kind == "wall")
+    assert v_top == pytest.approx(3.035, abs=1e-3)  # reaches h's far face
+
+
+def test_jogged_continuation_is_bridged():
+    # Two in-line walls whose ends are 43 cm apart and shifted 19 cm sideways (bands still overlap).
+    a = Wall(id="a", start=(0, 0), end=(3, 0), thickness=0.20, height=3)
+    b = Wall(id="b", start=(3.43, 0.19), end=(6, 0.19), thickness=0.22, height=3)
+    scene = build_scene(Building(ceiling_height=3, walls=[a, b]))
+    assert _wall_extent(scene, "a")[1] == pytest.approx(3.43, abs=1e-3)

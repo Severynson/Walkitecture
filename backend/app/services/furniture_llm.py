@@ -16,6 +16,7 @@ from app.config import Settings
 from app.schemas.building import Room
 from app.services.furniture_placement import FurnitureCandidate
 from app.services.geometry import point_in_polygon
+from app.services.llm import completion_options, make_client
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,13 @@ async def classify_unknown_furniture(
         }
         for i, c in enumerate(candidates)
     ]
-    client = client or AsyncOpenAI(api_key=settings.openai_api_key, timeout=settings.openai_timeout_s)
+    client = client or make_client(settings)
     try:
         completion = await client.chat.completions.parse(
             model=settings.openai_model,
             messages=[{"role": "system", "content": PROMPT}, {"role": "user", "content": json.dumps(blocks)}],
             response_format=_Answer,
+            **completion_options(settings),
         )
     except (OpenAIError, ValidationError, ValueError) as exc:
         logger.warning("LLM furniture classification failed: %s", exc)

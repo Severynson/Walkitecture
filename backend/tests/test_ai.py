@@ -268,3 +268,22 @@ async def test_review_ops_are_not_accepted_by_the_ui_edit_endpoint(auth_client):
         f"/api/plans/{plan_id}/edits", json={"command": {"operation": "delete_wall", "targetId": "wall_1"}}
     )
     assert response.status_code == 422
+
+
+async def test_llm_calls_use_the_configured_reasoning_effort():
+    """gpt-5* thinks before answering; at the default effort whole-plan calls exceeded the timeout."""
+    from pydantic import BaseModel
+
+    from app.config import Settings
+    from app.services.llm import structured
+
+    class _Out(BaseModel):
+        ok: bool
+
+    fast = FakeClient(_Out(ok=True))
+    await structured(Settings(_env_file=None, openai_api_key="k"), "sys", "user", _Out, fast)
+    assert fast.calls[0]["reasoning_effort"] == "low"
+
+    default = FakeClient(_Out(ok=True))
+    await structured(Settings(_env_file=None, openai_api_key="k", openai_reasoning_effort=""), "s", "u", _Out, default)
+    assert "reasoning_effort" not in default.calls[0]

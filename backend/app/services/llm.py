@@ -13,7 +13,14 @@ class LLMUnavailable(Exception):
 def make_client(settings: Settings) -> AsyncOpenAI:
     if not settings.openai_api_key:
         raise LLMUnavailable("No OPENAI_API_KEY is configured on the server.")
-    return AsyncOpenAI(api_key=settings.openai_api_key, timeout=settings.openai_timeout_s)
+    return AsyncOpenAI(
+        api_key=settings.openai_api_key, timeout=settings.openai_timeout_s, max_retries=settings.openai_max_retries
+    )
+
+
+def completion_options(settings: Settings) -> dict:
+    """Extra chat-completion arguments shared by every LLM call (reasoning effort for gpt-5* models)."""
+    return {"reasoning_effort": settings.openai_reasoning_effort} if settings.openai_reasoning_effort else {}
 
 
 async def structured[T: BaseModel](
@@ -26,6 +33,7 @@ async def structured[T: BaseModel](
             model=settings.openai_model,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             response_format=schema,
+            **completion_options(settings),
         )
     except (OpenAIError, ValidationError, ValueError) as exc:
         raise LLMUnavailable(f"The LLM request failed: {type(exc).__name__}: {exc}") from exc

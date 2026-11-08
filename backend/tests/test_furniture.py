@@ -85,3 +85,38 @@ def test_unknown_categories_are_reported_not_placed():
     sink = FurnitureCandidate("LAVABO", "SANITARIOS", None, "layer", _box(1, 1, 0.5, 0.4))
     assert place_furniture([sink], ROOM, warnings) == []
     assert "LAVABO" in warnings[0]
+
+
+# --- Corners: the back must give the footprint the model's proportions (screenshot regressions) ---
+
+
+def test_wardrobe_in_a_corner_keeps_its_long_side_against_the_wall():
+    # 1.6 x 0.4 m built-in wardrobe in the north-east corner: walls touch its long (north) side AND its
+    # short (east) side. The back must be the long side: 1.6 wide, 0.4 deep, facing south.
+    wardrobe = FurnitureCandidate("264", "0", "closet", "llm", _box(6 - 0.1 - 0.8, 5 - 0.1 - 0.2, 1.6, 0.4))
+    (item,) = place_furniture([wardrobe], ROOM, [])
+    assert item.facing == (0.0, -1.0)
+    assert (item.width, item.depth) == pytest.approx((1.6, 0.4))
+
+
+def test_wardrobe_along_a_side_wall_in_a_corner():
+    # Same wardrobe turned 90 degrees (0.4 x 1.6) in the same corner: its long side is the east one.
+    wardrobe = FurnitureCandidate("264", "0", "closet", "llm", _box(6 - 0.1 - 0.2, 5 - 0.1 - 0.8, 0.4, 1.6))
+    (item,) = place_furniture([wardrobe], ROOM, [])
+    assert item.facing == (-1.0, 0.0)
+    assert (item.width, item.depth) == pytest.approx((1.6, 0.4))
+
+
+def test_bed_in_a_corner_has_its_head_against_the_short_wall():
+    # 1.4 x 1.9 bed in the south-west corner touching the west wall (long side) and south wall (head).
+    bed = FurnitureCandidate("CAMA", "MUEBLES", "bed", "block_name", _box(0.1 + 0.7, 0.1 + 0.95, 1.4, 1.9))
+    (item,) = place_furniture([bed], ROOM, [])
+    assert item.facing == (0.0, 1.0)
+    assert (item.width, item.depth) == pytest.approx((1.4, 1.9))
+
+
+def test_free_standing_bed_faces_along_its_length():
+    bed = FurnitureCandidate("CAMA", "MUEBLES", "bed", "block_name", _box(3, 2.5, 1.9, 1.4))  # drawn lying along x
+    (item,) = place_furniture([bed], ROOM, [])
+    assert abs(item.facing[0]) == pytest.approx(1.0)  # foot end points along the long (x) axis
+    assert (item.width, item.depth) == pytest.approx((1.4, 1.9))

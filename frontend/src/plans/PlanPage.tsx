@@ -141,7 +141,7 @@ export default function PlanPage() {
 
   const reviewPlan = () =>
     run(async () => {
-      say("assistant", "Reviewing the plan with AI…");
+      say("assistant", "Reviewing the plan with AI… (usually 15–40 s)");
       const result = await endpoints.review(id);
       const applied = result.patches.filter((p) => p.status === "applied");
       const rejected = result.patches.filter((p) => p.status === "rejected");
@@ -158,7 +158,7 @@ export default function PlanPage() {
   const classifyPlan = () => {
     if (!window.confirm("Re-read the drawing with AI-assigned layer roles? This rebuilds the plan and clears its edit history.")) return;
     void run(async () => {
-      say("assistant", "Asking AI to classify the drawing's layers and blocks…");
+      say("assistant", "Asking AI to classify the drawing's layers and blocks… (usually 15–40 s)");
       const result = await endpoints.classify(id);
       if (result.applied && result.result) {
         viewerRef.current?.load(result.result.scene.babylon, { keepCamera: true });

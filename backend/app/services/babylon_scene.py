@@ -27,7 +27,7 @@ from app.schemas.babylon import (
 )
 from app.schemas.building import Building, FurnitureItem, Opening, Point2, Wall
 from app.services.furniture_catalog import CATALOG, FURNITURE_URL_PREFIX
-from app.services.geometry import point_segment_distance, sub, unit
+from app.services.geometry import add, dot, point_segment_distance, scale, sub, unit
 
 BODY_HEIGHT = 6 * 0.3048  # the walker is 6 ft tall
 EYE_HEIGHT = round(BODY_HEIGHT - 0.12, 3)  # eyes ~12 cm below the top of the head: 1.709 m
@@ -104,11 +104,48 @@ def build_scene(building: Building) -> BabylonScene:
 # --- Walls ------------------------------------------------------------------------------
 
 
-def _connected(point: Point2, wall: Wall, walls: list[Wall]) -> bool:
-    return any(
-        other is not wall and point_segment_distance(point, other.start, other.end) <= other.thickness / 2 + 0.02
-        for other in walls
-    )
+MAX_JOINT_GAP = 0.45  # m: a wall end this close to another wall is joined to it (closes drafting gaps)
+
+
+def _end_extension(point: Point2, outward: Point2, wall: Wall, walls: list[Wall]) -> float:
+    """How far to extend a wall end (along the unit vector `outward`) so it joins the wall it meets.
+
+    * Corner (the end meets the other wall near that wall's end): reach the other wall's far face, so
+      the outer corner is filled even when the two walls have different thicknesses.
+    * T-junction (the end meets the middle of the other wall): reach its centerline.
+    * Collinear continuation: bridge the gap to the other wall's end.
+    Drawings often stop a wall a few centimetres short of its neighbour; ends up to MAX_JOINT_GAP away
+    are joined. Free ends (nothing ahead within reach) are left as drawn.
+    """
+    best: tuple[float, float] | None = None  # (distance ahead to the other wall, extension)
+    for other in walls:
+        length = other.length
+        if other is wall or length <= 0:
+            continue
+        direction = unit(sub(other.end, other.start))
+        normal = (-direction[1], direction[0])
+        cos = dot(outward, normal)
+        half = other.thickness / 2
+        if abs(cos) < 0.2:  # (nearly) parallel: only a continuation counts, possibly with a small jog
+            if abs(dot(sub(point, other.start), normal)) > (wall.thickness + other.thickness) / 2 + 0.01:
+                continue  # side by side, not in line: their thickness bands don't overlap
+            for q in (other.start, other.end):
+                ahead = dot(sub(q, point), outward)
+                if 0.0 <= ahead <= MAX_JOINT_GAP and (best is None or ahead < best[0]):
+                    best = (ahead, ahead)
+            continue
+        ahead = dot(sub(other.start, point), normal) / cos  # along `outward` to the other centerline
+        if ahead < -half / abs(cos) - 0.01 or ahead > MAX_JOINT_GAP + half / abs(cos):
+            continue  # the other wall is behind this end, or too far ahead
+        along = dot(sub(add(point, scale(outward, ahead)), other.start), direction)
+        margin = wall.thickness / 2 + 0.05
+        if along < -MAX_JOINT_GAP or along > length + MAX_JOINT_GAP:
+            continue  # the ray passes beside the other wall (whose own end may stop short of this corner)
+        at_corner = along < margin or along > length - margin
+        extension = ahead + (half / abs(cos) if at_corner else 0.0)
+        if best is None or ahead < best[0]:
+            best = (ahead, extension)
+    return max(0.0, best[1]) if best else 0.0
 
 
 def _wall_meshes(wall: Wall, walls: list[Wall]) -> tuple[list[BoxMesh], list[OpeningSpec]]:
@@ -118,9 +155,9 @@ def _wall_meshes(wall: Wall, walls: list[Wall]) -> tuple[list[BoxMesh], list[Ope
     dx, dz = unit(sub(wall.end, wall.start))
     rotation = _angle(-math.atan2(dz, dx))  # Babylon RotationY maps local +x to (cos a, -sin a)
     t, h = wall.thickness, wall.height
-    # Extend connected ends by half a thickness so corners and T-junctions close without gaps.
-    ext_start = t / 2 if _connected(wall.start, wall, walls) else 0.0
-    ext_end = t / 2 if _connected(wall.end, wall, walls) else 0.0
+    # Extend ends into the walls they meet so corners, T-junctions, and small drafting gaps close.
+    ext_start = _end_extension(wall.start, (-dx, -dz), wall, walls)
+    ext_end = _end_extension(wall.end, (dx, dz), wall, walls)
 
     def box(kind: str, index: int, s0: float, s1: float, y0: float, y1: float, depth: float, opening=None) -> BoxMesh:
         mid = (s0 + s1) / 2
@@ -184,7 +221,8 @@ def _furniture_spec(item: FurnitureItem) -> FurnitureSpec | None:
     if model is None:
         return None
     nx, ny, nz = model.native_size
-    sx, sy, sz = item.width / nx, item.height / ny, item.depth / nz
+    width, depth = _rendered_footprint(item, model.real_size)
+    sx, sy, sz = width / nx, item.height / ny, depth / nz
     fx, fz = item.facing
     theta = math.atan2(fx, fz)  # RotationY maps local +z to (sin a, cos a)
     # Babylon's glTF loader mirrors x (__root__: scale z -1, rotate 180 deg), so the native center's
@@ -204,9 +242,28 @@ def _furniture_spec(item: FurnitureItem) -> FurnitureSpec | None:
         rotation_y=_angle(theta),
         scaling=_v(sx, sy, sz),
         footprint_center=_v(px, 0.0, pz),
-        footprint=(item.width, item.depth),
+        footprint=(round(width, 4), round(depth, 4)),
         facing=(fx, fz),
     )
+
+
+MAX_STRETCH = 1.3  # most a model may be stretched in one direction relative to the other
+SIZE_RANGE = (0.5, 1.6)  # rendered footprint vs the model's real-world size
+
+
+def _rendered_footprint(item: FurnitureItem, real_size: tuple[float, float, float]) -> tuple[float, float]:
+    """Footprint the model is drawn with: the drawing's footprint, but keeping the model's proportions.
+
+    Block outlines often include more than the piece itself (chairs around a table, a person in an
+    armchair) or are mis-sized; stretching a model to them distorts it. So the overall size follows the
+    drawing within SIZE_RANGE of the real size, and the width/depth ratio may deviate from the model's
+    own by at most MAX_STRETCH.
+    """
+    real_w, _, real_d = real_size
+    fit_w, fit_d = item.width / real_w, item.depth / real_d
+    size = min(max(math.sqrt(fit_w * fit_d), SIZE_RANGE[0]), SIZE_RANGE[1])
+    stretch = min(max(math.sqrt(fit_w / fit_d), 1 / MAX_STRETCH), MAX_STRETCH)
+    return real_w * size * stretch, real_d * size / stretch
 
 
 # --- Camera -----------------------------------------------------------------------------

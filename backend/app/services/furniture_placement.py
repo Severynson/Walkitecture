@@ -71,8 +71,37 @@ def facing_away_from_nearest_wall(center: Point2, walls: list[Wall]) -> Point2:
     return away
 
 
-def facing_from_back_wall(points: list[Point2], rotation_deg: float, walls: list[Wall]) -> Point2 | None:
-    """Find which of the block's four sides sits against a wall; the front faces the opposite way."""
+SQUARE_ASPECT = 1.25  # width/depth ratios within this factor of 1 count as "square" (orientation-agnostic)
+
+
+def preferred_aspect(category: str | None) -> float:
+    """Typical width/depth of the library models in a category: > 1 means the front is a long side
+    (closet, sofa, desk), < 1 means the back is a short side (bed, toilet), ~1 means either."""
+    sizes = [m.real_size for m in CATALOG if m.category == category]
+    if not sizes:
+        return 1.0
+    return math.exp(sum(math.log(w / d) for w, _, d in sizes) / len(sizes))
+
+
+def _shape_fits(width: float, depth: float, aspect: float) -> bool:
+    """Does a footprint (width across the facing, depth along it) have the model's long axis the right way?"""
+    if 1 / SQUARE_ASPECT <= aspect <= SQUARE_ASPECT or depth <= 0 or width <= 0:
+        return True
+    if 1 / SQUARE_ASPECT <= width / depth <= SQUARE_ASPECT:
+        return True  # (nearly) square block: any side may be the back
+    return (width >= depth) == (aspect >= 1)
+
+
+def facing_from_back_wall(
+    points: list[Point2], rotation_deg: float, walls: list[Wall], category: str | None = None
+) -> Point2 | None:
+    """Find which of the block's four sides sits against a wall; the front faces the opposite way.
+
+    In a corner several sides touch walls. The back is then the side that gives the footprint the
+    model's proportions (a wardrobe's back is a long side, a bed's head a short one); only among those
+    does the closest wall win. Without that, a 1.6 x 0.4 m wardrobe could be turned into a
+    0.4 m wide, 1.6 m deep one.
+    """
     r = math.radians(rotation_deg)
     u, v = (math.cos(r), math.sin(r)), (-math.sin(r), math.cos(r))
     center: Point2 = (0.0, 0.0)
@@ -81,18 +110,21 @@ def facing_from_back_wall(points: list[Point2], rotation_deg: float, walls: list
         values = [dot(p, axis) for p in points]
         halves[axis] = (max(values) - min(values)) / 2
         center = add(center, scale(axis, (max(values) + min(values)) / 2))
-    best: tuple[float, Point2] | None = None
-    for axis in (u, v):
+    aspect = preferred_aspect(category)
+    best: tuple[tuple[int, float], Point2] | None = None
+    for axis, other in ((u, v), (v, u)):
+        width, depth = 2 * halves[other], 2 * halves[axis]
+        rank = 0 if _shape_fits(width, depth, aspect) else 1
         for side in (axis, scale(axis, -1.0)):
             midpoint = add(center, scale(side, halves[axis]))
             for wall in walls:
                 if abs(dot(unit(sub(wall.end, wall.start)), side)) > 0.3:
                     continue  # the wall must run along this side
                 gap = point_segment_distance(midpoint, wall.start, wall.end) - wall.thickness / 2
-                if gap <= BACK_TO_WALL_REACH and (best is None or gap < best[0]):
-                    best = (gap, side)
-    if best is None:
-        return None
+                if gap <= BACK_TO_WALL_REACH and (best is None or (rank, gap) < best[0]):
+                    best = ((rank, gap), side)
+    if best is None or best[0][0] == 1:
+        return None  # no wall behind a correctly proportioned side: placed as free-standing instead
     return (-best[1][0] + 0.0, -best[1][1] + 0.0)
 
 
@@ -145,9 +177,9 @@ def place_furniture(
     index = start_index
     # Tables and desks first, so chairs can turn toward them.
     for candidate in sorted(usable, key=lambda c: c.category == "chair"):
-        facing = facing_from_back_wall(candidate.points, candidate.rotation, walls) or _free_standing_facing(
-            candidate, walls
-        )
+        facing = facing_from_back_wall(
+            candidate.points, candidate.rotation, walls, candidate.category
+        ) or _free_standing_facing(candidate, walls)
         if candidate.category == "chair":
             facing = _toward_nearest_table(candidate.center, items) or facing
         item = _item(candidate, facing, index, warnings)
@@ -158,16 +190,18 @@ def place_furniture(
 
 
 def _free_standing_facing(candidate: FurnitureCandidate, walls: list[Wall]) -> Point2:
-    """No wall behind it: face away from the nearest wall, but keep long items (sofas, beds, desks)
-    facing across their long side, as they are drawn."""
+    """No wall behind a correctly proportioned side: keep the model's proportions as drawn (front on a
+    long side for sofas/desks/closets, on a short side for beds/toilets) and face away from the nearest wall."""
     away = facing_away_from_nearest_wall(candidate.center, walls)
-    if candidate.category == "chair":
+    aspect = preferred_aspect(candidate.category)
+    if candidate.category == "chair" or 1 / SQUARE_ASPECT <= aspect <= SQUARE_ASPECT:
         return away
     r = math.radians(candidate.rotation)
     u, v = (math.cos(r), math.sin(r)), (-math.sin(r), math.cos(r))
     size_u, size_v = candidate.local_size
-    across = v if size_u >= size_v else u  # perpendicular to the long axis
-    return across if dot(across, away) >= 0 else (-across[0] + 0.0, -across[1] + 0.0)
+    long_axis, short_axis = (u, v) if size_u >= size_v else (v, u)
+    axis = short_axis if aspect >= 1 else long_axis  # facing runs along the depth
+    return axis if dot(axis, away) >= 0 else (-axis[0] + 0.0, -axis[1] + 0.0)
 
 
 def _toward_nearest_table(center: Point2, placed: list[FurnitureItem]) -> Point2 | None:

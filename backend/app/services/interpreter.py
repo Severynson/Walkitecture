@@ -18,6 +18,7 @@ from app.config import Settings
 from app.schemas.building import Building, Point2
 from app.schemas.edits import EditCommand, EditCommandAdapter
 from app.services.geometry import dot, left_normal
+from app.services.llm import completion_options, make_client
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +243,7 @@ async def interpret_with_openai(
     else:
         context["cameraForwardDotNormal"] = None
 
-    client = client or AsyncOpenAI(api_key=settings.openai_api_key, timeout=settings.openai_timeout_s)
+    client = client or make_client(settings)
     completion = await client.chat.completions.parse(
         model=settings.openai_model,
         messages=[
@@ -250,6 +251,7 @@ async def interpret_with_openai(
             {"role": "user", "content": f"Context:\n{json.dumps(context)}\n\nRequest: {text}"},
         ],
         response_format=_LLMEdit,
+        **completion_options(settings),
     )
     message = completion.choices[0].message
     if message.refusal or message.parsed is None:
