@@ -287,3 +287,26 @@ async def test_llm_calls_use_the_configured_reasoning_effort():
     default = FakeClient(_Out(ok=True))
     await structured(Settings(_env_file=None, openai_api_key="k", openai_reasoning_effort=""), "s", "u", _Out, default)
     assert "reasoning_effort" not in default.calls[0]
+
+
+def test_inventory_tells_the_llm_where_and_how_big_each_block_is():
+    from app.services.llm_classify import inventory
+
+    def insert(block, x, y, size):
+        return {"type": "INSERT", "geometry": {"block": block, "insert": [x, y]},
+                "bbox": {"min": [x - size / 2, y - size / 2], "max": [x + size / 2, y + size / 2]}}  # fmt: skip
+
+    def label(text, x, y):
+        return {"type": "MTEXT", "geometry": {"text": text, "position": [x, y]}}
+
+    drawing = {
+        "blocks": [{"name": "b-01", "insertCount": 1, "category": "furniture", "size": [54.0, 60.0]}],
+        "entities": [
+            label("bathroom", 1, 1),
+            label("12.5 m2", 1.2, 1),
+            label("bedroom", 9, 9),
+            insert("b-01", 1.5, 1.5, 0.6),
+        ],
+    }
+    (block,) = inventory(drawing)["blocks"]
+    assert block["placedSize"] == [0.6, 0.6] and block["nearRooms"] == ["bathroom"]

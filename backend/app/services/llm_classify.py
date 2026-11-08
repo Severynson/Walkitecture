@@ -8,6 +8,8 @@ drops low-confidence items, and turns the rest into ordinary `ParseOptions` (lay
 
 import glob
 import json
+import re
+from collections import defaultdict
 from typing import Any, Literal
 
 from openai import AsyncOpenAI
@@ -75,31 +77,81 @@ sheets). For each block choose: door, window, """
     + """, or ignore
 (washbasins, bidets, stoves, washing machines, plants, symbols, arrows). "sink" is a kitchen sink counter,
 "kitchen" a kitchen counter/cabinet unit, "cabinet" a low or filing cabinet, "dresser" a chest of drawers.
-Use names, entity types, counts, sizes (drawing units) and the categories the rules already assigned.
+Use names, entity types, counts, sizes and the categories the rules already assigned. For blocks, trust
+`placedSize` (the footprint as placed, in drawing units like `extents`; `size` is the block's own, often
+differently scaled, definition) and `nearRooms` (the room labels next to where it is placed): furniture must
+suit its room (a block in a bathroom is a toilet, shower, bathtub or "ignore" for washbasins, never a bed;
+several identical small blocks around desks in offices are chairs). Prefer "ignore" over a wrong guess.
 Give a confidence from 0 to 1. Only list layers and blocks that appear in the input; include every layer
 that contains geometry."""
 )
 
 
+ROOM_LIKE = re.compile(r"[^\W\d_]{3,}")  # a word of 3+ letters: "bathroom", "baño", not "12.5 m2"
+MAX_ROOMS_PER_BLOCK = 3
+
+
+def _room_labels(entities: list[dict[str, Any]]) -> list[tuple[str, float, float]]:
+    labels = []
+    for entity in entities:
+        if entity.get("type") in ("TEXT", "MTEXT"):
+            text = " ".join(str(entity["geometry"].get("text", "")).split())[:40]
+            position = entity["geometry"].get("position") or entity["geometry"].get("insert")
+            if position and ROOM_LIKE.search(text):
+                labels.append((text, position[0], position[1]))
+    return labels
+
+
+def _placements(entities: list[dict[str, Any]]) -> dict[str, list[tuple[float, float, float, float]]]:
+    """Block name -> (center x, center y, width, height) of each insert, in drawing units."""
+    out: dict[str, list[tuple[float, float, float, float]]] = defaultdict(list)
+    for entity in entities:
+        box = entity.get("bbox")
+        if entity.get("type") != "INSERT" or not box:
+            continue
+        (x0, y0), (x1, y1) = box["min"], box["max"]
+        out[entity["geometry"].get("block", "")].append(((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0))
+    return out
+
+
 def inventory(drawing: dict[str, Any]) -> dict[str, Any]:
-    """The compact, LLM-sized view of a drawing JSON."""
+    """The compact, LLM-sized view of a drawing JSON. Each block also gets its footprint as placed in the
+    drawing (`placedSize`, drawing units: block definitions are often drawn at another scale) and the room
+    labels nearest to where it is placed (`nearRooms`), so a cryptic "b-01" in a bathroom reads as a fixture."""
+    entities = drawing.get("entities", [])
     texts: list[str] = []
-    for entity in drawing.get("entities", []):
+    for entity in entities:
         if entity.get("type") in ("TEXT", "MTEXT"):
             text = " ".join(str(entity["geometry"].get("text", "")).split())
             if text and text not in texts:
                 texts.append(text)
         if len(texts) >= MAX_TEXTS:
             break
+    labels = _room_labels(entities)
+    placements = _placements(entities)
+    blocks = []
+    for block in drawing.get("blocks", [])[:MAX_BLOCKS]:
+        view = {k: block.get(k) for k in ("name", "insertCount", "category", "entityTypes", "size")}
+        placed = placements.get(block.get("name", ""), [])
+        if placed:
+            widths, heights = sorted(p[2] for p in placed), sorted(p[3] for p in placed)
+            view["placedSize"] = [round(widths[len(widths) // 2], 3), round(heights[len(heights) // 2], 3)]
+            rooms: list[str] = []
+            for cx, cy, _, _ in placed:
+                if labels:
+                    name = min(labels, key=lambda lab: (lab[1] - cx) ** 2 + (lab[2] - cy) ** 2)[0]
+                    if name not in rooms:
+                        rooms.append(name)
+                if len(rooms) >= MAX_ROOMS_PER_BLOCK:
+                    break
+            view["nearRooms"] = rooms
+        blocks.append(view)
     return {
         "units": drawing.get("units"),
         "extents": drawing.get("extents"),
         "summary": drawing.get("summary"),
         "layers": drawing.get("layers", [])[:MAX_LAYERS],
-        "blocks": [
-            {k: b.get(k) for k in ("name", "insertCount", "category", "entityTypes", "size")}
-            for b in drawing.get("blocks", [])[:MAX_BLOCKS]
-        ],
+        "blocks": blocks,
         "sampleTexts": texts,
     }
 
