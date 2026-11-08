@@ -8,7 +8,6 @@ import {
   HighlightLayer,
   InstancedMesh,
   Mesh,
-  MeshBuilder,
   Ray,
   Scene,
   StandardMaterial,
@@ -35,7 +34,11 @@ const OUT_OF_MAP = 0.5; // m beyond the map's boundary walls, likewise
 const DOOR_REACH = 2.5; // m: a door this close under the crosshair can be opened with E
 const FOCUS_EVERY = 6; // frames between door-focus checks
 const UNSTICK_EVERY = 2; // frames between checks for colliders overlapping the walker
-const BODY_INSET = 0.85; // the overlap test uses a body this much smaller: touching a wall is not overlapping it
+/** m a collider must reach into the walker's body before it is let go: it trapped the walker (a door swung shut
+ * onto it, an edit put a wall where it stands). Walking along a wall or past a corner only touches the body. */
+const EMBEDDED = 0.1;
+/** m: a collider let go of collides again once it reaches no deeper than this (Babylon's own contact distance). */
+const CLEAR = 0.03;
 /** Never let go of these, even when overlapping the walker (it would fall through or leave the map). */
 const ALWAYS_SOLID = new Set(["floor", "ground", "barrier", "boundary"]);
 
@@ -46,6 +49,31 @@ export interface DoorFocus {
 }
 /** Pick targets that are "the building" rather than an editable object. */
 const NOT_SELECTABLE = new Set(["floor", "ceiling"]);
+
+/**
+ * How deep a box collider (wall piece, door leaf, furniture footprint) reaches into the walker's round body: its
+ * radius minus the distance from the box to the nearest of the body's `axis` points (heights at x, z). <= 0: apart.
+ */
+function depthInto(mesh: AbstractMesh, x: number, z: number, axis: number[], radius: number): number {
+  const box = mesh.getBoundingInfo().boundingBox;
+  const { minimumWorld: lo, maximumWorld: hi, centerWorld: c } = box;
+  if (x < lo.x - radius || x > hi.x + radius || z < lo.z - radius || z > hi.z + radius) return -radius;
+  // The box's own axes (world matrix rows include scaling: normalize) and half extents along them.
+  const axes = box.directions.map((d) => d.normalizeToNew());
+  const half = axes.map((d) =>
+    Math.max(...box.vectorsWorld.map((v) => Math.abs((v.x - c.x) * d.x + (v.y - c.y) * d.y + (v.z - c.z) * d.z))),
+  );
+  let nearest = Infinity;
+  for (const y of axis) {
+    let squared = 0;
+    axes.forEach((d, i) => {
+      const outside = Math.abs((x - c.x) * d.x + (y - c.y) * d.y + (z - c.z) * d.z) - half[i];
+      if (outside > 0) squared += outside * outside;
+    });
+    nearest = Math.min(nearest, Math.sqrt(squared));
+  }
+  return radius - nearest;
+}
 
 function e2eEnabled(): boolean {
   try {
@@ -71,7 +99,6 @@ export class Viewer {
   private frame = 0;
   /** Colliders let go of because they overlapped the walker (`freeTheWalker`). */
   private readonly ghosts = new Set<AbstractMesh>();
-  private body: Mesh | null = null;
   /** Called when the door under the crosshair changes (or opens/closes). */
   onDoorFocus: ((focus: DoorFocus | null) => void) | null = null;
   private readonly highlight: HighlightLayer;
@@ -319,48 +346,41 @@ export class Viewer {
 
   /**
    * Guardrail: the walker can always walk away. Babylon only stops the walker's own moves, so a collider that
-   * ends up overlapping its body (a door swung shut onto it, an edit or undo that put a wall or furniture
+   * ends up deep inside its body (a door swung shut onto it, an edit or undo that put a wall or furniture
    * where it stands, a spawn point too close to something) would pin it in place for good. Such a collider
    * stops colliding until the walker has stepped out of it. The floor and the map's end always stay solid.
+   *
+   * The body is round (Babylon's ellipsoid), so depth is measured from its axis: a square stand-in reaches
+   * past the ellipsoid at its corners, and walking diagonally past a door jamb let go of the wall, which the
+   * walker could then walk into (and, inside it, see through every wall around).
    */
   private freeTheWalker(): void {
     for (const mesh of this.ghosts) {
       if (mesh.isDisposed()) this.ghosts.delete(mesh);
     }
     if (this.cameras.mode !== "first-person") return;
-    const body = this.walkerBody();
+    const walker = this.cameras.walker;
+    const { ellipsoid, ellipsoidOffset, position } = walker;
+    const radius = ellipsoid.x;
+    // Babylon centers the collision ellipsoid at position - ellipsoid.y + ellipsoidOffset: sample the body's
+    // axis a radius above the feet, at the middle, and a radius below the head.
+    const middle = position.y - ellipsoid.y + ellipsoidOffset.y;
+    const axis = [middle - ellipsoid.y + radius, middle, middle + ellipsoid.y - radius];
     for (const mesh of this.ghosts) {
-      if (!mesh.intersectsMesh(body, true)) {
+      if (depthInto(mesh, position.x, position.z, axis, radius) <= CLEAR) {
         mesh.checkCollisions = true;
         this.ghosts.delete(mesh);
       }
     }
     for (const mesh of this.scene.meshes) {
-      if (!mesh.checkCollisions || mesh === body || !mesh.isEnabled()) continue;
+      if (!mesh.checkCollisions || !mesh.isEnabled()) continue;
       const kind = (mesh.metadata as MeshMeta | undefined)?.kind;
       if (!kind || ALWAYS_SOLID.has(kind)) continue;
-      if (mesh.intersectsMesh(body, true)) {
+      if (depthInto(mesh, position.x, position.z, axis, radius) > EMBEDDED) {
         mesh.checkCollisions = false;
         this.ghosts.add(mesh);
       }
     }
-  }
-
-  /** An invisible box a little inside the walker's collision ellipsoid, kept where the walker stands. */
-  private walkerBody(): Mesh {
-    if (!this.body || this.body.isDisposed()) {
-      this.body = MeshBuilder.CreateBox("walker:body", { size: 1 }, this.scene);
-      this.body.isVisible = false;
-      this.body.isPickable = false;
-      this.body.checkCollisions = false;
-    }
-    const walker = this.cameras.walker;
-    const { ellipsoid, ellipsoidOffset } = walker;
-    // Babylon centers the collision ellipsoid at position - ellipsoid.y + ellipsoidOffset.
-    this.body.position.set(walker.position.x, walker.position.y - ellipsoid.y + ellipsoidOffset.y, walker.position.z);
-    this.body.scaling.set(ellipsoid.x * 2 * BODY_INSET, ellipsoid.y * 2 * BODY_INSET, ellipsoid.z * 2 * BODY_INSET);
-    this.body.computeWorldMatrix(true);
-    return this.body;
   }
 
   /** Guardrail: whatever happens (a gap in a collider, a glitch), the walker never leaves the map. */

@@ -374,33 +374,60 @@ def _clearance(point: Point2, building: Building) -> float:
 SPAWN_GRID = 0.5  # m between the spots tried when no room label has room around it
 
 
-def _indoor_spots(building: Building) -> list[Point2]:
-    """Grid points on the building's floor (inside a room, not outdoors), for a spawn point of last resort."""
-    from app.services import guardrails  # guardrails -> this module
+class _Floorplan:
+    """The building's rooms (guardrails' raster) and which of them belong to its main, connected part."""
 
-    regions = guardrails._regions(building, [box for _, box in guardrails.wall_boxes(building.walls)])
-    if regions is None:
-        return []
-    step = max(1, round(SPAWN_GRID / regions.cell))
-    spots = []
-    for j in range(0, regions.ny, step):
-        for i in range(0, regions.nx, step):
-            idx = j * regions.nx + i
-            if regions.labels[idx] >= 0 and not regions.outdoor[idx] and regions.is_space(regions.labels[idx]):
-                spots.append(guardrails._cell_center(regions, idx))
-    return spots
+    def __init__(self, building: Building):
+        from app.services import guardrails  # guardrails -> this module
+
+        self.regions = guardrails._regions(building, [box for _, box in guardrails.wall_boxes(building.walls)])
+        self.space_of: dict[int, int] = {}
+        self.main = None
+        if self.regions is not None:
+            spaces = guardrails._space_graph(building, self.regions)
+            self.space_of, self.main = spaces.space_of, spaces.main
+
+    def connected(self, point: Point2) -> bool:
+        """Is the point on the floor of a room the walker can leave (a door leads on to the rest of the
+        building)? A room no door leads into is a trap: the walker would never get out."""
+        if self.regions is None:
+            return True  # nothing to judge by
+        idx = self.regions.index(point)
+        if idx is None or self.regions.outdoor[idx]:
+            return False
+        return self.space_of.get(self.regions.labels[idx]) == self.main
+
+    def indoor_spots(self) -> list[Point2]:
+        """Grid points on the floor of the connected rooms, for a spawn point of last resort."""
+        from app.services import guardrails
+
+        regions = self.regions
+        if regions is None:
+            return []
+        step = max(1, round(SPAWN_GRID / regions.cell))
+        spots = []
+        for j in range(0, regions.ny, step):
+            for i in range(0, regions.nx, step):
+                idx = j * regions.nx + i
+                if regions.labels[idx] >= 0 and not regions.outdoor[idx] and regions.is_space(regions.labels[idx]):
+                    spot = guardrails._cell_center(regions, idx)
+                    if self.connected(spot):
+                        spots.append(spot)
+        return spots
 
 
 def _camera(building: Building, fallback: Point2) -> CameraSpec:
     """Spawn at the room label with the most open space around it (the main room, not a corridor or a
-    store). Real drawings rarely have room outlines, so clearance is the measure. Without such a label, the
-    roomiest spot on the floor: never inside a wall or a piece of furniture (the walker could not move)."""
-    candidates = [r.label_position for r in building.rooms if r.label_position]
+    store). Real drawings rarely have room outlines, so clearance is the measure. Never in a room no door
+    leads into (the walker could not get out); without a usable label, the roomiest spot on the floor of the
+    connected rooms: never inside a wall or a piece of furniture (the walker could not move)."""
+    plan = _Floorplan(building)
+    candidates = [r.label_position for r in building.rooms if r.label_position and plan.connected(r.label_position)]
     scored = [
         (clearance, point) for point in candidates if (clearance := _clearance(point, building)) >= MIN_SPAWN_CLEARANCE
     ]
     if not scored:
-        scored = [(_clearance(point, building), point) for point in _indoor_spots(building)]
+        scored = [(_clearance(point, building), point) for point in plan.indoor_spots()]
         scored = [s for s in scored if s[0] > 0]
     x, z = max(scored)[1] if scored else fallback
     return CameraSpec(

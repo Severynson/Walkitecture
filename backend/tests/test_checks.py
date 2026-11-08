@@ -302,6 +302,22 @@ def test_the_ai_decides_and_the_default_keeps_the_drawing():
     assert guardrails.analyze(decided.building).findings == []
 
 
+def test_a_door_another_wall_stands_in_leads_nowhere():
+    """A closet's doors cut into the partition, with a solid wall right behind them: the bedroom has no way in."""
+    behind = wall("behind", (4.2, 0.8), (4.2, 3.2))  # against mid's east face, across the doorway
+    building = two_rooms([door("door_2", 1.5)], extra_walls=[behind])
+    assert guardrails.blocked_doors(building.walls) == {"door_2"}
+    (enclosed,) = guardrails.analyze(building).findings
+    assert enclosed.kind == "enclosed_space" and "Bedroom" in enclosed.detail
+    # No option offers a way through the wall behind: no door into mid where it stands.
+    for option in enclosed.options:
+        for command in option.commands:
+            if command["operation"] == "add_opening" and command["targetId"] == "mid":
+                lo = command["parameters"]["offset"]
+                assert lo + command["parameters"]["width"] < 0.8 or lo > 3.2
+    assert guardrails.blocked_doors(two_rooms([door("door_2", 1.5)]).walls) == set()
+
+
 def test_a_new_door_can_open_a_closed_room():
     analysis = guardrails.analyze(two_rooms())
     (enclosed,) = analysis.findings

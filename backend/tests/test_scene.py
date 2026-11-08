@@ -122,6 +122,26 @@ def test_camera_spawns_in_the_most_open_room():
     assert (camera.position[0], camera.position[2]) == (7, 4)
 
 
+def test_camera_never_spawns_in_a_room_no_door_leads_into():
+    """The office is roomier, but sealed: spawning there, the walker could never get out."""
+    from app.schemas.building import Room
+
+    entrance = Opening(id="door_1", type="door", offset=1.0, width=0.9, height=2.13)
+    walls = [
+        Wall(id="w1", start=(0, 0), end=(12, 0), thickness=0.15, height=3, openings=[entrance]),
+        Wall(id="w2", start=(12, 0), end=(12, 8), thickness=0.15, height=3),
+        Wall(id="w3", start=(12, 8), end=(0, 8), thickness=0.15, height=3),
+        Wall(id="w4", start=(0, 8), end=(0, 0), thickness=0.15, height=3),
+        Wall(id="w5", start=(4, 0), end=(4, 8), thickness=0.15, height=3),  # no door into the office
+    ]
+    rooms = [
+        Room(id="hall", name="Hall", label_position=(2, 4)),
+        Room(id="office", name="Office", label_position=(8, 4)),
+    ]
+    camera = build_scene(Building(ceiling_height=3, walls=walls, rooms=rooms)).camera
+    assert (camera.position[0], camera.position[2]) == (2, 4)
+
+
 # --- Wall joints: corners of mixed thickness, drafting gaps, free ends --------------------------
 
 

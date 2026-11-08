@@ -787,7 +787,7 @@
     "sourceBlock": "sofa con mujer",
     "matchedBy": "block_name",
     "position": [
-     13.2014,
+     13.3266,
      1.9979
     ],
     "facing": [
@@ -797,7 +797,14 @@
     "width": 1.4496,
     "depth": 0.8842,
     "height": 0.85,
-    "drawn": null
+    "drawn": {
+     "position": [
+      13.2014,
+      1.9979
+     ],
+     "width": 1.4496,
+     "depth": 0.8842
+    }
    },
    {
     "id": "furniture_13",
@@ -819,61 +826,30 @@
     "drawn": null
    },
    {
-    "id": "furniture_14",
-    "category": "sofa",
-    "model": "couch_small_quarternius.glb",
-    "sourceBlock": "SILLONCONPERSONA",
-    "matchedBy": "block_name",
-    "position": [
-     15.6653,
-     1.611
-    ],
-    "facing": [
-     -0.7896,
-     0.6136
-    ],
-    "width": 1.0681,
-    "depth": 0.9357,
-    "height": 0.85,
-    "drawn": null
-   },
-   {
-    "id": "furniture_15",
-    "category": "desk",
-    "model": "desk_by_creativetrio.glb",
-    "sourceBlock": "ESTPNO",
-    "matchedBy": "size",
-    "position": [
-     12.0019,
-     3.3086
-    ],
-    "facing": [
-     0.0,
-     -1.0
-    ],
-    "width": 1.7,
-    "depth": 0.5,
-    "height": 0.75,
-    "drawn": null
-   },
-   {
     "id": "furniture_16",
     "category": "table",
     "model": "table_by_darwin_yamamoto.glb",
     "sourceBlock": "nueva mesa comedor",
     "matchedBy": "block_name",
     "position": [
-     11.5574,
-     1.4909
+     11.2824,
+     1.2909
     ],
     "facing": [
      1.0,
      0.0
     ],
-    "width": 2.1966,
-    "depth": 1.5033,
+    "width": 2.0868,
+    "depth": 1.4281,
     "height": 0.75,
-    "drawn": null
+    "drawn": {
+     "position": [
+      11.5574,
+      1.4909
+     ],
+     "width": 2.1966,
+     "depth": 1.5033
+    }
    },
    {
     "id": "furniture_17",
@@ -920,7 +896,7 @@
     "sourceBlock": "SILL-01Z",
     "matchedBy": "block_name",
     "position": [
-     8.7664,
+     8.7367,
      4.2277
     ],
     "facing": [
@@ -930,7 +906,14 @@
     "width": 0.3885,
     "depth": 0.3223,
     "height": 0.9,
-    "drawn": null
+    "drawn": {
+     "position": [
+      8.7664,
+      4.2277
+     ],
+     "width": 0.3885,
+     "depth": 0.3223
+    }
    },
    {
     "id": "furniture_20",
@@ -2464,7 +2447,7 @@
       2.43
      ],
      "rotationY": 3.1416,
-     "swing": 1.5359,
+     "swing": -1.5359,
      "modelPosition": [
       0.7916,
       1.2179,
@@ -2504,7 +2487,7 @@
       4.1341
      ],
      "rotationY": 3.1402,
-     "swing": -1.5359,
+     "swing": 1.5359,
      "modelPosition": [
       0.761,
       1.2179,
@@ -3131,7 +3114,7 @@
     "model": "couch_medium_by_quaternius.glb",
     "url": "/furniture/couch_medium_by_quaternius.glb",
     "position": [
-     13.2343,
+     13.3595,
      0.0058,
      1.9979
     ],
@@ -3142,7 +3125,7 @@
      0.4014
     ],
     "footprintCenter": [
-     13.2014,
+     13.3266,
      0.0,
      1.9979
     ],
@@ -3186,89 +3169,29 @@
     ]
    },
    {
-    "id": "furniture_14",
-    "category": "sofa",
-    "model": "couch_small_quarternius.glb",
-    "url": "/furniture/couch_small_quarternius.glb",
-    "position": [
-     15.6378,
-     0.0058,
-     1.6324
-    ],
-    "rotationY": -0.910174,
-    "scaling": [
-     0.3702,
-     0.445,
-     0.4247
-    ],
-    "footprintCenter": [
-     15.6653,
-     0.0,
-     1.611
-    ],
-    "footprint": [
-     1.0681,
-     0.9357
-    ],
-    "facing": [
-     -0.7896,
-     0.6136
-    ]
-   },
-   {
-    "id": "furniture_15",
-    "category": "desk",
-    "model": "desk_by_creativetrio.glb",
-    "url": "/furniture/desk_by_creativetrio.glb",
-    "position": [
-     11.5667,
-     0.0009,
-     3.3134
-    ],
-    "rotationY": 3.141593,
-    "scaling": [
-     1.36,
-     1.7321,
-     0.8039
-    ],
-    "footprintCenter": [
-     12.0019,
-     0.0,
-     3.3086
-    ],
-    "footprint": [
-     1.7,
-     0.5
-    ],
-    "facing": [
-     0.0,
-     -1.0
-    ]
-   },
-   {
     "id": "furniture_16",
     "category": "table",
     "model": "table_by_darwin_yamamoto.glb",
     "url": "/furniture/table_by_darwin_yamamoto.glb",
     "position": [
-     11.5556,
+     11.2807,
      0.4565,
-     1.4919
+     1.2919
     ],
     "rotationY": 1.570796,
     "scaling": [
-     1.0289,
+     0.9774,
      0.6793,
-     1.8311
+     1.7395
     ],
     "footprintCenter": [
-     11.5574,
+     11.2824,
      0.0,
-     1.4909
+     1.2909
     ],
     "footprint": [
-     2.1966,
-     1.5033
+     2.0868,
+     1.4281
     ],
     "facing": [
      1.0,
@@ -3341,7 +3264,7 @@
     "model": "chair_by_quaternius.glb",
     "url": "/furniture/chair_by_quaternius.glb",
     "position": [
-     8.7664,
+     8.7367,
      0.0015,
      4.2402
     ],
@@ -3352,7 +3275,7 @@
      0.3907
     ],
     "footprintCenter": [
-     8.7664,
+     8.7367,
      0.0,
      4.2277
     ],
@@ -3595,9 +3518,16 @@
    "F3 enclosed_space: an unnamed 3.8 m² space (3.8 m²) has no door from the rest of the building; it is empty -> keep",
    "F4 interior_window: Window window_5 (1.10 m) on wall_3 is between two indoor spaces: kitchen and an unnamed 3.8 m² space. -> keep",
    "F5 interior_window: Window window_6 (1.10 m) on wall_16 is between two indoor spaces: an unnamed 3.8 m² space and SALÓN COMEDOR / bathroom 2. -> keep",
+   "F6 furniture_conflict: table furniture_16 (block 'nueva mesa comedor', drawn 2.20 x 1.50 m at (11.5574, 1.4909)) cuts into walkway door_1-door_7. -> accept",
+   "F7 furniture_conflict: sofa furniture_12 (block 'sofa con mujer', drawn 1.45 x 0.88 m at (13.2014, 1.9979)) cuts into walkway door_1-door_7. -> accept",
    "Added wall wall_24 (3.44 m).",
    "Added door door_9 (0.90 m) to wall wall_24.",
-   "Added wall wall_25 (0.75 m)."
+   "Added wall wall_25 (0.75 m).",
+   "Moved sofa furniture_12 0.13 m to clear walkway door_1-door_7.",
+   "Removed sofa furniture_14: no room for it clear of walkway door_1-door_7.",
+   "Shrank table furniture_16 to 95% and moved it 0.34 m to clear walkway door_1-door_7.",
+   "Removed desk furniture_15: no room for it clear of walkway door_1-door_7.",
+   "Moved chair furniture_19 0.03 m to clear doorway door_5."
   ]
  }
 }

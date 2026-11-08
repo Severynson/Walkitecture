@@ -112,7 +112,7 @@ needs_examples = pytest.mark.skipif(
 @pytest.mark.parametrize(
     ("name", "min_walls", "min_windows", "min_doors", "room_names", "min_furniture"),
     [
-        ("call-center-offices", 30, 10, 12, {"reception", "Kitchen", "Call center 1"}, 10),
+        ("call-center-offices", 25, 10, 12, {"reception", "Kitchen", "Call center 1"}, 10),
         ("apartments-140202", 20, 5, 5, {"kitchen", "bedroom 1", "SALÓN COMEDOR"}, 12),
     ],
 )
@@ -127,3 +127,8 @@ def test_example_dwgs_end_to_end(settings, name, min_walls, min_windows, min_doo
     assert len(result.building.furniture) >= min_furniture
     scene = build_scene(result.building)
     assert len(scene.meshes) > stats["wallCount"] and len(scene.furniture) == len(result.building.furniture)
+    # The walker starts in a room a door leads out of (the call center's spawn room was once sealed by
+    # duplicate walls standing in its doorways).
+    from app.services.babylon_scene import _Floorplan
+
+    assert _Floorplan(result.building).connected((scene.camera.position[0], scene.camera.position[2]))

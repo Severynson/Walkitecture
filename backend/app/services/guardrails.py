@@ -585,9 +585,10 @@ def _space_graph(building: Building, regions: _Regions) -> _Spaces:
         label = regions.labels[idx]
         return label if label in parent else None
 
+    shut = blocked_doors(building.walls)
     for wall in building.walls:
         for opening in wall.openings:
-            if opening.type != "door":
+            if opening.type != "door" or opening.id in shut:
                 continue
             a, b = (node(idx) for idx in _sides(regions, wall, opening.offset + opening.width / 2))
             if a is not None and b is not None:
@@ -645,6 +646,56 @@ def _rasterize_round(boxes: list[Box], x0: float, y0: float, cell: float, nx: in
 
 def _solid_wall_boxes(walls: list[Wall]) -> list[Box]:
     """Walls as rendered with their doorways open (windows stay solid)."""
+    return [box for _, box in _solid_wall_pieces(walls)]
+
+
+class _Crossing:
+    """Can the walker step straight through a wall at a given spot (a doorway there, or the wall gone)?
+
+    The rasters judge a door by the free cells on its two sides, which they find a few cells out: past
+    another wall lying against this one. So a door cut into only one of two walls side by side (a closet's
+    bifold doors in front of a solid partition), or a doorway another wall ends in, looked like a way through.
+    Here the walker's body (WALKER_RADIUS) moving across the wall must clear every other wall's solid part.
+    """
+
+    def __init__(self, walls: list[Wall]):
+        self.walls = walls
+        self.grid = SegmentGrid([(w.start, w.end) for w in walls], cell=2.0)
+        index = {id(w): i for i, w in enumerate(walls)}
+        self.pieces: dict[int, list[Box]] = defaultdict(list)
+        for wall, box in _solid_wall_pieces(walls):
+            self.pieces[index[id(wall)]].append(box)
+
+    def clear(self, i: int, s: float) -> bool:
+        """Is the way across wall `i`, `s` m from its start, free of the other walls?"""
+        wall = self.walls[i]
+        if wall.length <= 0:
+            return False
+        ux, uy = unit(sub(wall.end, wall.start))
+        x, y = add(wall.start, scale((ux, uy), s))
+        sweep = Box(x, y, ux, uy, WALKER_RADIUS, wall.thickness / 2 + WALKER_RADIUS)
+        x0, y0, x1, y1 = sweep.bbox()
+        return not any(
+            penetration(sweep, box)[0] > TOUCH
+            for j in self.grid.near(x0, y0, x1, y1, margin=1.0)
+            if j != i
+            for box in self.pieces[j]
+        )
+
+
+def blocked_doors(walls: list[Wall]) -> set[str]:
+    """Ids of doors the walker cannot get through: another wall stands in the doorway (`_Crossing`). Such a
+    door connects nothing."""
+    crossing = _Crossing(walls)
+    return {
+        o.id
+        for i, wall in enumerate(walls)
+        for o in wall.openings
+        if o.type == "door" and not crossing.clear(i, o.offset + o.width / 2)
+    }
+
+
+def _solid_wall_pieces(walls: list[Wall]) -> list[tuple[Wall, Box]]:
     out = []
     for wall, (s0, s1) in zip(walls, wall_spans(walls), strict=True):
         if wall.length <= 0:
@@ -660,9 +711,8 @@ def _solid_wall_boxes(walls: list[Wall]) -> list[Box]:
         for a, b in pieces:
             if b - a > 1e-3:
                 mid = (a + b) / 2
-                out.append(
-                    Box(wall.start[0] + ux * mid, wall.start[1] + uy * mid, ux, uy, (b - a) / 2, wall.thickness / 2)
-                )
+                box = Box(wall.start[0] + ux * mid, wall.start[1] + uy * mid, ux, uy, (b - a) / 2, wall.thickness / 2)
+                out.append((wall, box))
     return out
 
 
@@ -692,11 +742,12 @@ def _floor(building: Building) -> _Floor | None:
         return bytearray(c and not s for c, s in zip(cells, slots, strict=True))
 
     entries: dict[int, list[tuple[str, int]]] = defaultdict(list)
+    shut = blocked_doors(building.walls)  # nobody comes in through them: no walkway leads to them
     for wall in building.walls:
         if wall.length <= 0:
             continue
         d, n = _wall_frame(wall)
-        for o in (o for o in wall.openings if o.type == "door"):
+        for o in (o for o in wall.openings if o.type == "door" and o.id not in shut):
             mid = add(wall.start, scale(d, o.offset + o.width / 2))
             depth = o.width if o.width <= LEAF_DOOR_MAX else PASSAGE_CLEARANCE
             reach = wall.thickness / 2 + min(depth, half)
@@ -891,10 +942,13 @@ def _connections(building: Building, spaces: _Spaces, inner: set[int], outer: se
     converts: list[CheckOption] = []
     plugs: list[CheckOption] = []
     step = max(regions.cell, 0.05)
-    for wall in building.walls:
+    crossing = _Crossing(building.walls)  # a way through this wall must not run into another one
+    for index, wall in enumerate(building.walls):
         length = wall.length
 
-        def facing(s: float, wall: Wall = wall) -> int | None:
+        def facing(s: float, wall: Wall = wall, index: int = index) -> int | None:
+            if not crossing.clear(index, s):
+                return None
             left, right = _sides(regions, wall, s)
             if _between(spaces, left, inner) and _between(spaces, right, outer):
                 return right

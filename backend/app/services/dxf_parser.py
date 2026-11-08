@@ -587,17 +587,21 @@ def _try_bridge(
         return None
     t2 = sorted((dot(sub(w2.a, w1.a), d1), dot(sub(w2.b, w1.a), d1)))
     l1 = w1.length
+
+    def joined() -> _Centerline:
+        lo, hi = min(0.0, t2[0]), max(l1, t2[1])
+        return _Centerline(add(w1.a, scale(d1, lo)), add(w1.a, scale(d1, hi)), w1.thickness)
+
     if t2[0] >= l1 - 0.01:
         gap_lo, gap_hi = l1, t2[0]
     elif t2[1] <= 0.01:
         gap_lo, gap_hi = t2[1], 0.0
     else:
-        return None  # overlapping collinear pieces: leave as-is
+        # Overlapping collinear pieces are one wall. Kept apart, a door is cut into only one of them and the
+        # other still fills the doorway: e.g. threshold lines across each doorway pair into short wall pieces,
+        # and the chains bridging grows from them end up overlapping, sealing every door along the wall.
+        return joined()
     gap = gap_hi - gap_lo
-
-    def joined() -> _Centerline:
-        lo, hi = min(0.0, t2[0]), max(l1, t2[1])
-        return _Centerline(add(w1.a, scale(d1, lo)), add(w1.a, scale(d1, hi)), w1.thickness)
 
     if gap <= small_gap + 0.01:
         return joined()

@@ -160,6 +160,18 @@ def test_a_window_filling_the_gap_up_to_the_next_wall_extends_its_wall():
     assert _extend_into_openings(on_wall, [("window", [(0.5, -0.1), (1.5, -0.1), (1.5, 0.1), (0.5, 0.1)])]) == 0
 
 
+def test_overlapping_pieces_of_one_wall_become_one_wall():
+    """Threshold lines across doorways pair into short wall pieces; bridging chains them into walls that
+    overlap. Left apart, a door is cut into one and the other still fills the doorway (a sealed room)."""
+    from app.services.dxf_parser import _bridge_gaps, _Centerline
+
+    pieces = [_Centerline((0.0, 0.0), (5.0, 0.0), 0.2), _Centerline((8.0, 0.0), (3.0, 0.0), 0.2)]
+    (wall,) = _bridge_gaps(pieces, [], 0.2)
+    assert sorted((wall.a, wall.b)) == [(0.0, 0.0), (8.0, 0.0)]
+    beside = [_Centerline((0.0, 0.0), (5.0, 0.0), 0.2), _Centerline((3.0, 0.3), (8.0, 0.3), 0.2)]
+    assert len(_bridge_gaps(beside, [], 0.2)) == 2  # parallel walls side by side stay two walls
+
+
 def test_floor_tile_lines_cannot_steal_a_partitions_face():
     """A 2 m partition (faces 0.20 m apart) next to a grid of 0.25 m tile edges 0.218 m from one face."""
     from app.services.dxf_parser import _pair_double_lines
