@@ -420,7 +420,7 @@ characters or with the default seed password; login/register are rate-limited pe
 | `JWT_SECRET`, `JWT_EXPIRE_MINUTES` | backend | secret required in production (`openssl rand -hex 32`) |
 | `SEED_USERNAME`, `SEED_PASSWORD`, `SEED_SAMPLE_PLANS` | backend | dev defaults `demo` / `walkitecture-demo`; empty username disables |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | backend | optional; rules-only without a key |
-| `OPENAI_REASONING_EFFORT`, `OPENAI_TIMEOUT_S`, `OPENAI_MAX_RETRIES` | backend | default `low`, 120 s, 1 retry: at the model's default effort a whole-plan classify took ~35 s and hit the old 30 s timeout three times |
+| `OPENAI_REASONING_EFFORT`, `OPENAI_TIMEOUT_S`, `OPENAI_MAX_RETRIES` | backend | default `high`, 300 s, 1 retry. Measured whole-plan classify on the apartment example: `high` 67–74 s, `medium` (model default) ~35 s, `low` ~22 s, `minimal` ~15 s. The old 30 s timeout made `medium` fail with `APITimeoutError` |
 | `MAX_UPLOAD_MB` | backend | default 25 |
 | `APP_ENV` | backend | `production` (set by the prod override) enables the startup checks |
 | `LOGIN_RATE_LIMIT`, `REGISTER_RATE_LIMIT` | backend | per-IP attempts per minute (0 disables) |

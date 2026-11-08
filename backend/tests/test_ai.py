@@ -271,7 +271,7 @@ async def test_review_ops_are_not_accepted_by_the_ui_edit_endpoint(auth_client):
 
 
 async def test_llm_calls_use_the_configured_reasoning_effort():
-    """gpt-5* thinks before answering; at the default effort whole-plan calls exceeded the timeout."""
+    """The configured reasoning effort (default "high") reaches OpenAI; empty leaves the model default."""
     from pydantic import BaseModel
 
     from app.config import Settings
@@ -282,7 +282,7 @@ async def test_llm_calls_use_the_configured_reasoning_effort():
 
     fast = FakeClient(_Out(ok=True))
     await structured(Settings(_env_file=None, openai_api_key="k"), "sys", "user", _Out, fast)
-    assert fast.calls[0]["reasoning_effort"] == "low"
+    assert fast.calls[0]["reasoning_effort"] == "high"
 
     default = FakeClient(_Out(ok=True))
     await structured(Settings(_env_file=None, openai_api_key="k", openai_reasoning_effort=""), "s", "u", _Out, default)

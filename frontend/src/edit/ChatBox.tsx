@@ -54,6 +54,7 @@ export default function ChatBox({ messages, busy, selectionLabel, aiMode, onSend
             {m.text}
           </p>
         ))}
+        {busy && <p className="msg assistant working">Working… AI requests can take up to a minute.</p>}
       </div>
       <form onSubmit={submit} className="chat-form">
         <input

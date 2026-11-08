@@ -47,11 +47,11 @@ class Settings(BaseSettings):
     # --- OpenAI edit interpretation ----------------------------------------------------
     openai_api_key: str | None = None
     openai_model: str = "gpt-5-mini"
-    # Reasoning models (gpt-5*) think before answering: at the default "medium" effort the layer
-    # classification of a real drawing took ~35 s; "low" ~22 s, "minimal" ~15 s, same answers.
-    # Empty = the model's default (also use empty for non-reasoning models such as gpt-4o).
-    openai_reasoning_effort: Literal["", "minimal", "low", "medium", "high"] = "low"
-    openai_timeout_s: float = 120.0  # per attempt; the whole-plan steps (classify/review) are the slow ones
+    # Reasoning models (gpt-5*) think before answering. Measured on the apartment example's layer
+    # classification: "high" 67-74 s (~7k reasoning tokens), "medium" (model default) ~35 s, "low" ~22 s,
+    # "minimal" ~15 s. Empty = the model's default (also use empty for non-reasoning models such as gpt-4o).
+    openai_reasoning_effort: Literal["", "minimal", "low", "medium", "high"] = "high"
+    openai_timeout_s: float = 300.0  # per attempt: "high" needs minutes headroom on large drawings
     openai_max_retries: int = 1
 
     # --- Drawing convention (layer name patterns, case-insensitive, glob syntax) -------
