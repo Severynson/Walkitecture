@@ -45,6 +45,7 @@ from app.services.geometry import (
     polygon_centroid,
     project_param,
     scale,
+    segments_intersect,
     sub,
     unit,
     validate_building,
@@ -185,6 +186,8 @@ def parse_dxf(data: bytes, options: ParseOptions, settings: Settings) -> ParseRe
     outside = 0
     kept_openings = [(k, pts) for k, pts in opening_points if any(inside(p) for p in pts)]
     outside += len(opening_points) - len(kept_openings)
+    if extended := _extend_into_openings(walls, kept_openings):
+        warnings.append(f"Extended {extended} wall(s) through windows/doors that filled a gap up to another wall.")
     _place_openings(walls, kept_openings, options, settings, warnings)
     rooms, dropped_rooms = _build_rooms(collected, to_plan, inside)
     outside += dropped_rooms
@@ -659,6 +662,67 @@ def _place_openings(
                     sill_height=round(sill_h, 4),
                 )
             )
+
+
+JAMB_REACH = 0.45  # m: an extended wall end this close to another wall has reached the far jamb
+COVERED_SHARE = 0.6  # of the opening's extent along its host: less means it hangs off the host's end
+
+
+def _covered(points: list[Point2], walls: list[Wall]) -> bool:
+    """Does the opening sit on a wall (rather than hang off a wall's end into a gap)?"""
+    host = _host_wall(points, walls)
+    if host is None:
+        return False
+    ts = [project_param(p, host.start, host.end) for p in points]
+    span = min(host.length, max(ts)) - max(0.0, min(ts))
+    return span >= MIN_OPENING_WIDTH and span >= COVERED_SHARE * (max(ts) - min(ts))
+
+
+def _extend_into_openings(walls: list[Wall], opening_sets: list[tuple[str, list[Point2]]]) -> int:
+    """A window or door often fills the gap between a wall's end and the next wall (glazing between a
+    facade's piers, a doorway beside a corner) with no wall piece drawn beyond it, so gap bridging, which
+    needs a piece on both sides, cannot close it: the opening is dropped and the wall shows a hole.
+    Extend the wall through such an opening when its new end meets another wall (the far jamb) and the
+    way there crosses no wall. Returns how many walls were extended."""
+    extended = 0
+    for _kind, points in opening_sets:
+        if _covered(points, walls):
+            continue
+        best: tuple[tuple[int, float], Wall, bool, Point2] | None = None
+        for wall in walls:
+            length = wall.length
+            if length <= 0:
+                continue
+            d = unit(sub(wall.end, wall.start))
+            reach = max(wall.thickness, 0.3)
+            near = [dot(sub(p, wall.start), d) for p in points if abs(cross(d, sub(p, wall.start))) <= reach]
+            if len(near) < 2 or max(near) - min(near) < MIN_OPENING_WIDTH:
+                continue
+            lo, hi = min(near), max(near)
+            for at_end in (True, False):
+                stretch = hi - length if at_end else -lo
+                touches = lo <= length + JAMB_REACH if at_end else hi >= -JAMB_REACH
+                if not (0.1 < stretch <= MAX_BRIDGE_GAP and touches):
+                    continue
+                old = wall.end if at_end else wall.start
+                new = add(wall.start, scale(d, hi if at_end else lo))
+                outward = d if at_end else scale(d, -1.0)
+                path = (add(old, scale(outward, 0.05)), add(new, scale(outward, -0.05)))
+                others = [o for o in walls if o is not wall]
+                meets = any(point_segment_distance(new, o.start, o.end) <= o.thickness / 2 + JAMB_REACH for o in others)
+                blocked = any(segments_intersect(*path, o.start, o.end) for o in others)
+                if meets and not blocked:
+                    score = (-len(near), stretch)
+                    if best is None or score < best[0]:
+                        best = (score, wall, at_end, new)
+        if best:
+            _, wall, at_end, new = best
+            if at_end:
+                wall.end = _r(new)
+            else:
+                wall.start = _r(new)
+            extended += 1
+    return extended
 
 
 def _host_wall(points: list[Point2], walls: list[Wall]) -> Wall | None:

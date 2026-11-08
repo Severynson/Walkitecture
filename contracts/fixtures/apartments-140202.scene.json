@@ -141,11 +141,20 @@
     ],
     "end": [
      16.8125,
-     3.4618
+     0.2243
     ],
     "thickness": 0.135,
     "height": 3.048,
-    "openings": []
+    "openings": [
+     {
+      "id": "window_6",
+      "type": "window",
+      "offset": 0.1643,
+      "width": 3.235,
+      "height": 1.2192,
+      "sillHeight": 0.762
+     }
+    ]
    },
    {
     "id": "wall_8",
@@ -252,8 +261,8 @@
    {
     "id": "wall_14",
     "start": [
-     3.9157,
-     4.1325
+     5.0272,
+     4.1341
     ],
     "end": [
      2.1655,
@@ -261,7 +270,16 @@
     ],
     "thickness": 0.08,
     "height": 3.048,
-    "openings": []
+    "openings": [
+     {
+      "id": "door_3",
+      "type": "door",
+      "offset": 0.0,
+      "width": 1.0287,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
    },
    {
     "id": "wall_15",
@@ -319,7 +337,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_3",
+      "id": "door_4",
       "type": "door",
       "offset": 1.7775,
       "width": 0.735,
@@ -356,7 +374,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_4",
+      "id": "door_5",
       "type": "door",
       "offset": 0.0,
       "width": 0.595,
@@ -372,19 +390,27 @@
      3.775
     ],
     "end": [
-     8.7907,
+     9.8371,
      3.775
     ],
     "thickness": 0.07,
     "height": 3.048,
     "openings": [
      {
-      "id": "window_6",
+      "id": "window_7",
       "type": "window",
       "offset": 0.3325,
       "width": 1.1,
       "height": 1.2192,
       "sillHeight": 0.762
+     },
+     {
+      "id": "door_6",
+      "type": "door",
+      "offset": 3.6661,
+      "width": 1.0285,
+      "height": 2.1336,
+      "sillHeight": 0.0
      }
     ]
    },
@@ -409,17 +435,25 @@
      3.6586
     ],
     "end": [
-     15.6707,
+     16.6971,
      3.6586
     ],
     "thickness": 0.07,
     "height": 3.048,
     "openings": [
      {
-      "id": "door_5",
+      "id": "door_7",
       "type": "door",
       "offset": 0.0,
       "width": 0.815,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     },
+     {
+      "id": "door_8",
+      "type": "door",
+      "offset": 5.6936,
+      "width": 1.0285,
       "height": 2.1336,
       "sillHeight": 0.0
      }
@@ -433,11 +467,20 @@
     ],
     "end": [
      12.88,
-     4.6836
+     3.7636
     ],
     "thickness": 0.0688,
     "height": 3.048,
-    "openings": []
+    "openings": [
+     {
+      "id": "door_9",
+      "type": "door",
+      "offset": 2.1389,
+      "width": 0.9,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
    },
    {
     "id": "wall_25",
@@ -466,6 +509,29 @@
     "thickness": 0.06,
     "height": 3.048,
     "openings": []
+   },
+   {
+    "id": "wall_27",
+    "start": [
+     6.9,
+     0.16
+    ],
+    "end": [
+     10.335,
+     0.16
+    ],
+    "thickness": 0.06,
+    "height": 3.048,
+    "openings": [
+     {
+      "id": "door_10",
+      "type": "door",
+      "offset": 1.268,
+      "width": 0.9,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
    }
   ],
   "rooms": [
@@ -1354,10 +1420,10 @@
     "position": [
      5.1975,
      1.524,
-     5.4512
+     5.4484
     ],
     "size": [
-     2.7025,
+     2.7082,
      3.048,
      0.245
     ],
@@ -1371,10 +1437,10 @@
     "position": [
      16.9025,
      1.524,
-     0.1109
+     0.1121
     ],
     "size": [
-     0.2218,
+     0.2243,
      3.048,
      0.175
     ],
@@ -1388,10 +1454,10 @@
     "position": [
      5.1425,
      1.524,
-     3.955
+     3.9571
     ],
     "size": [
-     0.43,
+     0.4343,
      3.048,
      0.135
     ],
@@ -1405,10 +1471,78 @@
     "position": [
      16.8125,
      1.524,
-     3.5777
+     3.5764
     ],
     "size": [
-     0.2318,
+     0.2343,
+     3.048,
+     0.135
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_7:header:window_6",
+    "kind": "header",
+    "wallId": "wall_7",
+    "openingId": "window_6",
+    "position": [
+     16.8125,
+     2.5146,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     1.0668,
+     0.135
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_7:sill:window_6",
+    "kind": "sill",
+    "wallId": "wall_7",
+    "openingId": "window_6",
+    "position": [
+     16.8125,
+     0.381,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     0.762,
+     0.135
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_7:glass:window_6",
+    "kind": "glass",
+    "wallId": "wall_7",
+    "openingId": "window_6",
+    "position": [
+     16.8125,
+     1.3716,
+     1.8418
+    ],
+    "size": [
+     3.235,
+     1.2192,
+     0.02
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_7:wall:1",
+    "kind": "wall",
+    "wallId": "wall_7",
+    "openingId": null,
+    "position": [
+     16.8125,
+     1.524,
+     0.2231
+    ],
+    "size": [
+     0.0025,
      3.048,
      0.135
     ],
@@ -1575,10 +1709,10 @@
     "position": [
      5.45,
      1.524,
-     3.8075
+     3.9574
     ],
     "size": [
-     0.135,
+     0.4347,
      3.048,
      0.11
     ],
@@ -1590,16 +1724,50 @@
     "wallId": "wall_14",
     "openingId": null,
     "position": [
-     3.0581,
+     5.1186,
+     1.524,
+     4.1342
+    ],
+    "size": [
+     0.1828,
+     3.048,
+     0.08
+    ],
+    "rotationY": 3.14016
+   },
+   {
+    "id": "wall_14:header:door_3",
+    "kind": "header",
+    "wallId": "wall_14",
+    "openingId": "door_3",
+    "position": [
+     4.5129,
+     2.5908,
+     4.1334
+    ],
+    "size": [
+     1.0287,
+     0.9144,
+     0.08
+    ],
+    "rotationY": 3.14016
+   },
+   {
+    "id": "wall_14:wall:1",
+    "kind": "wall",
+    "wallId": "wall_14",
+    "openingId": null,
+    "position": [
+     3.082,
      1.524,
      4.1313
     ],
     "size": [
-     1.7852,
+     1.833,
      3.048,
      0.08
     ],
-    "rotationY": 3.140164
+    "rotationY": 3.14016
    },
    {
     "id": "wall_15:wall:0",
@@ -1626,10 +1794,10 @@
     "position": [
      9.94,
      1.524,
-     5.213
+     5.2713
     ],
     "size": [
-     3.1789,
+     3.0625,
      3.048,
      0.07
     ],
@@ -1643,10 +1811,10 @@
     "position": [
      3.9157,
      1.524,
-     3.8363
+     3.8163
     ],
     "size": [
-     0.6725,
+     0.6325,
      3.048,
      0.07
     ],
@@ -1670,10 +1838,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_18:header:door_3",
+    "id": "wall_18:header:door_4",
     "kind": "header",
     "wallId": "wall_18",
-    "openingId": "door_3",
+    "openingId": "door_4",
     "position": [
      2.4375,
      2.5908,
@@ -1704,10 +1872,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_20:header:door_4",
+    "id": "wall_20:header:door_5",
     "kind": "header",
     "wallId": "wall_20",
-    "openingId": "door_4",
+    "openingId": "door_5",
     "position": [
      2.84,
      2.5908,
@@ -1755,10 +1923,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:header:window_6",
+    "id": "wall_21:header:window_7",
     "kind": "header",
     "wallId": "wall_21",
-    "openingId": "window_6",
+    "openingId": "window_7",
     "position": [
      6.025,
      2.5146,
@@ -1772,10 +1940,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:sill:window_6",
+    "id": "wall_21:sill:window_7",
     "kind": "sill",
     "wallId": "wall_21",
-    "openingId": "window_6",
+    "openingId": "window_7",
     "position": [
      6.025,
      0.381,
@@ -1789,10 +1957,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_21:glass:window_6",
+    "id": "wall_21:glass:window_7",
     "kind": "glass",
     "wallId": "wall_21",
-    "openingId": "window_6",
+    "openingId": "window_7",
     "position": [
      6.025,
      1.3716,
@@ -1811,12 +1979,46 @@
     "wallId": "wall_21",
     "openingId": null,
     "position": [
-     7.6829,
+     7.6918,
      1.524,
      3.775
     ],
     "size": [
-     2.2157,
+     2.2336,
+     3.048,
+     0.07
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_21:header:door_6",
+    "kind": "header",
+    "wallId": "wall_21",
+    "openingId": "door_6",
+    "position": [
+     9.3228,
+     2.5908,
+     3.775
+    ],
+    "size": [
+     1.0285,
+     0.9144,
+     0.07
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_21:wall:2",
+    "kind": "wall",
+    "wallId": "wall_21",
+    "openingId": null,
+    "position": [
+     9.9061,
+     1.524,
+     3.775
+    ],
+    "size": [
+     0.1379,
      3.048,
      0.07
     ],
@@ -1857,10 +2059,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_23:header:door_5",
+    "id": "wall_23:header:door_7",
     "kind": "header",
     "wallId": "wall_23",
-    "openingId": "door_5",
+    "openingId": "door_7",
     "position": [
      10.3825,
      2.5908,
@@ -1879,12 +2081,46 @@
     "wallId": "wall_23",
     "openingId": null,
     "position": [
-     13.2303,
+     13.2293,
      1.524,
      3.6586
     ],
     "size": [
-     4.8807,
+     4.8786,
+     3.048,
+     0.07
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_23:header:door_8",
+    "kind": "header",
+    "wallId": "wall_23",
+    "openingId": "door_8",
+    "position": [
+     16.1828,
+     2.5908,
+     3.6586
+    ],
+    "size": [
+     1.0285,
+     0.9144,
+     0.07
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_23:wall:2",
+    "kind": "wall",
+    "wallId": "wall_23",
+    "openingId": null,
+    "position": [
+     16.7886,
+     1.524,
+     3.6586
+    ],
+    "size": [
+     0.1829,
      3.048,
      0.07
     ],
@@ -1898,10 +2134,44 @@
     "position": [
      12.88,
      1.524,
-     5.7431
+     5.7331
     ],
     "size": [
-     2.1189,
+     2.1389,
+     3.048,
+     0.0688
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_24:header:door_9",
+    "kind": "header",
+    "wallId": "wall_24",
+    "openingId": "door_9",
+    "position": [
+     12.88,
+     2.5908,
+     4.2136
+    ],
+    "size": [
+     0.9,
+     0.9144,
+     0.0688
+    ],
+    "rotationY": 1.570796
+   },
+   {
+    "id": "wall_24:wall:1",
+    "kind": "wall",
+    "wallId": "wall_24",
+    "openingId": null,
+    "position": [
+     12.88,
+     1.524,
+     3.7111
+    ],
+    "size": [
+     0.105,
      3.048,
      0.0688
     ],
@@ -1936,6 +2206,57 @@
     ],
     "size": [
      6.715,
+     3.048,
+     0.06
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_27:wall:0",
+    "kind": "wall",
+    "wallId": "wall_27",
+    "openingId": null,
+    "position": [
+     7.534,
+     1.524,
+     0.16
+    ],
+    "size": [
+     1.268,
+     3.048,
+     0.06
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_27:header:door_10",
+    "kind": "header",
+    "wallId": "wall_27",
+    "openingId": "door_10",
+    "position": [
+     8.618,
+     2.5908,
+     0.16
+    ],
+    "size": [
+     0.9,
+     0.9144,
+     0.06
+    ],
+    "rotationY": 0.0
+   },
+   {
+    "id": "wall_27:wall:1",
+    "kind": "wall",
+    "wallId": "wall_27",
+    "openingId": null,
+    "position": [
+     9.7015,
+     1.524,
+     0.16
+    ],
+    "size": [
+     1.267,
      3.048,
      0.06
     ],
@@ -2155,6 +2476,21 @@
     "leaf": null
    },
    {
+    "id": "window_6",
+    "type": "window",
+    "wallId": "wall_7",
+    "position": [
+     16.8125,
+     1.3716,
+     1.8418
+    ],
+    "width": 3.235,
+    "height": 1.2192,
+    "sillHeight": 0.762,
+    "rotationY": 1.570796,
+    "leaf": null
+   },
+   {
     "id": "door_1",
     "type": "door",
     "wallId": "wall_9",
@@ -2237,6 +2573,46 @@
    {
     "id": "door_3",
     "type": "door",
+    "wallId": "wall_14",
+    "position": [
+     4.5129,
+     1.0668,
+     4.1334
+    ],
+    "width": 1.0287,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 3.14016,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      5.0272,
+      0.0,
+      4.1341
+     ],
+     "rotationY": 3.1402,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.761,
+      1.2179,
+      0.0022
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      1.1061,
+      1.1113,
+      1.1061
+     ],
+     "size": [
+      1.0287,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_4",
+    "type": "door",
     "wallId": "wall_18",
     "position": [
      2.4375,
@@ -2275,7 +2651,7 @@
     }
    },
    {
-    "id": "door_4",
+    "id": "door_5",
     "type": "door",
     "wallId": "wall_20",
     "position": [
@@ -2315,7 +2691,7 @@
     }
    },
    {
-    "id": "window_6",
+    "id": "window_7",
     "type": "window",
     "wallId": "wall_21",
     "position": [
@@ -2330,7 +2706,47 @@
     "leaf": null
    },
    {
-    "id": "door_5",
+    "id": "door_6",
+    "type": "door",
+    "wallId": "wall_21",
+    "position": [
+     9.3228,
+     1.0668,
+     3.775
+    ],
+    "width": 1.0285,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      9.8371,
+      0.0,
+      3.775
+     ],
+     "rotationY": 3.1416,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.7609,
+      1.2179,
+      0.0022
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      1.1059,
+      1.1113,
+      1.1059
+     ],
+     "size": [
+      1.0285,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_7",
     "type": "door",
     "wallId": "wall_23",
     "position": [
@@ -2364,6 +2780,126 @@
      ],
      "size": [
       0.815,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_8",
+    "type": "door",
+    "wallId": "wall_23",
+    "position": [
+     16.1828,
+     1.0668,
+     3.6586
+    ],
+    "width": 1.0285,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      16.6971,
+      0.0,
+      3.6586
+     ],
+     "rotationY": 3.1416,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.7609,
+      1.2179,
+      0.0022
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      1.1059,
+      1.1113,
+      1.1059
+     ],
+     "size": [
+      1.0285,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_9",
+    "type": "door",
+    "wallId": "wall_24",
+    "position": [
+     12.88,
+     1.0668,
+     4.2136
+    ],
+    "width": 0.9,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      12.88,
+      0.0,
+      3.7636
+     ],
+     "rotationY": -1.5708,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_10",
+    "type": "door",
+    "wallId": "wall_27",
+    "position": [
+     8.618,
+     1.0668,
+     0.16
+    ],
+    "width": 0.9,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      9.068,
+      0.0,
+      0.16
+     ],
+     "rotationY": 3.1416,
+     "swing": 1.5359,
+     "modelPosition": [
+      0.6658,
+      1.2179,
+      0.0019
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.9677,
+      1.1113,
+      0.9677
+     ],
+     "size": [
+      0.9,
       2.1336,
       0.045
      ]
@@ -3113,7 +3649,7 @@
   "warnings": [
    "The drawing declares millimeters, which would make the building 0.0172 m across; using 'm' (17.2 m) instead. Pass 'units' to override.",
    "2 wall lines had no parallel partner within 0.05-0.5 m and were ignored.",
-   "5 window/door entities were not on any wall (or too narrow) and were skipped.",
+   "Extended 5 wall(s) through windows/doors that filled a gap up to another wall.",
    "Ignored 42 openings/rooms/furniture outside the building (other sheets or details)."
   ],
   "stats": {
@@ -3125,8 +3661,8 @@
     6.803
    ],
    "wallCount": 26,
-   "windowCount": 6,
-   "doorCount": 5,
+   "windowCount": 7,
+   "doorCount": 9,
    "roomCount": 8,
    "furnitureCount": 20,
    "unresolvedFurnitureBlocks": [
@@ -3161,9 +3697,12 @@
    }
   },
   "checks": [
-   "F1 enclosed_space: an unnamed 3.8 m² space (3.8 m²) has no door from the rest of the building; it is empty -> keep",
-   "F2 interior_window: Window window_5 (1.10 m) on wall_3 is between two indoor spaces: house entrance / kitchen / SALÓN COMEDOR / bathroom 2 / bedroom 2 / bedroom 1 / bedroom 3 / bathroom 1 and an unnamed 3.8 m² space. -> keep",
-   "F3 interior_window: Window window_6 (1.10 m) on wall_21 is between two indoor spaces: an unnamed 3.8 m² space and house entrance / kitchen / SALÓN COMEDOR / bathroom 2 / bedroom 2 / bedroom 1 / bedroom 3 / bathroom 1. -> keep"
+   "F1 facade_gap: The outer wall has a 3.38 m hole with no window or door between wall_25 (it stops in mid-air) and wall_10. -> entrance",
+   "F2 enclosed_space: an unnamed 3.7 m² space (3.7 m²) has no door from the rest of the building; it is empty -> keep",
+   "F3 interior_window: Window window_5 (1.10 m) on wall_3 is between two indoor spaces: kitchen and an unnamed 3.7 m² space. -> keep",
+   "F4 interior_window: Window window_7 (1.10 m) on wall_21 is between two indoor spaces: an unnamed 3.7 m² space and SALÓN COMEDOR / bathroom 2 / bedroom 2 / bedroom 3. -> keep",
+   "Added wall wall_27 (3.44 m).",
+   "Added door door_10 (0.90 m) to wall wall_27."
   ]
  }
 }

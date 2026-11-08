@@ -24,7 +24,7 @@
     "id": "wall_2",
     "start": [
      13.3645,
-     5.6928
+     4.9452
     ],
     "end": [
      13.3645,
@@ -32,7 +32,16 @@
     ],
     "thickness": 0.4,
     "height": 3.048,
-    "openings": []
+    "openings": [
+     {
+      "id": "door_1",
+      "type": "door",
+      "offset": 0.0,
+      "width": 0.6496,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     }
+    ]
    },
    {
     "id": "wall_3",
@@ -62,7 +71,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_1",
+      "id": "door_2",
       "type": "door",
       "offset": 0.0,
       "width": 0.6877,
@@ -138,7 +147,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_2",
+      "id": "door_3",
       "type": "door",
       "offset": 2.8427,
       "width": 0.7973,
@@ -146,7 +155,7 @@
       "sillHeight": 0.0
      },
      {
-      "id": "door_3",
+      "id": "door_4",
       "type": "door",
       "offset": 3.8426,
       "width": 0.7819,
@@ -245,16 +254,24 @@
      6.1
     ],
     "end": [
-     13.3645,
+     13.5645,
      6.1
     ],
     "thickness": 0.2,
     "height": 3.048,
     "openings": [
      {
-      "id": "door_4",
+      "id": "door_5",
       "type": "door",
       "offset": 5.4985,
+      "width": 0.2007,
+      "height": 2.1336,
+      "sillHeight": 0.0
+     },
+     {
+      "id": "door_6",
+      "type": "door",
+      "offset": 5.6992,
       "width": 0.2007,
       "height": 2.1336,
       "sillHeight": 0.0
@@ -289,7 +306,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_5",
+      "id": "door_7",
       "type": "door",
       "offset": 4.5588,
       "width": 1.7164,
@@ -312,7 +329,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_6",
+      "id": "door_8",
       "type": "door",
       "offset": 0.0,
       "width": 0.7968,
@@ -320,7 +337,7 @@
       "sillHeight": 0.0
      },
      {
-      "id": "door_7",
+      "id": "door_9",
       "type": "door",
       "offset": 1.0079,
       "width": 0.8921,
@@ -336,7 +353,7 @@
       "sillHeight": 0.762
      },
      {
-      "id": "door_8",
+      "id": "door_10",
       "type": "door",
       "offset": 5.1069,
       "width": 0.7931,
@@ -359,7 +376,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_9",
+      "id": "door_11",
       "type": "door",
       "offset": 2.6,
       "width": 0.8988,
@@ -410,7 +427,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_10",
+      "id": "door_12",
       "type": "door",
       "offset": 1.6522,
       "width": 0.7978,
@@ -433,7 +450,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_11",
+      "id": "door_13",
       "type": "door",
       "offset": 2.0,
       "width": 0.8988,
@@ -540,7 +557,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_12",
+      "id": "door_14",
       "type": "door",
       "offset": 0.7092,
       "width": 0.3423,
@@ -563,7 +580,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_13",
+      "id": "door_15",
       "type": "door",
       "offset": 5.6225,
       "width": 0.7968,
@@ -571,7 +588,7 @@
       "sillHeight": 0.0
      },
      {
-      "id": "door_14",
+      "id": "door_16",
       "type": "door",
       "offset": 6.6225,
       "width": 0.7819,
@@ -579,7 +596,7 @@
       "sillHeight": 0.0
      },
      {
-      "id": "door_15",
+      "id": "door_17",
       "type": "door",
       "offset": 12.3773,
       "width": 0.7819,
@@ -602,7 +619,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_16",
+      "id": "door_18",
       "type": "door",
       "offset": 0.102,
       "width": 0.8981,
@@ -625,7 +642,7 @@
     "height": 3.048,
     "openings": [
      {
-      "id": "door_17",
+      "id": "door_19",
       "type": "door",
       "offset": 0.7032,
       "width": 0.7968,
@@ -1420,6 +1437,23 @@
     "rotationY": 1.570796
    },
    {
+    "id": "wall_2:header:door_1",
+    "kind": "header",
+    "wallId": "wall_2",
+    "openingId": "door_1",
+    "position": [
+     13.3645,
+     2.5908,
+     5.27
+    ],
+    "size": [
+     0.6496,
+     0.9144,
+     0.4
+    ],
+    "rotationY": -1.570796
+   },
+   {
     "id": "wall_2:wall:0",
     "kind": "wall",
     "wallId": "wall_2",
@@ -1427,10 +1461,10 @@
     "position": [
      13.3645,
      1.524,
-     5.8964
+     5.8974
     ],
     "size": [
-     0.6072,
+     0.6052,
      3.048,
      0.4
     ],
@@ -1454,10 +1488,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_4:header:door_1",
+    "id": "wall_4:header:door_2",
     "kind": "header",
     "wallId": "wall_4",
-    "openingId": "door_1",
+    "openingId": "door_2",
     "position": [
      16.1324,
      2.5908,
@@ -1743,10 +1777,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_7:header:door_2",
+    "id": "wall_7:header:door_3",
     "kind": "header",
     "wallId": "wall_7",
-    "openingId": "door_2",
+    "openingId": "door_3",
     "position": [
      6.1814,
      2.5908,
@@ -1777,10 +1811,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_7:header:door_3",
+    "id": "wall_7:header:door_4",
     "kind": "header",
     "wallId": "wall_7",
-    "openingId": "door_3",
+    "openingId": "door_4",
     "position": [
      7.1736,
      2.5908,
@@ -2219,10 +2253,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_11:header:door_4",
+    "id": "wall_11:header:door_5",
     "kind": "header",
     "wallId": "wall_11",
-    "openingId": "door_4",
+    "openingId": "door_5",
     "position": [
      13.2634,
      2.5908,
@@ -2236,18 +2270,18 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_11:wall:1",
-    "kind": "wall",
+    "id": "wall_11:header:door_6",
+    "kind": "header",
     "wallId": "wall_11",
-    "openingId": null,
+    "openingId": "door_6",
     "position": [
      13.4641,
-     1.524,
+     2.5908,
      6.1
     ],
     "size": [
-     0.2008,
-     3.048,
+     0.2007,
+     0.9144,
      0.2
     ],
     "rotationY": 0.0
@@ -2287,10 +2321,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_13:header:door_5",
+    "id": "wall_13:header:door_7",
     "kind": "header",
     "wallId": "wall_13",
-    "openingId": "door_5",
+    "openingId": "door_7",
     "position": [
      2.94,
      2.5908,
@@ -2338,10 +2372,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_14:header:door_6",
+    "id": "wall_14:header:door_8",
     "kind": "header",
     "wallId": "wall_14",
-    "openingId": "door_6",
+    "openingId": "door_8",
     "position": [
      16.6645,
      2.5908,
@@ -2372,10 +2406,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_14:header:door_7",
+    "id": "wall_14:header:door_9",
     "kind": "header",
     "wallId": "wall_14",
-    "openingId": "door_7",
+    "openingId": "door_9",
     "position": [
      16.6645,
      2.5908,
@@ -2474,10 +2508,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_14:header:door_8",
+    "id": "wall_14:header:door_10",
     "kind": "header",
     "wallId": "wall_14",
-    "openingId": "door_8",
+    "openingId": "door_10",
     "position": [
      16.6645,
      2.5908,
@@ -2525,10 +2559,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_15:header:door_9",
+    "id": "wall_15:header:door_11",
     "kind": "header",
     "wallId": "wall_15",
-    "openingId": "door_9",
+    "openingId": "door_11",
     "position": [
      7.6645,
      2.5908,
@@ -2610,10 +2644,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_18:header:door_10",
+    "id": "wall_18:header:door_12",
     "kind": "header",
     "wallId": "wall_18",
-    "openingId": "door_10",
+    "openingId": "door_12",
     "position": [
      13.8645,
      2.5908,
@@ -2661,10 +2695,10 @@
     "rotationY": -1.570796
    },
    {
-    "id": "wall_19:header:door_11",
+    "id": "wall_19:header:door_13",
     "kind": "header",
     "wallId": "wall_19",
-    "openingId": "door_11",
+    "openingId": "door_13",
     "position": [
      13.6645,
      2.5908,
@@ -2734,12 +2768,12 @@
     "wallId": "wall_22",
     "openingId": null,
     "position": [
-     13.4145,
+     13.5145,
      1.524,
      5.6928
     ],
     "size": [
-     0.5,
+     0.3,
      3.048,
      0.2
     ],
@@ -2814,10 +2848,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_26:header:door_12",
+    "id": "wall_26:header:door_14",
     "kind": "header",
     "wallId": "wall_26",
-    "openingId": "door_12",
+    "openingId": "door_14",
     "position": [
      14.7448,
      2.5908,
@@ -2865,10 +2899,10 @@
     "rotationY": -3.141593
    },
    {
-    "id": "wall_27:header:door_13",
+    "id": "wall_27:header:door_15",
     "kind": "header",
     "wallId": "wall_27",
-    "openingId": "door_13",
+    "openingId": "door_15",
     "position": [
      11.9436,
      2.5908,
@@ -2899,10 +2933,10 @@
     "rotationY": -3.141593
    },
    {
-    "id": "wall_27:header:door_14",
+    "id": "wall_27:header:door_16",
     "kind": "header",
     "wallId": "wall_27",
-    "openingId": "door_14",
+    "openingId": "door_16",
     "position": [
      10.9511,
      2.5908,
@@ -2933,10 +2967,10 @@
     "rotationY": -3.141593
    },
    {
-    "id": "wall_27:header:door_15",
+    "id": "wall_27:header:door_17",
     "kind": "header",
     "wallId": "wall_27",
-    "openingId": "door_15",
+    "openingId": "door_17",
     "position": [
      5.1963,
      2.5908,
@@ -2984,10 +3018,10 @@
     "rotationY": 1.570512
    },
    {
-    "id": "wall_28:header:door_16",
+    "id": "wall_28:header:door_18",
     "kind": "header",
     "wallId": "wall_28",
-    "openingId": "door_16",
+    "openingId": "door_18",
     "position": [
      0.5988,
      2.5908,
@@ -3035,10 +3069,10 @@
     "rotationY": 0.0
    },
    {
-    "id": "wall_29:header:door_17",
+    "id": "wall_29:header:door_19",
     "kind": "header",
     "wallId": "wall_29",
-    "openingId": "door_17",
+    "openingId": "door_19",
     "position": [
      14.1661,
      2.5908,
@@ -3583,6 +3617,46 @@
    {
     "id": "door_1",
     "type": "door",
+    "wallId": "wall_2",
+    "position": [
+     13.3645,
+     1.0668,
+     5.27
+    ],
+    "width": 0.6496,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": -1.570796,
+    "leaf": {
+     "url": "/furniture/door_by_wesley_thompson.glb",
+     "hinge": [
+      13.3645,
+      0.0,
+      4.9452
+     ],
+     "rotationY": -1.5708,
+     "swing": -1.5359,
+     "modelPosition": [
+      0.4806,
+      1.2179,
+      0.0014
+     ],
+     "modelRotationY": 1.5708,
+     "scaling": [
+      0.6985,
+      1.1113,
+      0.6985
+     ],
+     "size": [
+      0.6496,
+      2.1336,
+      0.045
+     ]
+    }
+   },
+   {
+    "id": "door_2",
+    "type": "door",
     "wallId": "wall_4",
     "position": [
      16.1324,
@@ -3666,7 +3740,7 @@
     "leaf": null
    },
    {
-    "id": "door_2",
+    "id": "door_3",
     "type": "door",
     "wallId": "wall_7",
     "position": [
@@ -3706,7 +3780,7 @@
     }
    },
    {
-    "id": "door_3",
+    "id": "door_4",
     "type": "door",
     "wallId": "wall_7",
     "position": [
@@ -3821,7 +3895,7 @@
     "leaf": null
    },
    {
-    "id": "door_4",
+    "id": "door_5",
     "type": "door",
     "wallId": "wall_11",
     "position": [
@@ -3836,7 +3910,22 @@
     "leaf": null
    },
    {
-    "id": "door_5",
+    "id": "door_6",
+    "type": "door",
+    "wallId": "wall_11",
+    "position": [
+     13.4641,
+     1.0668,
+     6.1
+    ],
+    "width": 0.2007,
+    "height": 2.1336,
+    "sillHeight": 0.0,
+    "rotationY": 0.0,
+    "leaf": null
+   },
+   {
+    "id": "door_7",
     "type": "door",
     "wallId": "wall_13",
     "position": [
@@ -3851,7 +3940,7 @@
     "leaf": null
    },
    {
-    "id": "door_6",
+    "id": "door_8",
     "type": "door",
     "wallId": "wall_14",
     "position": [
@@ -3891,7 +3980,7 @@
     }
    },
    {
-    "id": "door_7",
+    "id": "door_9",
     "type": "door",
     "wallId": "wall_14",
     "position": [
@@ -3946,7 +4035,7 @@
     "leaf": null
    },
    {
-    "id": "door_8",
+    "id": "door_10",
     "type": "door",
     "wallId": "wall_14",
     "position": [
@@ -3986,7 +4075,7 @@
     }
    },
    {
-    "id": "door_9",
+    "id": "door_11",
     "type": "door",
     "wallId": "wall_15",
     "position": [
@@ -4026,7 +4115,7 @@
     }
    },
    {
-    "id": "door_10",
+    "id": "door_12",
     "type": "door",
     "wallId": "wall_18",
     "position": [
@@ -4066,7 +4155,7 @@
     }
    },
    {
-    "id": "door_11",
+    "id": "door_13",
     "type": "door",
     "wallId": "wall_19",
     "position": [
@@ -4106,7 +4195,7 @@
     }
    },
    {
-    "id": "door_12",
+    "id": "door_14",
     "type": "door",
     "wallId": "wall_26",
     "position": [
@@ -4121,7 +4210,7 @@
     "leaf": null
    },
    {
-    "id": "door_13",
+    "id": "door_15",
     "type": "door",
     "wallId": "wall_27",
     "position": [
@@ -4161,7 +4250,7 @@
     }
    },
    {
-    "id": "door_14",
+    "id": "door_16",
     "type": "door",
     "wallId": "wall_27",
     "position": [
@@ -4201,7 +4290,7 @@
     }
    },
    {
-    "id": "door_15",
+    "id": "door_17",
     "type": "door",
     "wallId": "wall_27",
     "position": [
@@ -4241,7 +4330,7 @@
     }
    },
    {
-    "id": "door_16",
+    "id": "door_18",
     "type": "door",
     "wallId": "wall_28",
     "position": [
@@ -4281,7 +4370,7 @@
     }
    },
    {
-    "id": "door_17",
+    "id": "door_19",
     "type": "door",
     "wallId": "wall_29",
     "position": [
@@ -5140,7 +5229,8 @@
    "Wall layers hold little geometry (32 vs 319 drawing units on layer '0'); layer '0' linework was also treated as walls.",
    "The drawing declares inches, which would make the building 0.484 m across; using 'm' (19.1 m) instead. Pass 'units' to override.",
    "12 wall lines had no parallel partner within 0.05-0.5 m and were ignored.",
-   "4 window/door entities were not on any wall (or too narrow) and were skipped."
+   "Extended 2 wall(s) through windows/doors that filled a gap up to another wall.",
+   "2 window/door entities were not on any wall (or too narrow) and were skipped."
   ],
   "stats": {
    "detectedUnits": "m (guessed)",
@@ -5152,7 +5242,7 @@
    ],
    "wallCount": 43,
    "windowCount": 11,
-   "doorCount": 17,
+   "doorCount": 19,
    "roomCount": 13,
    "furnitureCount": 20,
    "unresolvedFurnitureBlocks": [

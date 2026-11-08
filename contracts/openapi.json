@@ -1620,7 +1620,8 @@
               "furniture_outside",
               "interior_window",
               "enclosed_space",
-              "no_exterior_door"
+              "no_exterior_door",
+              "facade_gap"
             ],
             "title": "Kind"
           },

@@ -27,10 +27,20 @@ from itertools import product
 from app.schemas.building import Building, Footprint, FurnitureItem, Point2, Wall
 from app.schemas.checks import CheckChange, CheckFinding, CheckOption
 from app.schemas.edits import AnyCommand, AnyCommandAdapter
-from app.services.babylon_scene import SIZE_RANGE, rendered_footprint, wall_spans
+from app.services.babylon_scene import MAX_JOINT_GAP, SIZE_RANGE, rendered_footprint, wall_spans
 from app.services.edits import EditRejected, apply_edit
 from app.services.furniture_catalog import CATALOG
-from app.services.geometry import SegmentGrid, add, point_segment_distance, scale, sub, unit
+from app.services.geometry import (
+    SegmentGrid,
+    add,
+    dot,
+    line_intersection,
+    point_segment_distance,
+    project_param,
+    scale,
+    sub,
+    unit,
+)
 
 # --- Furniture rule -----------------------------------------------------------------------------
 
@@ -578,16 +588,28 @@ SILENT_SHIFT = 0.03  # m: smaller moves are applied without asking the AI
 class _Builder:
     building: Building
     findings: list[CheckFinding] = field(default_factory=list)
+    new_walls: int = 0
 
-    def valid(self, command: dict) -> bool:
+    def valid(self, commands: list[dict]) -> bool:
+        """Do the option's commands apply, in order (a door may go into a wall the option adds)?"""
+        building = self.building
         try:
-            apply_edit(self.building, AnyCommandAdapter.validate_python(command))
+            for command in commands:
+                building = apply_edit(building, AnyCommandAdapter.validate_python(command)).building
         except EditRejected:
             return False
         return True
 
+    def wall_id(self) -> str:
+        """A fresh id for a wall an option may add (unique across all findings)."""
+        taken = {w.id for w in self.building.walls}
+        while True:
+            self.new_walls += 1
+            if (candidate := f"wall_{len(self.building.walls) + self.new_walls}") not in taken:
+                return candidate
+
     def add(self, kind, target_ids, detail, options: list[CheckOption], default: str) -> None:
-        options = [o for o in options if all(self.valid(c) for c in o.commands)]
+        options = [o for o in options if self.valid(o.commands)]
         if not any(o.id == default for o in options) or len(options) < 2:
             return  # nothing to decide
         self.findings.append(
@@ -749,6 +771,96 @@ def _window_findings(b: _Builder, spaces: _Spaces) -> None:
             )  # fmt: skip
 
 
+FACADE_GAP = (0.6, 4.0)  # m between a free wall end and the wall its line runs into
+ENTRANCE_DOOR = 0.9
+SIDE_PROBE = 0.6  # m either side of a gap: one side outside the building's outline, one inside
+
+
+def _connected(point: Point2, wall: Wall, walls: list[Wall]) -> bool:
+    return any(
+        other is not wall
+        and point_segment_distance(point, other.start, other.end) <= other.thickness / 2 + MAX_JOINT_GAP
+        for other in walls
+    )
+
+
+def _gap_findings(b: _Builder) -> None:
+    """Holes in the facade: a wall that stops in mid-air while its line runs into another wall a little
+    further on, with the building's outside on one side of the hole. Usually a wall piece (or the entrance
+    door, or glazing) the drawing or the parser lost; sometimes a real open porch or terrace."""
+    walls = b.building.walls
+    hull = _hull([corner for _, box in wall_boxes(walls) for corner in _corners(box)])
+    seen: set[tuple] = set()
+    for wall in walls:
+        if wall.length <= 0:
+            continue
+        d = unit(sub(wall.end, wall.start))
+        for point, outward in ((wall.end, d), (wall.start, scale(d, -1.0))):
+            if _connected(point, wall, walls):
+                continue
+            hit: tuple[float, Wall, Point2] | None = None
+            for other in walls:
+                if other is wall or other.length <= 0:
+                    continue
+                q = line_intersection(point, add(point, outward), other.start, other.end)
+                if q is None:
+                    continue
+                along = project_param(q, other.start, other.end)
+                ahead = dot(sub(q, point), outward)
+                if (
+                    -other.thickness <= along <= other.length + other.thickness
+                    and 0.05 < ahead
+                    and (hit is None or ahead < hit[0])
+                ):
+                    hit = (ahead, other, q)
+            if hit is None:
+                continue
+            ahead, other, q = hit
+            gap = ahead - other.thickness / 2
+            if not FACADE_GAP[0] <= gap <= FACADE_GAP[1]:
+                continue
+            key = tuple(sorted((tuple(round(v, 1) for v in point), tuple(round(v, 1) for v in q))))
+            if key in seen:
+                continue
+            seen.add(key)
+            middle = add(point, scale(outward, gap / 2))
+            n = (-outward[1], outward[0])
+            sides = [_outside_hull(add(middle, scale(n, s * SIDE_PROBE)), hull) > 0.05 for s in (1, -1)]
+            if sides[0] == sides[1]:
+                continue  # inside the building: a passage between rooms
+            new_id = b.wall_id()
+            add_wall = {"operation": "add_wall", "targetId": new_id,
+                        "parameters": {"start": list(point), "end": list(q), "thickness": wall.thickness}}  # fmt: skip
+            length = ahead
+            options = []
+            door = min(ENTRANCE_DOOR, gap - 0.2)
+            if door >= 0.6:
+                offset = (length - door) / 2
+                options.append(CheckOption(
+                    id="entrance", description=f"Close it with a wall holding a {door:.2f} m entrance door",
+                    commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
+                                         "parameters": {"type": "door", "offset": round(offset, 3), "width": door}}],
+                ))  # fmt: skip
+            if gap >= 1.5:
+                glass = round(gap - 0.6, 3)
+                options.append(CheckOption(
+                    id="glazing", description=f"Close it with a wall holding a {glass:.2f} m window (glazed facade)",
+                    commands=[add_wall, {"operation": "add_opening", "targetId": new_id,
+                                         "parameters": {"type": "window", "offset": round((length - glass) / 2, 3),
+                                                        "width": glass}}],
+                ))  # fmt: skip
+            options += [
+                CheckOption(id="wall", description="Close it with a plain wall", commands=[add_wall]),
+                CheckOption(id="keep", description="Keep it open (a real open porch, terrace or passage)"),
+            ]
+            b.add(
+                "facade_gap", [wall.id, other.id],
+                f"The outer wall has a {gap:.2f} m hole with no window or door between {wall.id} (it stops in "
+                f"mid-air) and {other.id}.",
+                options, "entrance" if door >= 0.6 else "wall",
+            )  # fmt: skip
+
+
 def _hull(points: list[Point2]) -> list[Point2]:
     """Convex hull, counter-clockwise (Andrew's monotone chain)."""
     pts = sorted(set(points))
@@ -854,6 +966,7 @@ def analyze(building: Building) -> Analysis:
     """Every judgement call the scene needs, each with precomputed options and a default."""
     b = _Builder(building)
     notes: list[str] = []
+    _gap_findings(b)
     regions = _regions(building, [box for _, box in wall_boxes(building.walls)])
     if regions is None:
         if building.walls:

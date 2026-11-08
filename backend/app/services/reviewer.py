@@ -203,6 +203,10 @@ interpretation most likely is:
   window, a door leaf or threshold drawn on the wall layer closing the doorway, or a missing door. Choose the
   option that fixes the likely mistake; keep it only for shafts, ducts, light wells, or storage voids, or
   when the entrance is plausibly outside the drawing.
+- facade_gap: a hole in the outer wall with no window or door is almost always a lost wall piece. Close it
+  with the entrance door when the space behind is a hall or entrance (or the building has no other exterior
+  door), with glazing when it is a living room or faces a terrace, with a plain wall otherwise; keep it open
+  only for a real porch, terrace or open passage.
 - furniture_outside: usually a drawing artefact (legend, symbol library, another sheet): remove it unless it
   plausibly stands on a balcony, terrace or garden.
 Return empty lists when there is nothing to do."""

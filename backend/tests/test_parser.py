@@ -138,3 +138,23 @@ def test_custom_layer_names(settings):
 )
 def test_detect_format(name, data, expected):
     assert detect_format(name, data) == expected
+
+
+def test_a_window_filling_the_gap_up_to_the_next_wall_extends_its_wall():
+    from app.schemas.building import Wall
+    from app.services.dxf_parser import _extend_into_openings
+
+    def walls():
+        return [
+            Wall(id="facade", start=(0, 0), end=(2, 0), thickness=0.2, height=3.0),
+            Wall(id="side", start=(5, -1), end=(5, 3), thickness=0.2, height=3.0),
+        ]
+
+    glazing = [(2.0, -0.15), (4.9, -0.15), (4.9, 0.15), (2.0, 0.15)]  # 2.9 m window block beyond the facade's end
+    extended = walls()
+    assert _extend_into_openings(extended, [("window", glazing)]) == 1
+    assert extended[0].end == (4.9, 0)
+    lonely = walls()[:1]  # no wall on the far side: the window may be anything, leave the wall alone
+    assert _extend_into_openings(lonely, [("window", glazing)]) == 0 and lonely[0].end == (2, 0)
+    on_wall = walls()
+    assert _extend_into_openings(on_wall, [("window", [(0.5, -0.1), (1.5, -0.1), (1.5, 0.1), (0.5, 0.1)])]) == 0

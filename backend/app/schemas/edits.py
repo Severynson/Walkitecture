@@ -146,6 +146,20 @@ class RenameRoom(CamelModel):
     parameters: RoomNameParams
 
 
+class AddWallParams(CamelModel):
+    start: tuple[float, float]
+    end: tuple[float, float]
+    thickness: float = Field(gt=0)
+
+
+class AddWall(CamelModel):
+    """Guardrails only (closing a gap in the facade); never proposed free-form by the LLM."""
+
+    operation: Literal["add_wall"]
+    target_id: str = Field(description="ID of the new wall")
+    parameters: AddWallParams
+
+
 class AddOpening(CamelModel):
     """Guardrails only (a door into a room that has no entrance); never proposed free-form by the LLM."""
 
@@ -166,7 +180,7 @@ REVIEW_OPERATIONS = (
 
 AnyCommand = Annotated[
     ResizeSelectedWindow | ResizeWindows | SetCeilingHeight | MoveSelectedWall | DeleteWall | MergeWalls
-    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom | AddOpening,
+    | SetOpeningType | DeleteOpening | SetFurnitureCategory | DeleteFurniture | RenameRoom | AddOpening | AddWall,
     Field(discriminator="operation"),
 ]  # fmt: skip
 AnyCommandAdapter: TypeAdapter[AnyCommand] = TypeAdapter(AnyCommand)

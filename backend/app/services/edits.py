@@ -12,6 +12,7 @@ from app.config import FOOT
 from app.schemas.building import Building, Opening, Wall
 from app.schemas.edits import (
     AddOpening,
+    AddWall,
     AnyCommand,
     DeleteFurniture,
     DeleteOpening,
@@ -88,6 +89,8 @@ def apply_edit(building: Building, command: AnyCommand) -> EditResult:
             affected, summary = _rename_room(proposed, command)
         case AddOpening():
             affected, summary = _add_opening(proposed, command)
+        case AddWall():
+            affected, summary = _add_wall(proposed, command)
         case _:  # pragma: no cover - the discriminated union makes this unreachable
             _reject("unsupported_operation", f"Unsupported operation: {command!r}")
 
@@ -309,6 +312,18 @@ def _rename_room(b: Building, cmd: RenameRoom) -> tuple[list[str], str]:
         _reject("empty_name", "Room names cannot be empty.", room.id)
     old, room.name = room.name, name
     return [room.id], f"Renamed {room.id} from {old!r} to {name!r}."
+
+
+def _add_wall(b: Building, cmd: AddWall) -> tuple[list[str], str]:
+    if b.kind_of(cmd.target_id) is not None:
+        _reject("duplicate_id", f"ID {cmd.target_id} is already used.", cmd.target_id)
+    params = cmd.parameters
+    wall = Wall(
+        id=cmd.target_id, start=_round_point(params.start), end=_round_point(params.end),
+        thickness=round(params.thickness, 4), height=b.ceiling_height,
+    )  # fmt: skip
+    b.walls.append(wall)
+    return [wall.id], f"Added wall {wall.id} ({wall.length:.2f} m)."
 
 
 def _add_opening(b: Building, cmd: AddOpening) -> tuple[list[str], str]:

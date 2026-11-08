@@ -213,6 +213,34 @@ def test_the_ai_can_keep_the_other_piece_in_a_conflict():
     assert result.building.furniture[0].position == (2.0, 3.1)  # nothing in its way any more
 
 
+def test_a_hole_in_the_facade_is_closed_with_an_entrance_by_default():
+    building = Building(
+        ceiling_height=H,
+        walls=[
+            wall("s", (0, 0), (1, 0)),
+            wall("e", (4, 0), (4, 4)),
+            wall("n", (4, 4), (0, 4)),
+            wall("w", (0, 4), (0, 0)),
+        ],
+    )  # the south wall stops 1 m from the corner: a 2.9 m hole
+    (gap,) = guardrails.analyze(building).findings
+    assert gap.kind == "facade_gap" and gap.default == "entrance"
+    assert [o.id for o in gap.options] == ["entrance", "glazing", "wall", "keep"]
+    closed = guardrails.resolve(building, [gap], [], {}).building
+    (added,) = [w for w in closed.walls if w.id not in {"s", "e", "n", "w"}]
+    assert added.start == (1, 0) and added.end == (4, 0)
+    (door,) = added.openings
+    assert door.type == "door" and door.width == pytest.approx(0.9)
+    assert guardrails.analyze(closed).findings == []
+    glazed = guardrails.resolve(building, [gap], [], {gap.id: ("glazing", "living room")}).building
+    assert [o.type for w in glazed.walls for o in w.openings] == ["window"]
+
+
+def test_a_gap_between_two_rooms_is_a_passage_not_a_hole():
+    building = two_rooms([door("door_2", 1.5)], extra_walls=[wall("stub", (8, 2), (6.5, 2))])
+    assert [f for f in guardrails.analyze(building).findings if f.kind == "facade_gap"] == []
+
+
 # --- The scene: nobody walks or falls off the map --------------------------------------------------
 
 
