@@ -74,53 +74,6 @@ The goal is **spatial understanding and rapid design iteration**, not photoreali
   commands; application code validates and executes them.
 - **Designed for quick comparisons:** Keep the same viewpoint while trying a wider window or a higher ceiling.
 
-## Demo scenario
-
-1. Sign in and upload a DWG floor plan (e.g. `examples/call-center-offices.dwg`).
-2. Walk from the entrance into an office in first-person mode, past desks and chairs placed from the drawing.
-3. Click a window and type: **"Make the selected window 50% wider."**
-4. The AI translates the request into a constrained command, the server checks that the opening fits the wall, and
-   Babylon.js rebuilds that window and its wall sections in the live scene.
-5. Type: **"Increase the ceiling height to 3.5 meters."** The rooms update without leaving the walkthrough.
-6. Use **Undo** to compare the original and modified designs.
-
-> **Demo fallback:** If the LLM is unavailable, buttons and sliders call **the same edit functions**, and a
-> rule-based interpreter handles simple phrases.
-
-## Hackathon scope
-
-### P0 — Essential: ship a working experience
-
-- [x] Register / log in; each user sees only their own plans.
-- [x] Upload a DWG; the server reads it, classifies it, and stores the building model in PostgreSQL.
-- [x] React app with a Babylon.js scene generated from the building JSON.
-- [x] Walls 10 ft (3.048 m); doors 7 ft (2.134 m); windows 2.5–6.5 ft (0.762–1.981 m), with wall sections above
-      doors and above/below windows.
-- [x] First-person navigation with WASD + mouse, collisions, and a top-down / first-person toggle.
-- [x] Correct scale from the drawing's units (or a manual scale override).
-- [x] At least one real-time change through a slider **without reloading**.
-- [x] Deployed behind Traefik on a subdomain.
-
-### P1 — High-impact enhancements
-
-- [x] Furniture from DWG block inserts, rendered with the GLB library in `frontend/public/furniture`.
-- [x] Click-to-select a wall, window, or furniture item; highlight the selection.
-- [x] Natural-language editing mapped to a small allowlist of operations; Undo.
-- [x] LLM classification of unknown layers/blocks and an LLM review pass that proposes validated fixes.
-- [x] Both run automatically on every upload (background processing with live progress), together with the
-      guardrails: no furniture in walls or other furniture, no windows between rooms, no rooms without an entrance.
-- [x] 23 furniture models (bedroom, living, kitchen, bathroom, office) and interactive single doors (E to open/close).
-- [x] The map ends in a landscape backdrop and sky; nobody falls off the world.
-
-### P2 — Stretch goals
-
-- [x] Move a **simple, independent** wall by a specified offset.
-- [ ] Classification review screen for humans.
-- [ ] Room measurements, shareable links, GLB export, PDF/image plans via a vision model.
-
-**Out of scope for the MVP:** arbitrary room redesign, moving load-bearing walls, building-code validation,
-photorealistic furnishing.
-
 ## Tech stack
 
 | Layer | Technology | Responsibility |
@@ -241,8 +194,7 @@ behind Traefik: see [`ARCHITECTURE.md` §9](ARCHITECTURE.md#9-deployment).
 | AI invents geometry | LLM outputs classifications, allowlisted commands, and choices among precomputed fixes only; validation and the furniture rule are enforced by code afterwards |
 | Furniture faces the wrong way | Back-to-the-wall rule aligned to the block's own axes; chairs face tables; measured per-model sizes |
 | Stale collisions after an edit | Rebuild colliders for affected objects; push the camera out if trapped |
-| AI endpoint slow or down | Sliders and the rule-based interpreter use the same edit operations |
-| Too much for one day | Contracts + fixtures let six tracks work in parallel; see the implementation plan |
+| AI endpoint slow or down | Sliders and the rule-based interpreter use the same edit operations | Contracts + fixtures let six tracks work in parallel;
 
 ## Future possibilities
 
@@ -251,6 +203,14 @@ behind Traefik: see [`ARCHITECTURE.md` §9](ARCHITECTURE.md#9-deployment).
 - Furniture and accessibility clearances.
 - Multiplayer architect–client walkthroughs.
 - glTF/GLB export and CAD/BIM interoperability.
+
+### P2 — Stretch goals
+- [ ] Classification review screen for humans.
+- [ ] Room measurements, shareable links, GLB export, PDF/image plans via a vision model.
+
+**Out of scope for the MVP:** arbitrary room redesign, moving load-bearing walls, building-code validation,
+photorealistic furnishing.
+
 
 ## Limitations and disclaimer
 
