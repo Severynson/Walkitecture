@@ -2,10 +2,20 @@
 
 **Don't just see the floor plan. Walk it.**
 
-![Walkitecture: log in, upload a DWG floor plan, watch the AI-checked processing steps, then walk through the generated 3D apartment](examples/gif-dwg-to-3D-conversion.gif)
+<p align="center">
+  <img src="examples/floor-plan-darkmode.png" alt="A flat 2D architectural floor plan with rooms, doors, windows and furniture" width="50%">
+</p>
 
-*From a DWG file to a walkable 3D apartment: upload the drawing, let the pipeline read, classify and check it, then
-step inside.*
+<h3 align="center">⬇️ Walkitecture turns a floor plan into a space you can walk ⬇️</h3>
+
+**First-person walkthrough** — approach the building from outside, open doors with E, and walk through the bedrooms,
+hallway, and living room at human scale.
+
+![First-person walkthrough of apartments-140202.dwg: entering the building, opening doors and walking between furnished rooms](examples/walkitecture-demo.gif)
+
+**Top-down view** — press T to see the whole layout from above, with labeled rooms, furniture, doors, and windows.
+
+![Top-down view of the same apartment: orbiting over the furnished floor plan with room labels](examples/top-down-view.gif)
 
 > **Hackathon project · One-day MVP · Work in progress.** Built for **Capitol Hacks 5.0** at the Carlsen Center,
 > Sacramento State University.
@@ -48,16 +58,12 @@ to walk around the proposal.
 
 The goal is **spatial understanding and rapid design iteration**, not photorealism or construction-ready BIM.
 
-## See it in action
+<details>
+<summary><b>Watch the whole flow</b> — log in, upload a DWG, follow the processing steps, walk inside (sped up)</summary>
 
-**First-person walkthrough** — approach the building from outside, open doors with E, and walk through the bedrooms,
-hallway, and living room at human scale.
+![Walkitecture end to end: log in, upload a DWG floor plan, watch the AI-checked processing steps, then walk through the generated 3D apartment](examples/gif-dwg-to-3D-conversion.gif)
 
-![First-person walkthrough of apartments-140202.dwg: entering the building, opening doors and walking between furnished rooms](examples/walkitecture-demo.gif)
-
-**Top-down view** — press T to see the whole layout from above, with labeled rooms, furniture, doors, and windows.
-
-![Top-down view of the same apartment: orbiting over the furnished floor plan with room labels](examples/top-down-view.gif)
+</details>
 
 ## What makes Walkitecture different?
 
