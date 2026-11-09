@@ -2,8 +2,16 @@
 
 **Don't just see the floor plan. Walk it.**
 
-> **Hackathon project · One-day MVP · Work in progress.** Design: [`ARCHITECTURE.md`](ARCHITECTURE.md) ·
-> Build order: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) · Backend details: [`backend/README.md`](backend/README.md)
+![Walkitecture: log in, upload a DWG floor plan, watch the AI-checked processing steps, then walk through the generated 3D apartment](examples/gif-dwg-to-3D-conversion.gif)
+
+*From a DWG file to a walkable 3D apartment: upload the drawing, let the pipeline read, classify and check it, then
+step inside.*
+
+> **Hackathon project · One-day MVP · Work in progress.** Built for **Capitol Hacks 5.0** at the Carlsen Center,
+> Sacramento State University.
+>
+> Design: [`ARCHITECTURE.md`](ARCHITECTURE.md) · Build order: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) ·
+> Backend details: [`backend/README.md`](backend/README.md)
 
 **Walkitecture** turns an architectural **DWG** floor plan into a **walkable, human-scale 3D experience in the
 browser**. Clients can explore rooms with game-style controls, understand how large spaces actually feel, and
@@ -39,6 +47,17 @@ to walk around the proposal.
    arbitrary 3D-engine code.
 
 The goal is **spatial understanding and rapid design iteration**, not photorealism or construction-ready BIM.
+
+## See it in action
+
+**First-person walkthrough** — approach the building from outside, open doors with E, and walk through the bedrooms,
+hallway, and living room at human scale.
+
+![First-person walkthrough of apartments-140202.dwg: entering the building, opening doors and walking between furnished rooms](examples/walkitecture-demo.gif)
+
+**Top-down view** — press T to see the whole layout from above, with labeled rooms, furniture, doors, and windows.
+
+![Top-down view of the same apartment: orbiting over the furnished floor plan with room labels](examples/top-down-view.gif)
 
 ## What makes Walkitecture different?
 

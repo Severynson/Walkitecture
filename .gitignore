@@ -1,3 +1,5 @@
+TEMPORARY/
+
 .env
 .venv/
 __pycache__/
